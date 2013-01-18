@@ -1,0 +1,20 @@
+menuconfig FB_TFT_SUPPORT
+	tristate "Support for small TFT LCD display modules"
+	depends on FB && SPI && GPIOLIB
+	select FB_SYS_FILLRECT
+	select FB_SYS_COPYAREA
+	select FB_SYS_IMAGEBLIT
+	select FB_SYS_FOPS
+	select FB_DEFERRED_IO
+
+config FB_ADAFRUIT22
+	tristate "FB driver for the Adafruit 2.2\" LCD display"
+	depends on FB_TFT_SUPPORT
+	help
+	  Framebuffer support for the Adafruit 2.2\" LCD display in 9-bit SPI mode.
+
+config FB_SAINSMART18
+	tristate "FB driver for the Sainsmart 1.8\" LCD display"
+	depends on FB_TFT_SUPPORT
+	help
+	  Framebuffer support for the Sainsmart 1.8\" LCD display in 8-bit SPI mode.

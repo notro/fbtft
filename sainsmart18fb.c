@@ -45,14 +45,11 @@
 /* Supported display modules */
 #define ST7735_DISPLAY_AF_TFT18		0	/* Adafruit SPI TFT 1.8" */
 
-// Reading RDDID
-// http://rossum.posterous.com/screen-play-lots-of-other-screens-for-microco
-
 
 // ftp://imall.iteadstudio.com/IM120419001_ITDB02_1.8SP/DS_ST7735.pdf
 // https://github.com/johnmccombs/arduino-libraries/blob/master/ST7735/ST7735.cpp
 
-int sainsmart18fb_init_display(struct fbtft_par *par)
+static int sainsmart18fb_init_display(struct fbtft_par *par)
 {
 	fbtft_write_cmdDef write_cmd = par->fbtftops.write_cmd;
 	fbtft_write_dataDef write_data = par->fbtftops.write_data;
@@ -231,7 +228,7 @@ int sainsmart18fb_init_display(struct fbtft_par *par)
 }
 
 
-int sainsmart18fb_write_vmem(struct fbtft_par *par, size_t offset, size_t len)
+static int sainsmart18fb_write_vmem(struct fbtft_par *par, size_t offset, size_t len)
 {
 	u16 *vmem16 = (u16 *)(par->info->screen_base + offset);
 	u16 *txbuf16 = NULL;
@@ -330,11 +327,6 @@ if (ret)
 	if (chip != ST7735_DISPLAY_AF_TFT18) {
 		dev_err(&spi->dev, "only the %s device is supported\n",
 			to_spi_driver(spi->dev.driver)->id_table->name);
-		return -EINVAL;
-	}
-
-	if (!(spi->mode == SPI_MODE_0 && spi->bits_per_word == 8)) {
-		dev_err(&spi->dev, "SPI setup not supported (must be 8-bit SPI_MODE_0)\n");
 		return -EINVAL;
 	}
 

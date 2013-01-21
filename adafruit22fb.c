@@ -191,11 +191,6 @@ static int __devinit adafruit22fb_probe(struct spi_device *spi)
 		return -EINVAL;
 	}
 
-	if (!(spi->mode == SPI_MODE_3)) {
-		dev_err(&spi->dev, "SPI mode not supported (must be SPI_MODE_3)\n");
-		return -EINVAL;
-	}
-
 	spi->bits_per_word=9;
 	ret = spi->master->setup(spi);
 	if (ret)

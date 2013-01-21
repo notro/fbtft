@@ -44,7 +44,7 @@ static void pr_spi_devices(void)
 
 
 static const struct fbtft_gpio adafruit22_gpios[] = {
-	{ "reset", 24 },
+	{ "reset", 25 },
 	{ },
 };
 
@@ -70,7 +70,7 @@ static struct spi_board_info chips[] = {
 		.max_speed_hz = 32000000,
 		.bus_num = 0,
 		.chip_select = 0,
-		.mode = SPI_MODE_3,
+		.mode = SPI_MODE_0,
 		.platform_data = &adafruit22_pdata,
 	}, {
 		.modalias = "sainsmart18fb",

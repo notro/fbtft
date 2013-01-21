@@ -19,4 +19,14 @@ else
 	PWD  := $(shell pwd)
 default:
 	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules
+
+install:
+	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules_install
+
+clean:
+	$(MAKE) -C $(KERNELDIR) M=$(PWD) clean
+
+help:
+	$(MAKE) -C $(KERNELDIR) M=$(PWD) help
+
 endif

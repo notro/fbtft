@@ -2,72 +2,11 @@
 =========
 
 Linux Framebuffer drivers for small TFT LCD display modules.
-The drivers uses a module 'fbft' which makes writing these drivers very simple.
+The drivers uses a module 'fbft' which makes writing drivers for these displays very simple.
 
 Development is done on a Raspberry Pi running the Raspbian "wheezy" distribution.
 
-# uname -r
-3.2.27+
-
-
-SUPPORTED LCD MODULES
-  -----------------------------------------------------------------------------------------
-  |  Module            |  Driver        |  SPI  |  Controller  |  URL                     |
-  -----------------------------------------------------------------------------------------
-  | Adafruit 2.2"      | adafruit22fb   | 9 bit |  HX8340bn    |  adafruit.com            |
-  | Sainsmart 1.8"     | sainsmart18fb  | 8 bit |  ST7735Rn    |  www.sainsmart.com       |
-  -----------------------------------------------------------------------------------------
-
-  adafruit22fb
-    GPIOS
-      reset (optional if handled by hardware)
-
-  sainsmart18fb
-    GPIOS
-      dc (required)
-      reset (optional if handled by hardware)
-
-
-KERNEL CONFIG
-  The drivers require a kernel with SPI, GPIO, FB, FB_SYS_* and FB_DEFERRED_IO turned on.
-
-  Check with these commands:
-    grep "CONFIG_SPI[= ]\|CONFIG_FB[= ]\|CONFIG_FB_DEFERRED_IO\|CONFIG_FB_SYS" .config
-    grep GPIO .config
-
-
-  Set options with 'make menuconfig'
-
-  CONFIG_SPI=y
-    Device Drivers ---> [*] SPI support  ---> <Some controller driver>
-  
-  CONFIG_GENERIC_GPIO=y
-  CONFIG_BCM2708_GPIO=y
-    Device Drivers ---> -*- GPIO Support
-  
-  
-  CONFIG_FB=y
-    Device Drivers ---> Graphics support  ---> <*> Support for frame buffer devices
-    
-  
-  The following options can not be set from menuconfig (can only be set by other config options)
-  Use 'sed' to set them.
-  
-  CONFIG_FB_DEFERRED_IO=y
-    sed -i '/CONFIG_FB_DEFERRED_IO/s/# \([A-Z0-9_]*\) is not set/\1=y/' .config
-  
-  CONFIG_FB_SYS_FILLRECT=y
-  CONFIG_FB_SYS_COPYAREA=y
-  CONFIG_FB_SYS_IMAGEBLIT=y
-  CONFIG_FB_SYS_FOPS=y
-    sed -i '/CONFIG_FB_SYS/s/# \([A-Z0-9_]*\) is not set/\1=y/' .config
-
-
-TOOLS
-  spidevices
-    This module can add and delete SPI devices to simplify driver testing and development.
-	No need to change the arch/arm/mach-bcm2708/bcm2708.c (on rPi) platform file when testing.
-	Values are hardcoded.
+See wiki for more information: https://github.com/notro/fbtft/wiki
 
 
 KNOWN BUGS

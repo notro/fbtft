@@ -10,11 +10,9 @@
 
 #include <linux/module.h>
 #include <linux/kernel.h>
-//#include <linux/errno.h>
-//#include <linux/init.h>
+#include <linux/init.h>
 #include <linux/spi/spi.h>
 
-//#include <linux/fbtft.h>
 #include "fbtft.h"
 
 
@@ -74,7 +72,7 @@ static struct spi_board_info chips[] = {
 		.platform_data = &adafruit22_pdata,
 	}, {
 		.modalias = "sainsmart18fb",
-		.max_speed_hz = 16000000,
+		.max_speed_hz = 32000000,
 		.bus_num = 0,
 		.chip_select = 1,
 		.mode = SPI_MODE_0,

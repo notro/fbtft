@@ -22,8 +22,6 @@
 #include <linux/fb.h>
 
 
-#define FBTFT_MAX_BITS	32
-
 #define FBTFT_NOP		0x00
 #define FBTFT_SWRESET	0x01
 #define FBTFT_RDDID		0x04
@@ -41,14 +39,12 @@ struct fbtft_gpio {
 	unsigned gpio;
 };
 
-#define FBTFT_MAX_GPIOS	32
 struct fbtft_platform_data {
 	const struct fbtft_gpio *gpios;
 	int rst_gpio;
 	int dc_gpio;
 	void *extra;
 };
-
 
 struct fbtft_par;
 
@@ -72,7 +68,6 @@ struct fbtft_ops {
 	unsigned long (*request_gpios_match)(struct fbtft_par *par, const struct fbtft_gpio *gpio);
 	int (*request_gpios)(struct fbtft_par *par);
 	void (*free_gpios)(struct fbtft_par *par);
-
 };
 
 struct fbtft_display {

@@ -1,6 +1,10 @@
 /*
  * Copyright (C) 2013 Noralf Tronnes
  *
+ * This driver is inspired by:
+ *   st7735fb.c, Copyright (C) 2011, Matt Porter
+ *   broadsheetfb.c, Copyright (C) 2008, Jaya Kumar
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -30,7 +34,6 @@
 #include <linux/delay.h>
 #include <linux/uaccess.h>
 
-//#include <linux/fbtft.h>
 #include "fbtft.h"
 
 
@@ -96,8 +99,6 @@ void fbtft_free_gpios(struct fbtft_par *par)
 		}
 	}
 }
-
-
 
 int fbtft_write(struct fbtft_par *par, void *buf, size_t len)
 {
@@ -306,8 +307,7 @@ void fbtft_update_display(struct fbtft_par *par)
 
 	ret = par->fbtftops.write_vmem(par, offset, len);
 	if (ret < 0)
-		pr_err("%s: spi_write failed to update display buffer\n",
-			par->info->fix.id);
+		dev_err(par->info->device, "spi_write failed to update display buffer\n");
 
 	// set display line markers as clean
 	par->dirty_low = par->info->var.yres - 1;
@@ -338,8 +338,6 @@ void fbtft_mkdirty(struct fb_info *info, int y, int height)
 	schedule_delayed_work(&info->deferred_work, fbdefio->delay);
 }
 
-// drivers/video/broadsheetfb.c
-// drivers/video/xen-fbfront.c
 void fbtft_deferred_io(struct fb_info *info, struct list_head *pagelist)
 {
 	struct fbtft_par *par = info->par;
@@ -364,7 +362,6 @@ dev_dbg(info->device, "page->index=%lu y_low=%d y_high=%d\n", page->index, y_low
 	}
 
 //dev_err(info->device, "deferred_io count=%d\n", count);
-
 
 	par->fbtftops.update_display(info->par);
 }
@@ -491,7 +488,6 @@ int fbtft_fb_blank(int blank, struct fb_info *info)
  * Returns the new structure, or NULL if an error occurred.
  *
  */
-//struct fb_info *fbtft_framebuffer_alloc(unsigned width, unsigned height, unsigned bpp, unsigned fps, int txbufsize, struct device *dev)
 struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct device *dev)
 {
 	struct fb_info *info;
@@ -750,5 +746,4 @@ int fbtft_unregister_framebuffer(struct fb_info *fb_info)
 EXPORT_SYMBOL(fbtft_unregister_framebuffer);
 
 
-MODULE_VERSION("0.1");
 MODULE_LICENSE("GPL");

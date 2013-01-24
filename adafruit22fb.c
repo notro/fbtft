@@ -1,33 +1,30 @@
-
-
-#define DEBUG
-
 /*
- * linux/drivers/video/fbtft/adafruit22fb.c -- FB driver for the Adafruit 2.2" LCD display
- * Based on st7735fb by Matt Porter
+ * FB driver for the Adafruit 2.2" LCD display
  *
  * Copyright (C) 2013 Noralf Tronnes
  *
- * This file is subject to the terms and conditions of the GNU General Public
- * License. See the file COPYING in the main directory of this archive for
- * more details.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/errno.h>
-#include <linux/string.h>
-#include <linux/mm.h>
-#include <linux/vmalloc.h>
-#include <linux/slab.h>
 #include <linux/init.h>
-#include <linux/fb.h>
-#include <linux/gpio.h>
 #include <linux/spi/spi.h>
 #include <linux/delay.h>
-#include <linux/uaccess.h>
 
-//#include <linux/fbtft.h>
 #include "fbtft.h"
 
 #define DRVNAME	    "adafruit22fb"
@@ -35,12 +32,7 @@
 #define HEIGHT      220
 #define BPP         16
 #define FPS			10
-
-//#define TXBUFLEN	-1		// use buffer equal to videomemory*txwordsize
-#define TXBUFLEN	16*PAGE_SIZE
-
-/* Supported display modules */
-#define ST7735_DISPLAY_AF_TFT18		0	/* Adafruit SPI TFT 1.8" */
+#define TXBUFLEN	4*PAGE_SIZE
 
 
 int adafruit22fb_init_display(struct fbtft_par *par)
@@ -153,7 +145,6 @@ int adafruit22fb_init_display(struct fbtft_par *par)
 	return 0;
 }
 
-
 struct fbtft_display adafruit22_display = {
 	.width = WIDTH,
 	.height = HEIGHT,
@@ -164,32 +155,13 @@ struct fbtft_display adafruit22_display = {
 	.txdatabitmask = 0x0100,
 };
 
-
 static int __devinit adafruit22fb_probe(struct spi_device *spi)
 {
-	int chip = spi_get_device_id(spi)->driver_data;
 	struct fb_info *info;
 	struct fbtft_par *par;
 	int ret;
 
-//--------------------------------------------------------------------------------
-
-//[297346.179960] hx8340fb spi0.0: spi->dev.platform_data bf1e48d0
-//dev_err(&spi->dev, "spi->dev.platform_data %p\n", spi->dev.platform_data);
-
-
-//spi->max_speed_hz = 32000000;
-//spi->mode = SPI_CPHA | SPI_CPOL; // or #define SPI_MODE_3	(SPI_CPOL|SPI_CPHA)
-//--------------------------------------------------------------------------------
-
-
 	dev_dbg(&spi->dev, "adafruit22fb_probe()\n");
-
-	if (chip != ST7735_DISPLAY_AF_TFT18) {
-		dev_err(&spi->dev, "only the %s device is supported\n",
-			to_spi_driver(spi->dev.driver)->id_table->name);
-		return -EINVAL;
-	}
 
 	spi->bits_per_word=9;
 	ret = spi->master->setup(spi);
@@ -228,19 +200,11 @@ static int __devexit adafruit22fb_remove(struct spi_device *spi)
 	return 0;
 }
 
-static const struct spi_device_id adafruit22fb_ids[] = {
-	{ DRVNAME, ST7735_DISPLAY_AF_TFT18 },
-	{ },
-};
-
-MODULE_DEVICE_TABLE(spi, adafruit22fb_ids);
-
 static struct spi_driver adafruit22fb_driver = {
 	.driver = {
 		.name   = DRVNAME,
 		.owner  = THIS_MODULE,
 	},
-	.id_table = adafruit22fb_ids,
 	.probe  = adafruit22fb_probe,
 	.remove = __devexit_p(adafruit22fb_remove),
 };
@@ -262,7 +226,6 @@ static void __exit adafruit22fb_exit(void)
 module_init(adafruit22fb_init);
 module_exit(adafruit22fb_exit);
 
-MODULE_DESCRIPTION("FB driver for the Adafruit 2.2\" LCD display");
+MODULE_DESCRIPTION("FB driver for the Adafruit 2.2 inch LCD display");
 MODULE_AUTHOR("Noralf Tronnes");
-MODULE_VERSION("0.1");
 MODULE_LICENSE("GPL");

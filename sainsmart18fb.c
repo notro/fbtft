@@ -1,38 +1,35 @@
-
-
-#define DEBUG
-
 /*
- * linux/drivers/video/fbtft/sainsmart18fb.c -- FB driver for the Sainsmart 1.8" LCD display
- * Based on st7735fb by Matt Porter, Neil Greatorex and Kamal Mostafa
+ * FB driver for the Sainsmart 1.8" LCD display
  *
  * This display module want the color as BGR565
- * Some programs like mplayer writes RGB565 regardless of what is said in info->var.[color].{offset,length}.
+ * Some programs writes RGB565 regardless of what is said in info->var.[color].{offset,length}.
  * So conversion from RGB565 to BGR565 has to be done.
- *
  *
  * Copyright (C) 2013 Noralf Tronnes
  *
- * This file is subject to the terms and conditions of the GNU General Public
- * License. See the file COPYING in the main directory of this archive for
- * more details.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/errno.h>
-#include <linux/string.h>
-#include <linux/mm.h>
-#include <linux/vmalloc.h>
-#include <linux/slab.h>
 #include <linux/init.h>
-#include <linux/fb.h>
 #include <linux/gpio.h>
 #include <linux/spi/spi.h>
 #include <linux/delay.h>
-#include <linux/uaccess.h>
 
-//#include <linux/fbtft.h>
 #include "fbtft.h"
 
 #define DRVNAME	    "sainsmart18fb"
@@ -41,9 +38,6 @@
 #define BPP         16
 #define FPS			10
 #define TXBUFLEN	4*PAGE_SIZE
-
-/* Supported display modules */
-#define ST7735_DISPLAY_AF_TFT18		0	/* Adafruit SPI TFT 1.8" */
 
 
 // ftp://imall.iteadstudio.com/IM120419001_ITDB02_1.8SP/DS_ST7735.pdf
@@ -57,8 +51,6 @@ static int sainsmart18fb_init_display(struct fbtft_par *par)
 	dev_dbg(par->info->device, "sainsmart18fb_init_display()\n");
 
 	par->fbtftops.reset(par);
-
-	par->throttle_speed = 2000000;
 
 	// SWRESET - Software reset
 	write_cmd(par, 0x01);
@@ -133,7 +125,6 @@ static int sainsmart18fb_init_display(struct fbtft_par *par)
 	write_cmd(par, 0x3A);
 	write_data(par, 0x05);
 
-
 /*
 	// GMCTRP1
 	write_cmd(par, 0xE0);
@@ -174,7 +165,6 @@ static int sainsmart18fb_init_display(struct fbtft_par *par)
 	write_data(par, 0x10);
 */
 
-
 	// GMCTRP1 - Gamma control
 	write_cmd(par, 0xE0);
 	write_data(par, 0x0f);
@@ -213,7 +203,6 @@ static int sainsmart18fb_init_display(struct fbtft_par *par)
 	write_data(par, 0x03); 
 	write_data(par, 0x10); 
 
-
 	// DISPON - Display On
 	write_cmd(par, 0x29);
 	mdelay(100);
@@ -222,11 +211,8 @@ static int sainsmart18fb_init_display(struct fbtft_par *par)
 	write_cmd(par, 0x13);
 	mdelay(10);
 
-	par->throttle_speed = 0;
-
 	return 0;
 }
-
 
 static int sainsmart18fb_write_vmem(struct fbtft_par *par, size_t offset, size_t len)
 {
@@ -256,7 +242,6 @@ static int sainsmart18fb_write_vmem(struct fbtft_par *par, size_t offset, size_t
 		dev_dbg(par->info->device, "    to_copy=%d, remain=%d\n", to_copy, remain - to_copy);
 		for (i=0;i<to_copy;i+=2) {
 			val = *vmem16++;
-//			*txbuf16++ = swab16(*vmem16++);
 
 			// Convert to BGR565
 			red   = (val >> par->info->var.red.offset)   & ((1<<par->info->var.red.length) - 1);
@@ -279,8 +264,6 @@ static int sainsmart18fb_write_vmem(struct fbtft_par *par, size_t offset, size_t
 	return ret;
 }
 
-
-
 struct fbtft_display adafruit22_display = {
 	.width = WIDTH,
 	.height = HEIGHT,
@@ -289,46 +272,25 @@ struct fbtft_display adafruit22_display = {
 	.txbuflen = TXBUFLEN,
 };
 
-
 static int __devinit sainsmart18fb_probe(struct spi_device *spi)
 {
-	int chip = spi_get_device_id(spi)->driver_data;
 	struct fb_info *info;
 	struct fbtft_par *par;
 	int ret;
 
 //--------------------------------------------------------------------------------
+// The SPI controller driver is messing up state between transfers. lossi or bpw is stuck from adafruit22fb
 
-//[297346.179960] hx8340fb spi0.0: spi->dev.platform_data bf1e48d0
-//dev_err(&spi->dev, "spi->dev.platform_data %p\n", spi->dev.platform_data);
-
-
-if (spi->chip_select == 0) {
-	pr_err("%s: only cs=1 supported\n",
-		DRVNAME);
-	return -EINVAL;
-}
-
-/*
-spi->dev.platform_data = &adafruit22_pdata;
-
-spi->max_speed_hz = 16000000;
-spi->mode = SPI_MODE_0;
 spi->bits_per_word=8;
 ret = spi->master->setup(spi);
 if (ret)
 	pr_err("spi->master->setup(spi) returned %d\n", ret);
-*/
+
+
 //--------------------------------------------------------------------------------
 
 
 	dev_dbg(&spi->dev, "probe()\n");
-
-	if (chip != ST7735_DISPLAY_AF_TFT18) {
-		dev_err(&spi->dev, "only the %s device is supported\n",
-			to_spi_driver(spi->dev.driver)->id_table->name);
-		return -EINVAL;
-	}
 
 	info = fbtft_framebuffer_alloc(&adafruit22_display, &spi->dev);
 	if (!info)
@@ -337,15 +299,7 @@ if (ret)
 	par = info->par;
 	par->spi = spi;
 	par->fbtftops.init_display = sainsmart18fb_init_display;
-
 	par->fbtftops.write_vmem = sainsmart18fb_write_vmem;
-
-/*
-	// BGR
-	info->var.red.offset =     0;
-	info->var.green.offset =   5;
-	info->var.blue.offset =    11;
-*/
 
 	ret = fbtft_register_framebuffer(info);
 	if (ret < 0)
@@ -378,19 +332,11 @@ static int __devexit sainsmart18fb_remove(struct spi_device *spi)
 	return 0;
 }
 
-static const struct spi_device_id sainsmart18fb_ids[] = {
-	{ DRVNAME, ST7735_DISPLAY_AF_TFT18 },
-	{ },
-};
-
-MODULE_DEVICE_TABLE(spi, sainsmart18fb_ids);
-
 static struct spi_driver sainsmart18fb_driver = {
 	.driver = {
 		.name   = DRVNAME,
 		.owner  = THIS_MODULE,
 	},
-	.id_table = sainsmart18fb_ids,
 	.probe  = sainsmart18fb_probe,
 	.remove = __devexit_p(sainsmart18fb_remove),
 };
@@ -412,7 +358,6 @@ static void __exit sainsmart18fb_exit(void)
 module_init(sainsmart18fb_init);
 module_exit(sainsmart18fb_exit);
 
-MODULE_DESCRIPTION("FB driver for the Sainsmart 1.8\" LCD display");
+MODULE_DESCRIPTION("FB driver for the Sainsmart 1.8 inch LCD display");
 MODULE_AUTHOR("Noralf Tronnes");
-MODULE_VERSION("0.1");
 MODULE_LICENSE("GPL");

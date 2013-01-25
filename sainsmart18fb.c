@@ -278,18 +278,6 @@ static int __devinit sainsmart18fb_probe(struct spi_device *spi)
 	struct fbtft_par *par;
 	int ret;
 
-//--------------------------------------------------------------------------------
-// The SPI controller driver is messing up state between transfers. lossi or bpw is stuck from adafruit22fb
-
-spi->bits_per_word=8;
-ret = spi->master->setup(spi);
-if (ret)
-	pr_err("spi->master->setup(spi) returned %d\n", ret);
-
-
-//--------------------------------------------------------------------------------
-
-
 	dev_dbg(&spi->dev, "probe()\n");
 
 	info = fbtft_framebuffer_alloc(&adafruit22_display, &spi->dev);

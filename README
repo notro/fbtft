@@ -9,9 +9,4 @@ Development is done on a Raspberry Pi running the Raspbian "wheezy" distribution
 See wiki for more information: https://github.com/notro/fbtft/wiki
 
 
-KNOWN BUGS
-  'fbtft' can't be used by more than one driver at a time.
-
-
-SOURCE CODE
-  https://github.com/notro/fbtft/
+Source: https://github.com/notro/fbtft/

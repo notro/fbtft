@@ -2,9 +2,21 @@
 =========
 
 Linux Framebuffer drivers for small TFT LCD display modules.
-The drivers uses a module 'fbft' which makes writing drivers for these displays very simple.
+The module 'fbft' makes writing drivers for some of these displays very simple.
 
 Development is done on a Raspberry Pi running the Raspbian "wheezy" distribution.
+
+INSTALLATION
+  Download kernel sources
+  
+  cd drivers/video
+  git clone https://github.com/notro/fbtft.git
+  
+  Add to drivers/video/Kconfig:   source "drivers/video/fbtft/Kconfig"
+  Add to drivers/video/Makefile:  obj-y += fbtft/
+  
+  Enable driver(s) in menuconfig and build the kernel
+
 
 See wiki for more information: https://github.com/notro/fbtft/wiki
 

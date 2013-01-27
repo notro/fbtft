@@ -264,7 +264,7 @@ static int sainsmart18fb_write_vmem(struct fbtft_par *par, size_t offset, size_t
 	return ret;
 }
 
-struct fbtft_display adafruit22_display = {
+struct fbtft_display sainsmart18_display = {
 	.width = WIDTH,
 	.height = HEIGHT,
 	.bpp = BPP,
@@ -280,7 +280,7 @@ static int __devinit sainsmart18fb_probe(struct spi_device *spi)
 
 	dev_dbg(&spi->dev, "probe()\n");
 
-	info = fbtft_framebuffer_alloc(&adafruit22_display, &spi->dev);
+	info = fbtft_framebuffer_alloc(&sainsmart18_display, &spi->dev);
 	if (!info)
 		return -ENOMEM;
 

@@ -63,7 +63,7 @@ struct fbtft_ops {
 	void (*mkdirty)(struct fb_info *info, int from, int to);
 	void (*update_display)(struct fbtft_par *par);
 	int (*init_display)(struct fbtft_par *par);
-	int (*setpower)(struct fbtft_par *par, int on);
+	int (*blank)(struct fbtft_par *par, bool on);
 
 	unsigned long (*request_gpios_match)(struct fbtft_par *par, const struct fbtft_gpio *gpio);
 	int (*request_gpios)(struct fbtft_par *par);
@@ -99,7 +99,7 @@ struct fbtft_par {
 	u32 throttle_speed;
 	int rst;
 	int dc;
-	int bl;
+	int blank;
 	void *extra;
 };
 

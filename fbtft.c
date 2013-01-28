@@ -48,8 +48,8 @@ unsigned long fbtft_request_gpios_match(struct fbtft_par *par, const struct fbtf
 		par->dc = gpio->gpio;
 		return GPIOF_OUT_INIT_LOW;
 	}
-	else if (strcasecmp(gpio->name, "bl") == 0) {
-		par->bl = gpio->gpio;
+	else if (strcasecmp(gpio->name, "blank") == 0) {
+		par->blank = gpio->gpio;
 		return GPIOF_OUT_INIT_HIGH;
 	}
 
@@ -445,30 +445,27 @@ int fbtft_fb_setcolreg(unsigned regno,
 	return ret;
 }
 
-// http://www.embeddedlinux.org.cn/EssentialLinuxDeviceDrivers/final/ch12lev1sec5.html
 int fbtft_fb_blank(int blank, struct fb_info *info)
 {
 	struct fbtft_par *par = info->par;
-	int ret = -1;
+	int ret = -EINVAL;
 
-	if (!par->fbtftops.setpower)
-		return -1;
+	if (!par->fbtftops.blank)
+		return ret;
 
 	switch (blank) {
 	case FB_BLANK_POWERDOWN:
 	case FB_BLANK_VSYNC_SUSPEND:
 	case FB_BLANK_HSYNC_SUSPEND:
 	case FB_BLANK_NORMAL:
-		ret = par->fbtftops.setpower(par, 1);
+		ret = par->fbtftops.blank(par, true);
 		break;
 	case FB_BLANK_UNBLANK:
-		ret = par->fbtftops.setpower(par, 0);
+		ret = par->fbtftops.blank(par, false);
 		break;
 	}
 	return ret;
 }
-
-
 
 /**
  * fbtft_framebuffer_alloc - creates a new frame buffer info structure
@@ -527,13 +524,14 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 	info->fbops = fbops;
 	info->fbdefio = fbdefio;
 
-	fbops->owner		=      dev->driver->owner;
-	fbops->fb_read	    =      fb_sys_read;
-	fbops->fb_write	    =      fbtft_fb_write;
-	fbops->fb_fillrect	=      fbtft_fb_fillrect;
-	fbops->fb_copyarea	=      fbtft_fb_copyarea;
-	fbops->fb_imageblit	=      fbtft_fb_imageblit;
-	fbops->fb_setcolreg	=      fbtft_fb_setcolreg;
+	fbops->owner        =      dev->driver->owner;
+	fbops->fb_read      =      fb_sys_read;
+	fbops->fb_write     =      fbtft_fb_write;
+	fbops->fb_fillrect  =      fbtft_fb_fillrect;
+	fbops->fb_copyarea  =      fbtft_fb_copyarea;
+	fbops->fb_imageblit =      fbtft_fb_imageblit;
+	fbops->fb_setcolreg =      fbtft_fb_setcolreg;
+	fbops->fb_blank     =      fbtft_fb_blank;
 
 	fbdefio->delay =           HZ/display->fps;
 	fbdefio->deferred_io =     fbtft_deferred_io;
@@ -574,7 +572,7 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 	par->pdata = dev->platform_data;
 	par->rst = -1;
 	par->dc = -1;
-	par->bl = -1;
+	par->blank = -1;
 	// Set display line markers as dirty for all. Ensures first update to update all of the display.
 	par->dirty_low = 0;
 	par->dirty_high = par->info->var.yres - 1;

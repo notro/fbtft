@@ -24,6 +24,7 @@
 #include <linux/init.h>
 #include <linux/spi/spi.h>
 #include <linux/delay.h>
+#include <linux/gpio.h>
 
 #include "fbtft.h"
 
@@ -155,6 +156,23 @@ struct fbtft_display adafruit22_display = {
 	.txdatabitmask = 0x0100,
 };
 
+int adafruit22fb_blank(struct fbtft_par *par, bool on)
+{
+	if (par->blank == -1)
+		return -EINVAL;
+
+	dev_dbg(par->info->device, "adafruit22fb_blank(%s)\n", on ? "on" : "off");
+	
+	if (on)
+		/* Turn off backlight */
+		gpio_set_value(par->blank, 0);
+	else
+		/* Turn on backlight */
+		gpio_set_value(par->blank, 1);
+
+	return 0;
+}
+
 static int __devinit adafruit22fb_probe(struct spi_device *spi)
 {
 	struct fb_info *info;
@@ -175,6 +193,7 @@ static int __devinit adafruit22fb_probe(struct spi_device *spi)
 	par = info->par;
 	par->spi = spi;
 	par->fbtftops.init_display = adafruit22fb_init_display;
+	par->fbtftops.blank = adafruit22fb_blank;
 
 	ret = fbtft_register_framebuffer(info);
 	if (ret < 0)
@@ -191,6 +210,8 @@ fbreg_fail:
 static int __devexit adafruit22fb_remove(struct spi_device *spi)
 {
 	struct fb_info *info = spi_get_drvdata(spi);
+
+	dev_dbg(&spi->dev, "adafruit22fb_remove()\n");
 
 	if (info) {
 		fbtft_unregister_framebuffer(info);

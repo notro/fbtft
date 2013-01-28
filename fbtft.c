@@ -41,15 +41,15 @@
 unsigned long fbtft_request_gpios_match(struct fbtft_par *par, const struct fbtft_gpio *gpio)
 {
 	if (strcasecmp(gpio->name, "reset") == 0) {
-		par->rst = gpio->gpio;
+		par->gpio.reset = gpio->gpio;
 		return GPIOF_OUT_INIT_HIGH;
 	}
 	else if (strcasecmp(gpio->name, "dc") == 0) {
-		par->dc = gpio->gpio;
+		par->gpio.dc = gpio->gpio;
 		return GPIOF_OUT_INIT_LOW;
 	}
 	else if (strcasecmp(gpio->name, "blank") == 0) {
-		par->blank = gpio->gpio;
+		par->gpio.blank = gpio->gpio;
 		return GPIOF_OUT_INIT_HIGH;
 	}
 
@@ -134,8 +134,8 @@ void fbtft_write_data_command(struct fbtft_par *par, unsigned dc, u8 val)
 
 	dev_dbg(par->info->device, "fbtft_write_data_command: dc=%d, val=0x%X\n", dc, val);
 
-	if (par->dc != -1)
-		gpio_set_value(par->dc, dc);
+	if (par->gpio.dc != -1)
+		gpio_set_value(par->gpio.dc, dc);
 
 	if (par->txbuf.buf) {
 		len = par->txbuf.wordsize;
@@ -179,8 +179,8 @@ int fbtft_write_vmem(struct fbtft_par *par, size_t offset, size_t len)
 
 	dev_dbg(par->info->device, "fbtft_write_vmem: offset=%d, len=%d\n", offset, len);
 
-	if (par->dc != -1)
-		gpio_set_value(par->dc, 1);
+	if (par->gpio.dc != -1)
+		gpio_set_value(par->gpio.dc, 1);
 
 	// non buffered write
 	if (!par->txbuf.buf)
@@ -266,12 +266,12 @@ void fbtft_set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 
 void fbtft_reset(struct fbtft_par *par)
 {
-	if (par->rst == -1)
+	if (par->gpio.reset == -1)
 		return;
 	dev_dbg(par->info->device, "fbtft_reset()\n");
-	gpio_set_value(par->rst, 0);
+	gpio_set_value(par->gpio.reset, 0);
 	udelay(20);
-	gpio_set_value(par->rst, 1);
+	gpio_set_value(par->gpio.reset, 1);
 	mdelay(120);
 }
 
@@ -570,9 +570,9 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 	par->info = info;
 	par->display = display;
 	par->pdata = dev->platform_data;
-	par->rst = -1;
-	par->dc = -1;
-	par->blank = -1;
+	par->gpio.reset = -1;
+	par->gpio.dc = -1;
+	par->gpio.blank = -1;
 	// Set display line markers as dirty for all. Ensures first update to update all of the display.
 	par->dirty_low = 0;
 	par->dirty_high = par->info->var.yres - 1;
@@ -650,7 +650,7 @@ void fbtft_framebuffer_release(struct fb_info *info)
 	kfree(info->fbops);
 	kfree(info->fbdefio);
 	framebuffer_release(info);
-	gpio_free(par->rst);
+	gpio_free(par->gpio.reset);
 }
 EXPORT_SYMBOL(fbtft_framebuffer_release);
 
@@ -705,10 +705,10 @@ int fbtft_register_framebuffer(struct fb_info *fb_info)
 		sprintf(text1, ", %d KiB buffer memory", par->txbuf.len >> 10);
 	if (spi)
 		sprintf(text2, ", spi%d.%d at %d MHz", spi->master->bus_num, spi->chip_select, spi->max_speed_hz/1000000);
-	if (par->rst != -1)
-		sprintf(text3, ", GPIO%d for reset", par->rst);
-	if (par->dc != -1)
-		sprintf(text4, ", GPIO%d for D/C", par->dc);
+	if (par->gpio.reset != -1)
+		sprintf(text3, ", GPIO%d for reset", par->gpio.reset);
+	if (par->gpio.dc != -1)
+		sprintf(text4, ", GPIO%d for D/C", par->gpio.dc);
 	dev_info(fb_info->dev, "%s frame buffer, %d KiB video memory%s%s%s%s\n",
 		fb_info->fix.id, fb_info->fix.smem_len >> 10, text1, text2, text3, text4);
 

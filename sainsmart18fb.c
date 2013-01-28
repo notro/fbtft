@@ -227,8 +227,8 @@ static int sainsmart18fb_write_vmem(struct fbtft_par *par, size_t offset, size_t
 
 	dev_dbg(par->info->device, "sainsmart18fb_write_vmem: offset=%d, len=%d\n", offset, len);
 
-	if (par->dc != -1)
-		gpio_set_value(par->dc, 1);
+	if (par->gpio.dc != -1)
+		gpio_set_value(par->gpio.dc, 1);
 
 	// sanity check
 	if (!par->txbuf.buf) {
@@ -293,7 +293,7 @@ static int __devinit sainsmart18fb_probe(struct spi_device *spi)
 	if (ret < 0)
 		goto fbreg_fail;
 
-	if (par->dc < 0) {
+	if (par->gpio.dc < 0) {
 		dev_err(&spi->dev, "Missing info about D/C gpio. Aborting.\n");
 		goto fbreg_fail;
 	}

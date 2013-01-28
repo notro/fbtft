@@ -97,9 +97,11 @@ struct fbtft_par {
 	unsigned dirty_low;
 	unsigned dirty_high;
 	u32 throttle_speed;
-	int rst;
-	int dc;
-	int blank;
+	struct {
+		int reset;
+		int dc;
+		int blank;
+	} gpio;
 	void *extra;
 };
 

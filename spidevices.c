@@ -71,7 +71,7 @@ static struct spi_board_info spidevices_displays[] = {
 
 
 /* used if gpios parameter is present */
-static struct fbtft_gpio spidevices_param_gpios[MAX_GPIOS] = { };
+static struct fbtft_gpio spidevices_param_gpios[MAX_GPIOS+1] = { };
 static struct fbtft_platform_data spidevices_param_pdata = {
 	.gpios = spidevices_param_gpios,
 };

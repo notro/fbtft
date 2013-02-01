@@ -3,6 +3,7 @@ obj-$(CONFIG_FB_TFT)             += fbtft.o
 
 # drivers
 obj-$(CONFIG_FB_ADAFRUIT22)      += adafruit22fb.o
+obj-$(CONFIG_FB_ADAFRUIT18)      += adafruit18fb.o
 obj-$(CONFIG_FB_SAINSMART18)     += sainsmart18fb.o
 
 # Testing module

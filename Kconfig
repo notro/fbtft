@@ -13,6 +13,12 @@ config FB_ADAFRUIT22
 	help
 	  Framebuffer support for the Adafruit 2.2\" LCD display in 9-bit SPI mode.
 
+config FB_ADAFRUIT18
+	tristate "FB driver for the Adafruit 1.8\" LCD display"
+	depends on FB_TFT
+	help
+	  Framebuffer support for the Adafruit 1.8\" LCD display in 8-bit SPI mode.
+
 config FB_SAINSMART18
 	tristate "FB driver for the Sainsmart 1.8\" LCD display"
 	depends on FB_TFT

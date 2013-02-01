@@ -56,6 +56,17 @@ static struct spi_board_info spidevices_displays[] = {
 			},
 		}
 	}, {
+		.modalias = "adafruit18fb",
+		.max_speed_hz = 4000000,
+		.mode = SPI_MODE_0,
+		.platform_data = &(struct fbtft_platform_data) {
+			.gpios = (const struct fbtft_gpio []) {
+				{ "reset", 25 },
+				{ "dc", 24 },
+				{},
+			},
+		}
+	}, {
 		.modalias = "sainsmart18fb",
 		.max_speed_hz = 32000000,
 		.mode = SPI_MODE_0,

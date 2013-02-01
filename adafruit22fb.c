@@ -199,6 +199,9 @@ static int __devinit adafruit22fb_probe(struct spi_device *spi)
 	if (ret < 0)
 		goto fbreg_fail;
 
+	/* turn on backlight */
+	adafruit22fb_blank(par, false);
+
 	return 0;
 
 fbreg_fail:

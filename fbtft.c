@@ -50,7 +50,7 @@ unsigned long fbtft_request_gpios_match(struct fbtft_par *par, const struct fbtf
 	}
 	else if (strcasecmp(gpio->name, "blank") == 0) {
 		par->gpio.blank = gpio->gpio;
-		return GPIOF_OUT_INIT_HIGH;
+		return GPIOF_OUT_INIT_LOW;
 	}
 
 	return FBTFT_GPIO_NO_MATCH;

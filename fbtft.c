@@ -94,6 +94,7 @@ void fbtft_free_gpios(struct fbtft_par *par)
 	if (pdata && pdata->gpios) {
 		gpio = pdata->gpios;
 		while (gpio->name[0]) {
+			gpio_direction_input(gpio->gpio);
 			gpio_free(gpio->gpio);
 			gpio++;
 		}

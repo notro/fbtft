@@ -48,6 +48,10 @@ unsigned long fbtft_request_gpios_match(struct fbtft_par *par, const struct fbtf
 		par->gpio.dc = gpio->gpio;
 		return GPIOF_OUT_INIT_LOW;
 	}
+	else if (strcasecmp(gpio->name, "blank") == 0) {
+		par->gpio.blank = gpio->gpio;
+		return GPIOF_OUT_INIT_LOW;
+	}
 
 	return FBTFT_GPIO_NO_MATCH;
 }
@@ -56,30 +60,18 @@ int fbtft_request_gpios(struct fbtft_par *par)
 {
 	struct fbtft_platform_data *pdata = par->pdata;
 	const struct fbtft_gpio *gpio;
-	unsigned long flags = FBTFT_GPIO_NO_MATCH;
-	int i;
+	unsigned long flags;
 	int ret;
 
-	/* Initialize gpios to disabled */
+	/* Initialize gpios */
 	par->gpio.reset = -1;
 	par->gpio.dc = -1;
-	par->gpio.rd = -1;
-	par->gpio.wr = -1;
-	par->gpio.cs = -1;
-	for (i=0;i<16;i++) {
-		par->gpio.db[i] = -1;
-		par->gpio.led[i] = -1;
-		par->gpio.aux[i] = -1;
-	}
+	par->gpio.blank = -1;
 
 	if (pdata && pdata->gpios) {
 		gpio = pdata->gpios;
 		while (gpio->name[0]) {
-			/* if driver provides match function, try it first, if no match use our own */
-			if (par->fbtftops.request_gpios_match)
-				flags = par->fbtftops.request_gpios_match(par, gpio);
-			if (flags == FBTFT_GPIO_NO_MATCH)
-				flags = fbtft_request_gpios_match(par, gpio);
+			flags = par->fbtftops.request_gpios_match(par, gpio);
 			if (flags != FBTFT_GPIO_NO_MATCH) {
 				ret = gpio_request_one(gpio->gpio, flags, par->info->device->driver->name);
 				if (ret < 0) {
@@ -627,6 +619,8 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 	par->fbtftops.reset = fbtft_reset;
 	par->fbtftops.mkdirty = fbtft_mkdirty;
 	par->fbtftops.update_display = fbtft_update_display;
+
+	par->fbtftops.request_gpios_match = fbtft_request_gpios_match;
 	par->fbtftops.request_gpios = fbtft_request_gpios;
 	par->fbtftops.free_gpios = fbtft_free_gpios;
 

@@ -592,9 +592,8 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 	par->txbuf.databitmask = display->txdatabitmask;
 
 #ifdef __LITTLE_ENDIAN
-	// need buffer for byteswapping
-	if (!par->txbuf.len)
-		par->txbuf.len = PAGE_SIZE;
+	if ((!par->txbuf.len) && (display->bpp > 8))
+		par->txbuf.len = PAGE_SIZE; /* need buffer for byteswapping */
 #endif
 
 	if (par->txbuf.len) {

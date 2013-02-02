@@ -41,8 +41,8 @@ struct fbtft_gpio {
 
 struct fbtft_platform_data {
 	const struct fbtft_gpio *gpios;
-	int rst_gpio;
-	int dc_gpio;
+	unsigned fps;
+	int txbuflen;
 	void *extra;
 };
 

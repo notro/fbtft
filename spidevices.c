@@ -27,6 +27,8 @@ static int mode = -1;
 static char *name = NULL;
 static char *gpios[MAX_GPIOS] = { NULL, };
 static int gpios_num = 0;
+static unsigned fps = 0;
+static int txbuflen = 0;
 
 module_param(name, charp, 0);
 MODULE_PARM_DESC(name, "Devicename (required). name=list lists supported devices.");
@@ -40,6 +42,10 @@ module_param(mode, int, 0);
 MODULE_PARM_DESC(mode, "SPI mode (used to override default)");
 module_param_array(gpios, charp, &gpios_num, 0);
 MODULE_PARM_DESC(gpios, "List of gpios. Comma seperated with the form: reset:23,dc:24 (used to override default)");
+module_param(fps, uint, 0);
+MODULE_PARM_DESC(fps, "Frames per second (used to override default)");
+module_param(txbuflen, int, 0);
+MODULE_PARM_DESC(txbuflen, "txbuflen (used to override default)");
 
 
 /* supported SPI displays */
@@ -200,6 +206,11 @@ static int __init spidevices_init(void)
 				display->mode = mode;
 			if (pdata)
 				display->platform_data = pdata;
+			pdata = display->platform_data;
+			if (fps)
+				((struct fbtft_platform_data *)pdata)->fps = fps;
+			if (txbuflen)
+				((struct fbtft_platform_data *)pdata)->txbuflen = txbuflen;
 			spi_device0 = spi_new_device(master, display);
 			put_device(&master->dev);
 			if (!spi_device0) {

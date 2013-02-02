@@ -500,15 +500,28 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 	struct fbtft_par *par;
 	struct fb_ops *fbops = NULL;
 	struct fb_deferred_io *fbdefio = NULL;
+	struct fbtft_platform_data *pdata = dev->platform_data;
 	u8 *vmem = NULL;
 	void *txbuf = NULL;
 	void *buf = NULL;
 	unsigned txwordsize = display->txwordsize;
+	int txbuflen = display->txbuflen;
+	unsigned fps = display->fps;
 	int vmem_size = display->width*display->height*display->bpp/8;
 
 	// sanity checks
 	if (!txwordsize)
 		txwordsize = 1;
+	if (!fps)
+		fps = 1;
+
+	/* platform_data override ? */
+	if (pdata) {
+		if (pdata->fps)
+			fps = pdata->fps;
+		if (pdata->txbuflen)
+			txbuflen = pdata->txbuflen;
+	}
 
 	vmem = vzalloc(vmem_size);
 	if (!vmem)
@@ -543,7 +556,7 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 	fbops->fb_setcolreg =      fbtft_fb_setcolreg;
 	fbops->fb_blank     =      fbtft_fb_blank;
 
-	fbdefio->delay =           HZ/display->fps;
+	fbdefio->delay =           HZ/fps;
 	fbdefio->deferred_io =     fbtft_deferred_io;
 	fb_deferred_io_init(info);
 
@@ -589,26 +602,22 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 
 	// Transmit buffer
 	par->txbuf.wordsize = txwordsize;
-	if (display->txbuflen == -1)
-		par->txbuf.len = vmem_size * par->txbuf.wordsize;
-	else if (display->txbuflen)
-		par->txbuf.len = display->txbuflen;
-	else
-		par->txbuf.len = 0;
-
 	par->txbuf.databitmask = display->txdatabitmask;
+	if (txbuflen == -1)
+		txbuflen = vmem_size * par->txbuf.wordsize;
 
 #ifdef __LITTLE_ENDIAN
-	if ((!par->txbuf.len) && (display->bpp > 8))
-		par->txbuf.len = PAGE_SIZE; /* need buffer for byteswapping */
+	if ((!txbuflen) && (display->bpp > 8))
+		txbuflen = PAGE_SIZE; /* need buffer for byteswapping */
 #endif
 
-	if (par->txbuf.len) {
-		txbuf = vzalloc(par->txbuf.len);
+	if (txbuflen) {
+		txbuf = vzalloc(txbuflen);
 		if (!txbuf)
 			goto alloc_fail;
 		par->txbuf.buf = txbuf;
 	}
+	par->txbuf.len = txbuflen;
 
 	// default fbtft operations
 	par->fbtftops.write = fbtft_write;
@@ -719,8 +728,8 @@ int fbtft_register_framebuffer(struct fb_info *fb_info)
 		sprintf(text3, ", GPIO%d for reset", par->gpio.reset);
 	if (par->gpio.dc != -1)
 		sprintf(text4, ", GPIO%d for D/C", par->gpio.dc);
-	dev_info(fb_info->dev, "%s frame buffer, %d KiB video memory%s%s%s%s\n",
-		fb_info->fix.id, fb_info->fix.smem_len >> 10, text1, text2, text3, text4);
+	dev_info(fb_info->dev, "%s frame buffer, %d KiB video memory%s, fps=%lu%s%s%s\n",
+		fb_info->fix.id, fb_info->fix.smem_len >> 10, text1, HZ/fb_info->fbdefio->delay, text2, text3, text4);
 
 	return 0;
 

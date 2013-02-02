@@ -716,7 +716,8 @@ int fbtft_register_framebuffer(struct fb_info *fb_info)
 	return 0;
 
 reg_fail:
-	spi_set_drvdata(spi, NULL);
+	if (spi)
+		spi_set_drvdata(spi, NULL);
 	par->fbtftops.free_gpios(par);
 
 	return ret;

@@ -192,6 +192,10 @@ int fbtft_write_vmem(struct fbtft_par *par, size_t offset, size_t len)
 		dev_err(par->info->device, "fbtft_write_vmem: txbuf.wordsize=%d not supported, must be 1, 2 or 4\n", par->txbuf.wordsize);
 		return -1;
 	}
+	if (par->info->var.bits_per_pixel < 9 || par->info->var.bits_per_pixel > 16) {
+		dev_err(par->info->device, "bpp=%d is not supported when tx is buffered. Only 9-16 bpp is supported\n", par->info->var.bits_per_pixel);
+		return -1;
+	}
 
 	// buffered write
 	tx_array_size = par->txbuf.len / par->txbuf.wordsize;
@@ -498,10 +502,6 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 	int vmem_size = display->width*display->height*display->bpp/8;
 
 	// sanity checks
-	if (display->bpp != 16) {
-		dev_err(dev, "only 16bpp supported.\n");
-		return NULL;
-	}
 	if (!txwordsize)
 		txwordsize = 1;
 

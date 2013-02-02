@@ -101,7 +101,13 @@ struct fbtft_par {
 	struct {
 		int reset;
 		int dc;
-		int blank;
+		/* the following is not used or requested by core */
+		int rd;
+		int wr;
+		int cs;
+		int db[16];
+		int led[16];
+		int aux[16];
 	} gpio;
 	void *extra;
 };

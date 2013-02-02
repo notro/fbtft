@@ -146,6 +146,33 @@ int adafruit22fb_init_display(struct fbtft_par *par)
 	return 0;
 }
 
+static unsigned long adafruit22fb_request_gpios_match(struct fbtft_par *par, const struct fbtft_gpio *gpio)
+{
+	if (strcasecmp(gpio->name, "backlight") == 0) {
+		par->gpio.led[0] = gpio->gpio;
+		return GPIOF_OUT_INIT_LOW;
+	}
+
+	return FBTFT_GPIO_NO_MATCH;
+}
+
+int adafruit22fb_blank(struct fbtft_par *par, bool on)
+{
+	if (par->gpio.led[0] == -1)
+		return -EINVAL;
+
+	dev_dbg(par->info->device, "adafruit22fb_blank(%s)\n", on ? "on" : "off");
+	
+	if (on)
+		/* Turn off backlight */
+		gpio_set_value(par->gpio.led[0], 0);
+	else
+		/* Turn on backlight */
+		gpio_set_value(par->gpio.led[0], 1);
+
+	return 0;
+}
+
 struct fbtft_display adafruit22_display = {
 	.width = WIDTH,
 	.height = HEIGHT,
@@ -155,23 +182,6 @@ struct fbtft_display adafruit22_display = {
 	.txwordsize = 2,
 	.txdatabitmask = 0x0100,
 };
-
-int adafruit22fb_blank(struct fbtft_par *par, bool on)
-{
-	if (par->gpio.blank == -1)
-		return -EINVAL;
-
-	dev_dbg(par->info->device, "adafruit22fb_blank(%s)\n", on ? "on" : "off");
-	
-	if (on)
-		/* Turn off backlight */
-		gpio_set_value(par->gpio.blank, 0);
-	else
-		/* Turn on backlight */
-		gpio_set_value(par->gpio.blank, 1);
-
-	return 0;
-}
 
 static int __devinit adafruit22fb_probe(struct spi_device *spi)
 {
@@ -194,6 +204,7 @@ static int __devinit adafruit22fb_probe(struct spi_device *spi)
 	par->spi = spi;
 	par->fbtftops.init_display = adafruit22fb_init_display;
 	par->fbtftops.blank = adafruit22fb_blank;
+	par->fbtftops.request_gpios_match = adafruit22fb_request_gpios_match;
 
 	ret = fbtft_register_framebuffer(info);
 	if (ret < 0)

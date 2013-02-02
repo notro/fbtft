@@ -63,13 +63,15 @@ int fbtft_request_gpios(struct fbtft_par *par)
 	unsigned long flags;
 	int ret;
 
+	/* Initialize gpios */
+	par->gpio.reset = -1;
+	par->gpio.dc = -1;
+	par->gpio.blank = -1;
+
 	if (pdata && pdata->gpios) {
 		gpio = pdata->gpios;
 		while (gpio->name[0]) {
-
-
 			flags = par->fbtftops.request_gpios_match(par, gpio);
-
 			if (flags != FBTFT_GPIO_NO_MATCH) {
 				ret = gpio_request_one(gpio->gpio, flags, par->info->device->driver->name);
 				if (ret < 0) {
@@ -579,9 +581,6 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 	par->display = display;
 	par->pdata = dev->platform_data;
 	par->buf = buf;
-	par->gpio.reset = -1;
-	par->gpio.dc = -1;
-	par->gpio.blank = -1;
 	// Set display line markers as dirty for all. Ensures first update to update all of the display.
 	par->dirty_low = 0;
 	par->dirty_high = par->info->var.yres - 1;

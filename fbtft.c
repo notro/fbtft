@@ -128,7 +128,6 @@ int fbtft_write(struct fbtft_par *par, void *buf, size_t len)
 void fbtft_write_data_command(struct fbtft_par *par, unsigned dc, u8 val)
 {
 	size_t len = 1;
-	void *tx = &val;
 	u16 tx16 = val;
 	u32 tx32 = val;
 	int ret;
@@ -138,20 +137,23 @@ void fbtft_write_data_command(struct fbtft_par *par, unsigned dc, u8 val)
 	if (par->gpio.dc != -1)
 		gpio_set_value(par->gpio.dc, dc);
 
+	*par->buf = val;
+
 	if (par->txbuf.buf) {
+		/* use the same wordsize as txbuf */
 		len = par->txbuf.wordsize;
 		if (len == 2) {
 			if (dc)
 				tx16 |= par->txbuf.databitmask;
-			tx = &tx16;
+			*(u16 *)par->buf = tx16;
 		} else if (len == 4) {
 			if (dc)
 				tx32 |= par->txbuf.databitmask;
-			tx = &tx32;
+			*(u32 *)par->buf = tx32;
 		}
 	}
 
-	ret = par->fbtftops.write(par, tx, len);
+	ret = par->fbtftops.write(par, par->buf, len);
 	if (ret < 0)
 		dev_err(par->info->device, "fbtft_write_data_command: dc=%d, val=0x%X, failed with status %d\n", dc, val, ret);
 }
@@ -498,6 +500,7 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 	struct fb_deferred_io *fbdefio = NULL;
 	u8 *vmem = NULL;
 	void *txbuf = NULL;
+	void *buf = NULL;
 	unsigned txwordsize = display->txwordsize;
 	int vmem_size = display->width*display->height*display->bpp/8;
 
@@ -515,6 +518,10 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 
 	fbdefio = kzalloc(sizeof(struct fb_deferred_io), GFP_KERNEL);
 	if (!fbdefio)
+		goto alloc_fail;
+
+	buf = vzalloc(16);
+	if (!buf)
 		goto alloc_fail;
 
 	info = framebuffer_alloc(sizeof(struct fbtft_par), dev);
@@ -571,6 +578,7 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 	par->info = info;
 	par->display = display;
 	par->pdata = dev->platform_data;
+	par->buf = buf;
 	par->gpio.reset = -1;
 	par->gpio.dc = -1;
 	par->gpio.blank = -1;
@@ -624,6 +632,8 @@ alloc_fail:
 		vfree(vmem);
 	if (txbuf)
 		vfree(txbuf);
+	if (buf)
+		vfree(buf);
 	if (fbops)
 		kfree(fbops);
 	if (fbdefio)
@@ -647,6 +657,7 @@ void fbtft_framebuffer_release(struct fb_info *info)
 	vfree(info->screen_base);
 	if (par->txbuf.buf)
 		vfree(par->txbuf.buf);
+	vfree(par->buf);
 	kfree(info->fbops);
 	kfree(info->fbdefio);
 	framebuffer_release(info);

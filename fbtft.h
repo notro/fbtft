@@ -93,6 +93,7 @@ struct fbtft_par {
 		unsigned wordsize;
 		unsigned databitmask;
 	} txbuf;
+	u8 *buf;  /* small buffer used when writing init data over SPI */
 	struct fbtft_ops fbtftops;
 	unsigned dirty_low;
 	unsigned dirty_high;

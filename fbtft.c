@@ -49,7 +49,7 @@ unsigned long fbtft_request_gpios_match(struct fbtft_par *par, const struct fbtf
 		return GPIOF_OUT_INIT_LOW;
 	}
 	else if (strcasecmp(gpio->name, "blank") == 0) {
-		par->gpio.blank = gpio->gpio;
+		par->gpio.led[0] = gpio->gpio;
 		return GPIOF_OUT_INIT_LOW;
 	}
 
@@ -61,12 +61,20 @@ int fbtft_request_gpios(struct fbtft_par *par)
 	struct fbtft_platform_data *pdata = par->pdata;
 	const struct fbtft_gpio *gpio;
 	unsigned long flags;
+	int i;
 	int ret;
 
-	/* Initialize gpios */
+	/* Initialize gpios to disabled */
 	par->gpio.reset = -1;
 	par->gpio.dc = -1;
-	par->gpio.blank = -1;
+	par->gpio.rd = -1;
+	par->gpio.wr = -1;
+	par->gpio.cs = -1;
+	for (i=0;i<16;i++) {
+		par->gpio.db[i] = -1;
+		par->gpio.led[i] = -1;
+		par->gpio.aux[i] = -1;
+	}
 
 	if (pdata && pdata->gpios) {
 		gpio = pdata->gpios;

@@ -158,17 +158,17 @@ struct fbtft_display adafruit22_display = {
 
 int adafruit22fb_blank(struct fbtft_par *par, bool on)
 {
-	if (par->gpio.blank == -1)
+	if (par->gpio.led[0] == -1)
 		return -EINVAL;
 
 	dev_dbg(par->info->device, "adafruit22fb_blank(%s)\n", on ? "on" : "off");
 	
 	if (on)
 		/* Turn off backlight */
-		gpio_set_value(par->gpio.blank, 0);
+		gpio_set_value(par->gpio.led[0], 0);
 	else
 		/* Turn on backlight */
-		gpio_set_value(par->gpio.blank, 1);
+		gpio_set_value(par->gpio.led[0], 1);
 
 	return 0;
 }

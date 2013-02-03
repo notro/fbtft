@@ -48,10 +48,6 @@ unsigned long fbtft_request_gpios_match(struct fbtft_par *par, const struct fbtf
 		par->gpio.dc = gpio->gpio;
 		return GPIOF_OUT_INIT_LOW;
 	}
-	else if (strcasecmp(gpio->name, "blank") == 0) {
-		par->gpio.led[0] = gpio->gpio;
-		return GPIOF_OUT_INIT_LOW;
-	}
 
 	return FBTFT_GPIO_NO_MATCH;
 }

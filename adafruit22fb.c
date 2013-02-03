@@ -146,6 +146,16 @@ int adafruit22fb_init_display(struct fbtft_par *par)
 	return 0;
 }
 
+static unsigned long adafruit22fb_request_gpios_match(struct fbtft_par *par, const struct fbtft_gpio *gpio)
+{
+	if (strcasecmp(gpio->name, "backlight") == 0) {
+		par->gpio.led[0] = gpio->gpio;
+		return GPIOF_OUT_INIT_LOW;
+	}
+
+	return FBTFT_GPIO_NO_MATCH;
+}
+
 struct fbtft_display adafruit22_display = {
 	.width = WIDTH,
 	.height = HEIGHT,
@@ -193,6 +203,7 @@ static int __devinit adafruit22fb_probe(struct spi_device *spi)
 	par = info->par;
 	par->spi = spi;
 	par->fbtftops.init_display = adafruit22fb_init_display;
+	par->fbtftops.request_gpios_match = adafruit22fb_request_gpios_match;
 	par->fbtftops.blank = adafruit22fb_blank;
 
 	ret = fbtft_register_framebuffer(info);

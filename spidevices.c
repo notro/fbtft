@@ -57,7 +57,7 @@ static struct spi_board_info spidevices_displays[] = {
 		.platform_data = &(struct fbtft_platform_data) {
 			.gpios = (const struct fbtft_gpio []) {
 				{ "reset", 25 },
-				{ "blank", 23 },
+				{ "backlight", 23 },
 				{},
 			},
 		}

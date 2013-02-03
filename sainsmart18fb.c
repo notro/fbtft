@@ -291,16 +291,20 @@ static int __devinit sainsmart18fb_probe(struct spi_device *spi)
 
 	ret = fbtft_register_framebuffer(info);
 	if (ret < 0)
-		goto fbreg_fail;
+		goto out_release;
 
 	if (par->gpio.dc < 0) {
 		dev_err(&spi->dev, "Missing info about D/C gpio. Aborting.\n");
-		goto fbreg_fail;
+		ret = -EINVAL;
+		goto out_unregister;
 	}
 
 	return 0;
 
-fbreg_fail:
+out_unregister:
+	fbtft_unregister_framebuffer(info);
+
+out_release:
 	fbtft_framebuffer_release(info);
 
 	return ret;

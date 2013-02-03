@@ -79,7 +79,12 @@ int fbtft_request_gpios(struct fbtft_par *par)
 	if (pdata && pdata->gpios) {
 		gpio = pdata->gpios;
 		while (gpio->name[0]) {
-			flags = par->fbtftops.request_gpios_match(par, gpio);
+			flags = FBTFT_GPIO_NO_MATCH;
+			/* if driver provides match function, try it first, if no match use our own */
+			if (par->fbtftops.request_gpios_match)
+				flags = par->fbtftops.request_gpios_match(par, gpio);
+			if (flags == FBTFT_GPIO_NO_MATCH)
+				flags = fbtft_request_gpios_match(par, gpio);
 			if (flags != FBTFT_GPIO_NO_MATCH) {
 				ret = gpio_request_one(gpio->gpio, flags, par->info->device->driver->name);
 				if (ret < 0) {
@@ -636,8 +641,6 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 	par->fbtftops.reset = fbtft_reset;
 	par->fbtftops.mkdirty = fbtft_mkdirty;
 	par->fbtftops.update_display = fbtft_update_display;
-
-	par->fbtftops.request_gpios_match = fbtft_request_gpios_match;
 	par->fbtftops.request_gpios = fbtft_request_gpios;
 	par->fbtftops.free_gpios = fbtft_free_gpios;
 

@@ -264,6 +264,16 @@ static int sainsmart18fb_write_vmem(struct fbtft_par *par, size_t offset, size_t
 	return ret;
 }
 
+static int sainsmart18fb_verify_gpios(struct fbtft_par *par)
+{
+	if (par->gpio.dc < 0) {
+		dev_err(par->info->device, "Missing info about 'dc' gpio. Aborting.\n");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 struct fbtft_display sainsmart18_display = {
 	.width = WIDTH,
 	.height = HEIGHT,
@@ -288,21 +298,13 @@ static int __devinit sainsmart18fb_probe(struct spi_device *spi)
 	par->spi = spi;
 	par->fbtftops.init_display = sainsmart18fb_init_display;
 	par->fbtftops.write_vmem = sainsmart18fb_write_vmem;
+	par->fbtftops.verify_gpios = sainsmart18fb_verify_gpios;
 
 	ret = fbtft_register_framebuffer(info);
 	if (ret < 0)
 		goto out_release;
 
-	if (par->gpio.dc < 0) {
-		dev_err(&spi->dev, "Missing info about D/C gpio. Aborting.\n");
-		ret = -EINVAL;
-		goto out_unregister;
-	}
-
 	return 0;
-
-out_unregister:
-	fbtft_unregister_framebuffer(info);
 
 out_release:
 	fbtft_framebuffer_release(info);

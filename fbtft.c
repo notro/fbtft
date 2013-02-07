@@ -723,6 +723,12 @@ int fbtft_register_framebuffer(struct fb_info *fb_info)
 	if (ret < 0)
 		goto reg_fail;
 
+	if (par->fbtftops.verify_gpios) {
+		ret = par->fbtftops.verify_gpios(par);
+		if (ret < 0)
+			goto reg_fail;
+	}
+
 	ret = par->fbtftops.init_display(par);
 	if (ret < 0)
 		goto reg_fail;

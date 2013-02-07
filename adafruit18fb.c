@@ -172,6 +172,16 @@ static int adafruit18fb_init_display(struct fbtft_par *par)
 	return 0;
 }
 
+static int adafruit18fb_verify_gpios(struct fbtft_par *par)
+{
+	if (par->gpio.dc < 0) {
+		dev_err(par->info->device, "Missing info about 'dc' gpio. Aborting.\n");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 struct fbtft_display adafruit18fb_display = {
 	.width = WIDTH,
 	.height = HEIGHT,
@@ -194,21 +204,13 @@ static int __devinit adafruit18fb_probe(struct spi_device *spi)
 	par = info->par;
 	par->spi = spi;
 	par->fbtftops.init_display = adafruit18fb_init_display;
+	par->fbtftops.verify_gpios = adafruit18fb_verify_gpios;
 
 	ret = fbtft_register_framebuffer(info);
 	if (ret < 0)
 		goto out_release;
 
-	if (par->gpio.dc < 0) {
-		dev_err(&spi->dev, "Missing info about D/C gpio. Aborting.\n");
-		ret = -EINVAL;
-		goto out_unregister;
-	}
-
 	return 0;
-
-out_unregister:
-	fbtft_unregister_framebuffer(info);
 
 out_release:
 	fbtft_framebuffer_release(info);

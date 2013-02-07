@@ -98,14 +98,19 @@ int fbtft_request_gpios(struct fbtft_par *par)
 
 void fbtft_free_gpios(struct fbtft_par *par)
 {
-	struct spi_device *spi = par->spi;
-	struct fbtft_platform_data *pdata = spi->dev.platform_data;
+	struct fbtft_platform_data *pdata = NULL;
 	const struct fbtft_gpio *gpio;
+
+	if(par->spi)
+		pdata = par->spi->dev.platform_data;
+	if (par->pdev)
+		pdata = par->pdev->dev.platform_data;
 
 	if (pdata && pdata->gpios) {
 		gpio = pdata->gpios;
 		while (gpio->name[0]) {
-			gpio_direction_input(gpio->gpio);
+			dev_dbg(par->info->device, "fbtft_free_gpios: freeing '%s'\n", gpio->name);
+			gpio_direction_input(gpio->gpio);  /* if the gpio wasn't recognized by request_gpios, WARN() will protest */
 			gpio_free(gpio->gpio);
 			gpio++;
 		}
@@ -711,6 +716,8 @@ int fbtft_register_framebuffer(struct fb_info *fb_info)
 
 	if (spi)
 		spi_set_drvdata(spi, fb_info);
+	if (par->pdev)
+		platform_set_drvdata(par->pdev, fb_info);
 
 	ret = par->fbtftops.request_gpios(par);
 	if (ret < 0)
@@ -743,6 +750,8 @@ int fbtft_register_framebuffer(struct fb_info *fb_info)
 reg_fail:
 	if (spi)
 		spi_set_drvdata(spi, NULL);
+	if (par->pdev)
+		platform_set_drvdata(par->pdev, NULL);
 	par->fbtftops.free_gpios(par);
 
 	return ret;
@@ -765,6 +774,8 @@ int fbtft_unregister_framebuffer(struct fb_info *fb_info)
 
 	if (spi)
 		spi_set_drvdata(spi, NULL);
+	if (par->pdev)
+		platform_set_drvdata(par->pdev, NULL);
 	par->fbtftops.free_gpios(par);
 	return unregister_framebuffer(fb_info);
 }

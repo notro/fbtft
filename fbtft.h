@@ -83,6 +83,7 @@ struct fbtft_display {
 struct fbtft_par {
 	struct fbtft_display *display;
 	struct spi_device *spi;
+	struct platform_device *pdev;
 	struct fb_info *info;
 	struct fbtft_platform_data *pdata;
 	u16 *ssbuf;

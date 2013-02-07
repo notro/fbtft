@@ -18,7 +18,8 @@
 
 #define MAX_GPIOS 32
 
-struct spi_device *spi_device0 = NULL;
+struct spi_device *spi_device = NULL;
+struct platform_device *p_device = NULL;
 
 static unsigned busnum = 0;
 static unsigned cs = 0;
@@ -49,7 +50,7 @@ MODULE_PARM_DESC(txbuflen, "txbuflen (used to override default)");
 
 
 /* supported SPI displays */
-static struct spi_board_info spidevices_displays[] = {
+static struct spi_board_info spidevices_spi_displays[] = {
 	{
 		.modalias = "adafruit22fb",
 		.max_speed_hz = 32000000,
@@ -86,6 +87,10 @@ static struct spi_board_info spidevices_displays[] = {
 	}
 };
 
+static void spidevices_pdev_release(struct device *dev);
+
+static struct platform_device spidevices_pdev_displays[] = {
+};
 
 /* used if gpios parameter is present */
 static struct fbtft_gpio spidevices_param_gpios[MAX_GPIOS+1] = { };
@@ -93,6 +98,11 @@ static struct fbtft_platform_data spidevices_param_pdata = {
 	.gpios = spidevices_param_gpios,
 };
 
+
+static void spidevices_pdev_release(struct device *dev)
+{
+ /* Used to silence this message:  Device 'xxx' does not have a release() function, it is broken and must be fixed. */
+}
 
 static int spi_device_found(struct device *dev, void *data)
 {
@@ -106,8 +116,25 @@ static int spi_device_found(struct device *dev, void *data)
 
 static void pr_spi_devices(void)
 {
-	pr_info(DRVNAME":  SPI registered devices:\n");
+	pr_info(DRVNAME":  SPI devices registered:\n");
 	bus_for_each_dev(&spi_bus_type, NULL, NULL, spi_device_found);
+}
+
+static int p_device_found(struct device *dev, void *data)
+{
+	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
+
+	if (strstr(pdev->name, "fb"))
+		pr_info(DRVNAME":      %s id=%d pdata? %s\n", pdev->name, pdev->id, pdev->dev.platform_data ? "yes" : "no");
+
+	return 0;
+}
+
+
+static void pr_p_devices(void)
+{
+	pr_info(DRVNAME":  'fb' Platform devices registered:\n");
+	bus_for_each_dev(&platform_bus_type, NULL, NULL, p_device_found);
 }
 
 
@@ -171,6 +198,9 @@ static int __init spidevices_init(void)
 	/* print list of registered SPI devices */
 	pr_spi_devices();
 
+	/* print list of 'fb' platform devices */
+	pr_p_devices();
+
 	if (name == NULL) {
 		pr_err(DRVNAME":  missing module parameter: 'name'\n");
 		pr_err(DRVNAME":  Use 'modinfo -p spidevices' to get all parameters\n");
@@ -182,22 +212,25 @@ static int __init spidevices_init(void)
 	/* name=list lists all supported drivers */
 	if (strncmp(name, "list", 32) == 0) {
 		pr_info(DRVNAME":  Supported drivers:\n");
-		for (i=0; i < ARRAY_SIZE(spidevices_displays); i++) {
-			pr_info(DRVNAME":      %s\n", spidevices_displays[i].modalias);
+		for (i=0; i < ARRAY_SIZE(spidevices_spi_displays); i++) {
+			pr_info(DRVNAME":      %s\n", spidevices_spi_displays[i].modalias);
+		}
+		for (i=0; i < ARRAY_SIZE(spidevices_pdev_displays); i++) {
+			pr_info(DRVNAME":      %s\n", spidevices_pdev_displays[i].name);
 		}
 		return -ECANCELED;
 	}
 
-	/* register SPI device as specified by name parameter */
-	for (i=0; i < ARRAY_SIZE(spidevices_displays); i++) {
-		if (strncmp(name, spidevices_displays[i].modalias, 32) == 0) {
+	/* see if it is a SPI device */
+	for (i=0; i < ARRAY_SIZE(spidevices_spi_displays); i++) {
+		if (strncmp(name, spidevices_spi_displays[i].modalias, 32) == 0) {
 			master = spi_busnum_to_master(busnum);
 			if (!master) {
 				pr_err(DRVNAME":  spi_busnum_to_master(%d) returned NULL\n", busnum);
 				return -EINVAL;
 			}
 			spidevices_delete(master, cs);      /* make sure it's available */
-			display = &spidevices_displays[i];
+			display = &spidevices_spi_displays[i];
 			display->chip_select = cs;
 			display->bus_num = busnum;
 			if (speed)
@@ -211,9 +244,9 @@ static int __init spidevices_init(void)
 				((struct fbtft_platform_data *)pdata)->fps = fps;
 			if (txbuflen)
 				((struct fbtft_platform_data *)pdata)->txbuflen = txbuflen;
-			spi_device0 = spi_new_device(master, display);
+			spi_device = spi_new_device(master, display);
 			put_device(&master->dev);
-			if (!spi_device0) {
+			if (!spi_device) {
 				pr_err(DRVNAME":    spi_new_device() returned NULL\n");
 				return -EPERM;
 			}
@@ -223,19 +256,48 @@ static int __init spidevices_init(void)
 	}
 
 	if (!found) {
+		/* see if it is a platform_device */
+		for (i=0; i < ARRAY_SIZE(spidevices_pdev_displays); i++) {
+			if (strncmp(name, spidevices_pdev_displays[i].name, 32) == 0) {
+				p_device = &spidevices_pdev_displays[i];
+				ret = platform_device_register(p_device);
+				if (ret < 0) {
+					pr_err(DRVNAME":    platform_device_register() returned %d\n", ret);
+					return ret;
+				}
+				if (pdata)
+					p_device->dev.platform_data = (void *)pdata;
+				pdata = p_device->dev.platform_data;
+				if (fps)
+					((struct fbtft_platform_data *)pdata)->fps = fps;
+				if (txbuflen)
+					((struct fbtft_platform_data *)pdata)->txbuflen = txbuflen;
+				found = true;
+				break;
+			}
+		}
+	}
+
+	if (!found) {
 		pr_err(DRVNAME":  device not supported: '%s'\n", name);
 		return -EINVAL;
 	}
 
 	pr_info(DRVNAME":  GPIOS used by '%s':\n", name);
-	pdata = display->platform_data;
 	gpio = pdata->gpios;
+	if (!gpio) {
+		pr_err(DRVNAME":  gpio is unexspectedly empty\n");
+		return -EINVAL;
+	}
 	while (gpio->name[0]) {
 		pr_info(DRVNAME":    '%s' = GPIO%d\n", gpio->name, gpio->gpio);
 		gpio++;
 	}
 
-	pr_spi_devices();
+	if (spi_device)
+		pr_spi_devices();
+	if (p_device)
+		pr_p_devices();
 
 	return 0;
 }
@@ -244,10 +306,13 @@ static void __exit spidevices_exit(void)
 {
 	pr_debug(DRVNAME" - exit\n");
 
-	if (spi_device0) {
-		device_del(&spi_device0->dev);
-		kfree(spi_device0);
+	if (spi_device) {
+		device_del(&spi_device->dev);
+		kfree(spi_device);
 	}
+
+	if (p_device)
+		platform_device_unregister(p_device);
 
 }
 

@@ -157,27 +157,27 @@ void fbtft_update_display(struct fbtft_par *par)
 	// Sanity checks
 	if (par->dirty_lines_start > par->dirty_lines_end) {
 		dev_warn(par->info->device, 
-			"update_display: dirty_lines_start=%d is larger than dirty_lines_end=%d. Shouldn't happen, will do full display update\n", 
-			par->dirty_lines_start, par->dirty_lines_end);
+			"%s: dirty_lines_start=%d is larger than dirty_lines_end=%d. Shouldn't happen, will do full display update\n", 
+			__func__, par->dirty_lines_start, par->dirty_lines_end);
 		par->dirty_lines_start = 0;
 		par->dirty_lines_end = par->info->var.yres - 1;
 	}
 	if (par->dirty_lines_start > par->info->var.yres - 1 || par->dirty_lines_end > par->info->var.yres - 1) {
 		dev_warn(par->info->device, 
-			"update_display: dirty_lines_start=%d or dirty_lines_end=%d larger than max=%d. Shouldn't happen, will do full display update\n", 
-			par->dirty_lines_start, par->dirty_lines_end, par->info->var.yres - 1);
+			"%s: dirty_lines_start=%d or dirty_lines_end=%d larger than max=%d. Shouldn't happen, will do full display update\n", 
+			__func__, par->dirty_lines_start, par->dirty_lines_end, par->info->var.yres - 1);
 		par->dirty_lines_start = 0;
 		par->dirty_lines_end = par->info->var.yres - 1;
 	}
 
-	dev_dbg(par->info->device, "update_display dirty_lines_start=%d dirty_lines_end=%d\n", par->dirty_lines_start, par->dirty_lines_end);
+	dev_dbg(par->info->device, "%s: dirty_lines_start=%d dirty_lines_end=%d\n", __func__, par->dirty_lines_start, par->dirty_lines_end);
 
-	// set display area where update goes
-	par->fbtftops.set_addr_win(par, 0, par->dirty_lines_start, par->info->var.xres-1, par->dirty_lines_end);
+	if (par->fbtftops.set_addr_win)
+		par->fbtftops.set_addr_win(par, 0, par->dirty_lines_start, par->info->var.xres-1, par->dirty_lines_end);
 
 	ret = par->fbtftops.write_vmem(par);
 	if (ret < 0)
-		dev_err(par->info->device, "spi_write failed to update display buffer\n");
+		dev_err(par->info->device, "%s: write_vmem failed to update display buffer\n", __func__);
 
 	// set display line markers as clean
 	par->dirty_lines_start = par->info->var.yres - 1;

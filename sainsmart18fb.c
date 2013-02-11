@@ -45,9 +45,6 @@
 
 static int sainsmart18fb_init_display(struct fbtft_par *par)
 {
-	fbtft_write_cmdDef write_cmd = par->fbtftops.write_cmd;
-	fbtft_write_dataDef write_data = par->fbtftops.write_data;
-
 	dev_dbg(par->info->device, "sainsmart18fb_init_display()\n");
 
 	par->fbtftops.reset(par);
@@ -214,16 +211,22 @@ static int sainsmart18fb_init_display(struct fbtft_par *par)
 	return 0;
 }
 
-static int sainsmart18fb_write_vmem(struct fbtft_par *par, size_t offset, size_t len)
+static int sainsmart18fb_write_vmem(struct fbtft_par *par)
 {
-	u16 *vmem16 = (u16 *)(par->info->screen_base + offset);
+	u16 *vmem16;
 	u16 *txbuf16 = NULL;
-    size_t remain = len;
+    size_t remain;
 	size_t to_copy;
 	int i;
 	int ret = 0;
 	u16 val;
 	unsigned red, green, blue;
+	size_t offset, len;
+
+	offset = par->dirty_lines_start * par->info->fix.line_length;
+	len = (par->dirty_lines_end - par->dirty_lines_start + 1) * par->info->fix.line_length;
+	remain = len;
+	vmem16 = (u16 *)(par->info->screen_base + offset);
 
 	dev_dbg(par->info->device, "sainsmart18fb_write_vmem: offset=%d, len=%d\n", offset, len);
 

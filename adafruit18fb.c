@@ -39,14 +39,9 @@
 
 static int adafruit18fb_init_display(struct fbtft_par *par)
 {
-	fbtft_write_cmdDef write_cmd = par->fbtftops.write_cmd;
-	fbtft_write_dataDef write_data = par->fbtftops.write_data;
-
 	dev_dbg(par->info->device, "adafruit18fb_init_display()\n");
 
 	par->fbtftops.reset(par);
-
-	par->throttle_speed = 2000000;
 
 	// SWRESET - Software reset
 	write_cmd(par, 0x01);
@@ -167,8 +162,6 @@ static int adafruit18fb_init_display(struct fbtft_par *par)
 	write_cmd(par, 0x13);
 	mdelay(10);
 
-	par->throttle_speed = 0;
-
 	return 0;
 }
 
@@ -180,6 +173,31 @@ static int adafruit18fb_verify_gpios(struct fbtft_par *par)
 	}
 
 	return 0;
+}
+
+void fbtft_adafruit18fb_write_data_command8_bus8_slow(struct fbtft_par *par, unsigned dc, u32 val)
+{
+	int ret;
+	struct spi_transfer	t = {
+			.tx_buf		= par->buf,
+			.len		= 1,
+			.speed_hz	= 2000000,
+		};
+	struct spi_message	m;
+
+	dev_dbg(par->info->device, "%s: dc=%d, val=0x%X\n", __func__, dc, val);
+
+	if (par->gpio.dc != -1)
+		gpio_set_value(par->gpio.dc, dc);
+
+	*par->buf = (u8)val;
+
+	spi_message_init(&m);
+	spi_message_add_tail(&t, &m);
+	ret = spi_sync(par->spi, &m);
+
+	if (ret < 0)
+		dev_err(par->info->device, "%s: dc=%d, val=0x%X, failed with status %d\n", __func__, dc, val, ret);
 }
 
 struct fbtft_display adafruit18fb_display = {
@@ -205,6 +223,7 @@ static int __devinit adafruit18fb_probe(struct spi_device *spi)
 	par->spi = spi;
 	par->fbtftops.init_display = adafruit18fb_init_display;
 	par->fbtftops.verify_gpios = adafruit18fb_verify_gpios;
+	par->fbtftops.write_data_command = fbtft_adafruit18fb_write_data_command8_bus8_slow;
 
 	ret = fbtft_register_framebuffer(info);
 	if (ret < 0)

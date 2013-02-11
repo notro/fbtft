@@ -1,5 +1,6 @@
 # Core module
 obj-$(CONFIG_FB_TFT)             += fbtft.o
+fbtft-y                          += fbtft-core.o fbtft-bus.o fbtft-io.o
 
 # drivers
 obj-$(CONFIG_FB_ADAFRUIT22)      += adafruit22fb.o

@@ -38,6 +38,7 @@
 
 
 
+
 unsigned long fbtft_request_gpios_match(struct fbtft_par *par, const struct fbtft_gpio *gpio)
 {
 	if (strcasecmp(gpio->name, "reset") == 0) {
@@ -117,173 +118,23 @@ void fbtft_free_gpios(struct fbtft_par *par)
 	}
 }
 
-int fbtft_write(struct fbtft_par *par, void *buf, size_t len)
-{
-	struct spi_transfer	t = {
-			.tx_buf		= buf,
-			.len		= len,
-			.speed_hz	= par->throttle_speed,
-		};
-	struct spi_message	m;
-
-//dev_dbg(par->info->device, "fbtft_write: buf=%p, len=%d%s\n", buf, len, par->throttle_speed ? ", throttled" : "");
-
-	spi_message_init(&m);
-	spi_message_add_tail(&t, &m);
-	return spi_sync(par->spi, &m);
-}
-
-/*
-int fbtft_write(struct fbtft_par *par, void *buf, size_t len)
-{
-//	dev_dbg(par->info->device, "        fbtft_write: len=%d\n", len);
-	return spi_write(par->spi, buf, len);
-}
-*/
-
-void fbtft_write_data_command(struct fbtft_par *par, unsigned dc, u8 val)
-{
-	size_t len = 1;
-	u16 tx16 = val;
-	u32 tx32 = val;
-	int ret;
-
-	dev_dbg(par->info->device, "fbtft_write_data_command: dc=%d, val=0x%X\n", dc, val);
-
-	if (par->gpio.dc != -1)
-		gpio_set_value(par->gpio.dc, dc);
-
-	*par->buf = val;
-
-	if (par->txbuf.buf) {
-		/* use the same wordsize as txbuf */
-		len = par->txbuf.wordsize;
-		if (len == 2) {
-			if (dc)
-				tx16 |= par->txbuf.databitmask;
-			*(u16 *)par->buf = tx16;
-		} else if (len == 4) {
-			if (dc)
-				tx32 |= par->txbuf.databitmask;
-			*(u32 *)par->buf = tx32;
-		}
-	}
-
-	ret = par->fbtftops.write(par, par->buf, len);
-	if (ret < 0)
-		dev_err(par->info->device, "fbtft_write_data_command: dc=%d, val=0x%X, failed with status %d\n", dc, val, ret);
-}
-
-void fbtft_write_data(struct fbtft_par *par, u8 data)
-{
-	fbtft_write_data_command(par, 1, data);
-}
-
-void fbtft_write_cmd(struct fbtft_par *par, u8 data)
-{
-	fbtft_write_data_command(par, 0, data);
-}
-
-int fbtft_write_vmem(struct fbtft_par *par, size_t offset, size_t len)
-{
-	u8 *vmem8 = par->info->screen_base + offset;
-	u8  *txbuf8  = par->txbuf.buf;
-	u16 *txbuf16 = par->txbuf.buf;
-	u32 *txbuf32 = par->txbuf.buf;
-    size_t remain = len;
-	size_t to_copy;
-	size_t tx_array_size;
-	int i;
-	int ret = 0;
-
-	dev_dbg(par->info->device, "fbtft_write_vmem: offset=%d, len=%d\n", offset, len);
-
-	if (par->gpio.dc != -1)
-		gpio_set_value(par->gpio.dc, 1);
-
-	// non buffered write
-	if (!par->txbuf.buf)
-		return par->fbtftops.write(par, vmem8, len);
-
-	// sanity checks
-	if (!(par->txbuf.wordsize == 1 || par->txbuf.wordsize == 2 || par->txbuf.wordsize == 4)) {
-		dev_err(par->info->device, "fbtft_write_vmem: txbuf.wordsize=%d not supported, must be 1, 2 or 4\n", par->txbuf.wordsize);
-		return -1;
-	}
-	if (par->info->var.bits_per_pixel < 9 || par->info->var.bits_per_pixel > 16) {
-		dev_err(par->info->device, "bpp=%d is not supported when tx is buffered. Only 9-16 bpp is supported\n", par->info->var.bits_per_pixel);
-		return -1;
-	}
-
-	// buffered write
-	tx_array_size = par->txbuf.len / par->txbuf.wordsize;
-
-	dev_dbg(par->info->device, "  tx_array_size=%d, wordsize=%d\n", tx_array_size, par->txbuf.wordsize);
-
-	while (remain) {
-		to_copy = remain > tx_array_size ? tx_array_size : remain;
-		dev_dbg(par->info->device, "    to_copy=%d, remain=%d\n", to_copy, remain - to_copy);
-
-		if (par->txbuf.wordsize == 1) {
-#ifdef __LITTLE_ENDIAN
-			for (i=0;i<to_copy;i+=2) {
-				txbuf8[i]    = vmem8[i+1];
-				txbuf8[i+1]  = vmem8[i];
-			}
-#else
-			for (i=0;i<to_copy;i++)
-				txbuf8[i]    = vmem8[i];
-#endif
-		}
-		else if (par->txbuf.wordsize == 2) {
-#ifdef __LITTLE_ENDIAN
-			for (i=0;i<to_copy;i+=2) {
-				txbuf16[i]   = par->txbuf.databitmask | vmem8[i+1];
-				txbuf16[i+1] = par->txbuf.databitmask | vmem8[i];
-			}
-#else
-			for (i=0;i<to_copy;i++)
-				txbuf16[i]   = par->txbuf.databitmask | vmem8[i];
-#endif
-		}
-		else if (par->txbuf.wordsize == 4) {
-#ifdef __LITTLE_ENDIAN
-			for (i=0;i<to_copy;i+=2) {
-				txbuf32[i]   = par->txbuf.databitmask | vmem8[i+1];
-				txbuf32[i+1] = par->txbuf.databitmask | vmem8[i];
-			}
-#else
-			for (i=0;i<to_copy;i++)
-				txbuf32[i]   = par->txbuf.databitmask | vmem8[i];
-#endif
-		}
-		vmem8 = vmem8 + to_copy;
-		ret = par->fbtftops.write(par, par->txbuf.buf, to_copy*par->txbuf.wordsize);
-		if (ret < 0)
-			return ret;
-		remain -= to_copy;
-	}
-
-	return ret;
-}
-
 void fbtft_set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 {
 	dev_dbg(par->info->device, "fbtft_set_addr_win(%d, %d, %d, %d)\n", xs, ys, xe, ye);
 
-	par->fbtftops.write_cmd(par, FBTFT_CASET);
-	par->fbtftops.write_data(par, 0x00);
-	par->fbtftops.write_data(par, xs);
-	par->fbtftops.write_data(par, 0x00);
-	par->fbtftops.write_data(par, xe);
+	write_cmd(par, FBTFT_CASET);
+	write_data(par, 0x00);
+	write_data(par, xs);
+	write_data(par, 0x00);
+	write_data(par, xe);
 
-	par->fbtftops.write_cmd(par, FBTFT_RASET);
-	par->fbtftops.write_data(par, 0x00);
-	par->fbtftops.write_data(par, ys);
-	par->fbtftops.write_data(par, 0x00);
-	par->fbtftops.write_data(par, ye);
+	write_cmd(par, FBTFT_RASET);
+	write_data(par, 0x00);
+	write_data(par, ys);
+	write_data(par, 0x00);
+	write_data(par, ye);
 
-	par->fbtftops.write_cmd(par, FBTFT_RAMWR);
+	write_cmd(par, FBTFT_RAMWR);
 }
 
 
@@ -301,40 +152,36 @@ void fbtft_reset(struct fbtft_par *par)
 
 void fbtft_update_display(struct fbtft_par *par)
 {
-	size_t offset, len;
 	int ret = 0;
 
 	// Sanity checks
-	if (par->dirty_low > par->dirty_high) {
+	if (par->dirty_lines_start > par->dirty_lines_end) {
 		dev_warn(par->info->device, 
-			"update_display: dirty_low=%d is larger than dirty_high=%d. Shouldn't happen, will do full display update\n", 
-			par->dirty_low, par->dirty_high);
-		par->dirty_low = 0;
-		par->dirty_high = par->info->var.yres - 1;
+			"update_display: dirty_lines_start=%d is larger than dirty_lines_end=%d. Shouldn't happen, will do full display update\n", 
+			par->dirty_lines_start, par->dirty_lines_end);
+		par->dirty_lines_start = 0;
+		par->dirty_lines_end = par->info->var.yres - 1;
 	}
-	if (par->dirty_low > par->info->var.yres - 1 || par->dirty_high > par->info->var.yres - 1) {
+	if (par->dirty_lines_start > par->info->var.yres - 1 || par->dirty_lines_end > par->info->var.yres - 1) {
 		dev_warn(par->info->device, 
-			"update_display: dirty_low=%d or dirty_high=%d larger than max=%d. Shouldn't happen, will do full display update\n", 
-			par->dirty_low, par->dirty_high, par->info->var.yres - 1);
-		par->dirty_low = 0;
-		par->dirty_high = par->info->var.yres - 1;
+			"update_display: dirty_lines_start=%d or dirty_lines_end=%d larger than max=%d. Shouldn't happen, will do full display update\n", 
+			par->dirty_lines_start, par->dirty_lines_end, par->info->var.yres - 1);
+		par->dirty_lines_start = 0;
+		par->dirty_lines_end = par->info->var.yres - 1;
 	}
 
-	dev_dbg(par->info->device, "update_display dirty_low=%d dirty_high=%d\n", par->dirty_low, par->dirty_high);
+	dev_dbg(par->info->device, "update_display dirty_lines_start=%d dirty_lines_end=%d\n", par->dirty_lines_start, par->dirty_lines_end);
 
 	// set display area where update goes
-	par->fbtftops.set_addr_win(par, 0, par->dirty_low, par->info->var.xres-1, par->dirty_high);
+	par->fbtftops.set_addr_win(par, 0, par->dirty_lines_start, par->info->var.xres-1, par->dirty_lines_end);
 
-	offset = par->dirty_low * par->info->fix.line_length;
-	len = (par->dirty_high - par->dirty_low + 1) * par->info->fix.line_length;
-
-	ret = par->fbtftops.write_vmem(par, offset, len);
+	ret = par->fbtftops.write_vmem(par);
 	if (ret < 0)
 		dev_err(par->info->device, "spi_write failed to update display buffer\n");
 
 	// set display line markers as clean
-	par->dirty_low = par->info->var.yres - 1;
-	par->dirty_high = 0;
+	par->dirty_lines_start = par->info->var.yres - 1;
+	par->dirty_lines_end = 0;
 
 	dev_dbg(par->info->device, "\n");
 }
@@ -352,10 +199,10 @@ void fbtft_mkdirty(struct fb_info *info, int y, int height)
 	}
 
 	// Mark display lines/area as dirty
-	if (y < par->dirty_low)
-		par->dirty_low = y;
-	if (y + height - 1 > par->dirty_high)
-		par->dirty_high = y + height - 1;
+	if (y < par->dirty_lines_start)
+		par->dirty_lines_start = y;
+	if (y + height - 1 > par->dirty_lines_end)
+		par->dirty_lines_end = y + height - 1;
 
 	// Schedule deferred_io to update display (no-op if already on queue)
 	schedule_delayed_work(&info->deferred_work, fbdefio->delay);
@@ -378,10 +225,10 @@ void fbtft_deferred_io(struct fb_info *info, struct list_head *pagelist)
 dev_dbg(info->device, "page->index=%lu y_low=%d y_high=%d\n", page->index, y_low, y_high);
 		if (y_high > info->var.yres - 1)
 			y_high = info->var.yres - 1;
-		if (y_low < par->dirty_low)
-			par->dirty_low = y_low;
-		if (y_high > par->dirty_high)
-			par->dirty_high = y_high;
+		if (y_low < par->dirty_lines_start)
+			par->dirty_lines_start = y_low;
+		if (y_high > par->dirty_lines_end)
+			par->dirty_lines_end = y_high;
 	}
 
 //dev_err(info->device, "deferred_io count=%d\n", count);
@@ -518,14 +365,11 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 	u8 *vmem = NULL;
 	void *txbuf = NULL;
 	void *buf = NULL;
-	unsigned txwordsize = display->txwordsize;
 	int txbuflen = display->txbuflen;
 	unsigned fps = display->fps;
 	int vmem_size = display->width*display->height*display->bpp/8;
 
 	// sanity checks
-	if (!txwordsize)
-		txwordsize = 1;
 	if (!fps)
 		fps = 1;
 
@@ -609,16 +453,14 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 	par->pdata = dev->platform_data;
 	par->buf = buf;
 	// Set display line markers as dirty for all. Ensures first update to update all of the display.
-	par->dirty_low = 0;
-	par->dirty_high = par->info->var.yres - 1;
+	par->dirty_lines_start = 0;
+	par->dirty_lines_end = par->info->var.yres - 1;
 
     info->pseudo_palette = par->pseudo_palette;
 
 	// Transmit buffer
-	par->txbuf.wordsize = txwordsize;
-	par->txbuf.databitmask = display->txdatabitmask;
 	if (txbuflen == -1)
-		txbuflen = vmem_size * par->txbuf.wordsize;
+		txbuflen = vmem_size;
 
 #ifdef __LITTLE_ENDIAN
 	if ((!txbuflen) && (display->bpp > 8))
@@ -634,10 +476,9 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 	par->txbuf.len = txbuflen;
 
 	// default fbtft operations
-	par->fbtftops.write = fbtft_write;
-	par->fbtftops.write_data = fbtft_write_data;
-	par->fbtftops.write_cmd = fbtft_write_cmd;
-	par->fbtftops.write_vmem = fbtft_write_vmem;
+	par->fbtftops.write = fbtft_write_spi;
+	par->fbtftops.write_vmem = fbtft_write_vmem16_bus8;
+	par->fbtftops.write_data_command = fbtft_write_data_command8_bus8;
 	par->fbtftops.set_addr_win = fbtft_set_addr_win;
 	par->fbtftops.reset = fbtft_reset;
 	par->fbtftops.mkdirty = fbtft_mkdirty;
@@ -786,6 +627,21 @@ int fbtft_unregister_framebuffer(struct fb_info *fb_info)
 	return unregister_framebuffer(fb_info);
 }
 EXPORT_SYMBOL(fbtft_unregister_framebuffer);
+
+/* fbtft-io.c */
+EXPORT_SYMBOL(fbtft_write_spi);
+EXPORT_SYMBOL(fbtft_write_gpio8);
+EXPORT_SYMBOL(fbtft_write_gpio16);
+
+/* fbtft-bus.c */
+EXPORT_SYMBOL(fbtft_write_vmem8_bus8);
+EXPORT_SYMBOL(fbtft_write_vmem16_bus16);
+EXPORT_SYMBOL(fbtft_write_vmem16_bus8);
+EXPORT_SYMBOL(fbtft_write_vmem16_bus9);
+EXPORT_SYMBOL(fbtft_write_data_command8_bus8);
+EXPORT_SYMBOL(fbtft_write_data_command8_bus9);
+EXPORT_SYMBOL(fbtft_write_data_command16_bus16);
+EXPORT_SYMBOL(fbtft_write_data_command16_bus8);
 
 
 MODULE_LICENSE("GPL");

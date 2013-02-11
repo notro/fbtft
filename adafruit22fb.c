@@ -38,9 +38,6 @@
 
 int adafruit22fb_init_display(struct fbtft_par *par)
 {
-	fbtft_write_cmdDef write_cmd = par->fbtftops.write_cmd;
-	fbtft_write_dataDef write_data = par->fbtftops.write_data;
-
 	dev_dbg(par->info->device, "adafruit22fb_init_display()\n");
 
 	par->fbtftops.reset(par);
@@ -162,8 +159,6 @@ struct fbtft_display adafruit22_display = {
 	.bpp = BPP,
 	.fps = FPS,
 	.txbuflen = TXBUFLEN,
-	.txwordsize = 2,
-	.txdatabitmask = 0x0100,
 };
 
 int adafruit22fb_blank(struct fbtft_par *par, bool on)
@@ -205,6 +200,8 @@ static int __devinit adafruit22fb_probe(struct spi_device *spi)
 	par->fbtftops.init_display = adafruit22fb_init_display;
 	par->fbtftops.request_gpios_match = adafruit22fb_request_gpios_match;
 	par->fbtftops.blank = adafruit22fb_blank;
+	par->fbtftops.write_data_command = fbtft_write_data_command8_bus9;
+	par->fbtftops.write_vmem = fbtft_write_vmem16_bus9;
 
 	ret = fbtft_register_framebuffer(info);
 	if (ret < 0)

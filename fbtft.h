@@ -48,15 +48,10 @@ struct fbtft_platform_data {
 
 struct fbtft_par;
 
-typedef void (*fbtft_write_dataDef)(struct fbtft_par *par, u8 data);
-typedef void (*fbtft_write_cmdDef)(struct fbtft_par *par, u8 data);
-
 struct fbtft_ops {
-	fbtft_write_dataDef write_data;
-	fbtft_write_cmdDef write_cmd;
-
 	int (*write)(struct fbtft_par *par, void *buf, size_t len);
-	int (*write_vmem)(struct fbtft_par *par, size_t offset, size_t len);
+	int (*write_vmem)(struct fbtft_par *par);
+	void (*write_data_command)(struct fbtft_par *par, unsigned dc, u32 val);
 
 	void (*set_addr_win)(struct fbtft_par *par, int xs, int ys, int xe, int ye);
 	void (*reset)(struct fbtft_par *par);
@@ -77,8 +72,6 @@ struct fbtft_display {
 	unsigned bpp;
 	unsigned fps;
 	int txbuflen;
-	unsigned txwordsize;
-	unsigned txdatabitmask;
 };
 
 struct fbtft_par {
@@ -92,14 +85,11 @@ struct fbtft_par {
 	struct {
 		void *buf;
 		size_t len;
-		unsigned wordsize;
-		unsigned databitmask;
 	} txbuf;
 	u8 *buf;  /* small buffer used when writing init data over SPI */
 	struct fbtft_ops fbtftops;
-	unsigned dirty_low;
-	unsigned dirty_high;
-	u32 throttle_speed;
+	unsigned dirty_lines_start;
+	unsigned dirty_lines_end;
 	struct {
 		int reset;
 		int dc;
@@ -114,9 +104,28 @@ struct fbtft_par {
 	void *extra;
 };
 
+#define write_cmd(par, val)  par->fbtftops.write_data_command(par, 0, val)
+#define write_data(par, val) par->fbtftops.write_data_command(par, 1, val)
+
+/* fbtft-core.c */
 extern struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct device *dev);
 extern void fbtft_framebuffer_release(struct fb_info *info);
 extern int fbtft_register_framebuffer(struct fb_info *fb_info);
 extern int fbtft_unregister_framebuffer(struct fb_info *fb_info);
+
+/* fbtft-io.c */
+extern int fbtft_write_spi(struct fbtft_par *par, void *buf, size_t len);
+extern int fbtft_write_gpio8(struct fbtft_par *par, void *buf, size_t len);
+extern int fbtft_write_gpio16(struct fbtft_par *par, void *buf, size_t len);
+
+/* fbtft-bus.c */
+extern int fbtft_write_vmem8_bus8(struct fbtft_par *par);
+extern int fbtft_write_vmem16_bus16(struct fbtft_par *par);
+extern int fbtft_write_vmem16_bus8(struct fbtft_par *par);
+extern int fbtft_write_vmem16_bus9(struct fbtft_par *par);
+extern void fbtft_write_data_command8_bus8(struct fbtft_par *par, unsigned dc, u32 val);
+extern void fbtft_write_data_command8_bus9(struct fbtft_par *par, unsigned dc, u32 val);
+extern void fbtft_write_data_command16_bus16(struct fbtft_par *par, unsigned dc, u32 val);
+extern void fbtft_write_data_command16_bus8(struct fbtft_par *par, unsigned dc, u32 val);
 
 #endif /* __LINUX_FBTFT_H */

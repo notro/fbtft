@@ -393,7 +393,7 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 	if (!fbdefio)
 		goto alloc_fail;
 
-	buf = vzalloc(16);
+	buf = vzalloc(128);
 	if (!buf)
 		goto alloc_fail;
 

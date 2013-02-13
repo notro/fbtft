@@ -19,15 +19,10 @@ void fbtft_write_data_command8_bus8(struct fbtft_par *par, unsigned dc, u32 val)
 		dev_err(par->info->device, "%s: dc=%d, val=0x%X, failed with status %d\n", __func__, dc, val, ret);
 }
 
-/* 8-bit register over 9-bit SPI: dc + 8-bit */
+/* 8-bit register/data over 9-bit SPI: dc + 8-bit */
 void fbtft_write_data_command8_bus9(struct fbtft_par *par, unsigned dc, u32 val)
 {
 	int ret;
-
-	if (!par->txbuf.buf) {
-		dev_err(par->info->device, "%s: txbuf.buf is NULL\n", __func__);
-		return;
-	}
 
 	dev_dbg(par->info->device, "%s: dc=%d, val=0x%X\n", __func__, dc, val);
 

@@ -1,6 +1,10 @@
 /*
  * FB driver for the Adafruit 2.2" LCD display
  *
+ * This display uses 9-bit SPI: Data/Command bit + 8 data bits
+ * For platforms that doesn't support 9-bit, the driver is capable of emulating this using 8-bit transfer.
+ * This is done by transfering eight 9-bit words in 9 bytes.
+ *
  * Copyright (C) 2013 Noralf Tronnes
  *
  * This program is free software; you can redistribute it and/or modify
@@ -22,6 +26,7 @@
 #include <linux/kernel.h>
 #include <linux/errno.h>
 #include <linux/init.h>
+#include <linux/vmalloc.h>
 #include <linux/spi/spi.h>
 #include <linux/delay.h>
 #include <linux/gpio.h>
@@ -36,9 +41,43 @@
 #define TXBUFLEN	4*PAGE_SIZE
 
 
-int adafruit22fb_init_display(struct fbtft_par *par)
+/* write_cmd and write_data transfers need to be buffered so we can, if needed, do 9-bit emulation */
+#undef write_cmd
+#undef write_data
+
+static void adafruit22fb_write_flush(struct fbtft_par *par, int count)
 {
-	dev_dbg(par->info->device, "adafruit22fb_init_display()\n");
+	u16 *p = (u16 *)par->buf;
+	int missing = count % 8;
+	int i;
+
+	missing = (count % 8) ? 8-(count % 8) : 0;
+
+	if (missing) {
+		/* expand buffer to be divisible by 8, and add no-ops to the beginning. The buffer must be big enough */
+		/* for now this is also done when not emulating */
+		for (i=(count/8+1)*8-1;i>=missing;i--) {
+			p[i] = p[i - missing];
+		}
+		for (i=0;i<missing;i++) {
+			p[i] = 0x00;
+			count++;
+		}
+	}
+
+	par->fbtftops.write(par, par->buf, count*2);
+}
+
+#define write_cmd(par, val)  p[i++] = val;
+#define write_data(par, val)  p[i++] = 0x0100 | val;
+#define write_flush(par) { adafruit22fb_write_flush(par, i); i=0; } while(0)
+
+static int adafruit22fb_init_display(struct fbtft_par *par)
+{
+	u16 *p = (u16 *)par->buf;
+	int i = 0;
+
+	dev_dbg(par->info->device, "%s()\n", __func__);
 
 	par->fbtftops.reset(par);
 
@@ -58,6 +97,7 @@ int adafruit22fb_init_display(struct fbtft_par *par)
 		and panel scanning is started. 	*/
 	write_cmd(par, 0x11);
 
+	write_flush(par);
 	mdelay(150);
 
     /* Undoc'd register? */
@@ -83,6 +123,7 @@ int adafruit22fb_init_display(struct fbtft_par *par)
 	write_data(par, 0x00);
 	write_data(par, 0x06);
 
+	write_flush(par);
 	mdelay(20);
 
 	/*	SETGAMMAP: Set "+" polarity Gamma Curve GC0 Related Setting (C2h) */
@@ -108,6 +149,7 @@ int adafruit22fb_init_display(struct fbtft_par *par)
 	write_data(par, 0x05);
 	write_data(par, 0x33);
 
+	write_flush(par);
 	mdelay(10);
 
 	/*	SETPWCTR5: Set Power Control 5(B5h)
@@ -125,6 +167,7 @@ int adafruit22fb_init_display(struct fbtft_par *par)
 	write_data(par, 0x25);
 	write_data(par, 0x4C);
 
+	write_flush(par);
 	mdelay(10);
 
 	/*	Interface Pixel Format (3Ah)
@@ -138,9 +181,64 @@ int adafruit22fb_init_display(struct fbtft_par *par)
 		Output from the Frame Memory is enabled.				*/
 	write_cmd(par, 0x29);
 
+	write_flush(par);
 	mdelay(10);
 
 	return 0;
+}
+
+void adafruit22fb_set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
+{
+	u16 *p = (u16 *)par->buf;
+	int i = 0;
+
+	dev_dbg(par->info->device, "%s(%d, %d, %d, %d)\n", __func__, xs, ys, xe, ye);
+
+	write_cmd(par, FBTFT_CASET);
+	write_data(par, 0x00);
+	write_data(par, xs);
+	write_data(par, 0x00);
+	write_data(par, xe);
+
+	write_cmd(par, FBTFT_RASET);
+	write_data(par, 0x00);
+	write_data(par, ys);
+	write_data(par, 0x00);
+	write_data(par, ye);
+
+	write_cmd(par, FBTFT_RAMWR);
+
+	write_flush(par);
+}
+
+static int adafruit22fb_write_emulate_9bit(struct fbtft_par *par, void *buf, size_t len)
+{
+	u16 *src = buf;
+	u8 *dst = par->extra;
+	size_t size = len / 2;
+	size_t added = 0;
+	int bits, i, j;
+	u64 val, dc, tmp;
+
+	for (i=0;i<size;i+=8) {
+		tmp = 0;
+		bits = 63;
+		for (j=0;j<7;j++) {
+			dc = (*src & 0x0100) ? 1 : 0;
+			val = *src & 0x00FF;
+			tmp |= dc << bits;
+			bits -= 8;
+			tmp |= val << bits--;
+			src++;
+		}
+		tmp |= ((*src & 0x0100) ? 1 : 0);
+		*(u64 *)dst = cpu_to_be64(tmp);
+		dst += 8;
+		*dst++ = (u8 )(*src++ & 0x00FF);
+		added++;
+	}
+
+	return spi_write(par->spi, par->extra, size + added);
 }
 
 static unsigned long adafruit22fb_request_gpios_match(struct fbtft_par *par, const struct fbtft_gpio *gpio)
@@ -153,20 +251,12 @@ static unsigned long adafruit22fb_request_gpios_match(struct fbtft_par *par, con
 	return FBTFT_GPIO_NO_MATCH;
 }
 
-struct fbtft_display adafruit22_display = {
-	.width = WIDTH,
-	.height = HEIGHT,
-	.bpp = BPP,
-	.fps = FPS,
-	.txbuflen = TXBUFLEN,
-};
-
 int adafruit22fb_blank(struct fbtft_par *par, bool on)
 {
 	if (par->gpio.led[0] == -1)
 		return -EINVAL;
 
-	dev_dbg(par->info->device, "adafruit22fb_blank(%s)\n", on ? "on" : "off");
+	dev_dbg(par->info->device, "%s(%s)\n", __func__, on ? "on" : "off");
 	
 	if (on)
 		/* Turn off backlight */
@@ -178,18 +268,21 @@ int adafruit22fb_blank(struct fbtft_par *par, bool on)
 	return 0;
 }
 
+struct fbtft_display adafruit22_display = {
+	.width = WIDTH,
+	.height = HEIGHT,
+	.bpp = BPP,
+	.fps = FPS,
+	.txbuflen = TXBUFLEN,
+};
+
 static int __devinit adafruit22fb_probe(struct spi_device *spi)
 {
 	struct fb_info *info;
 	struct fbtft_par *par;
 	int ret;
 
-	dev_dbg(&spi->dev, "adafruit22fb_probe()\n");
-
-	spi->bits_per_word=9;
-	ret = spi->master->setup(spi);
-	if (ret)
-		dev_err(&spi->dev, "spi->master->setup(spi) failed, returned %d\n", ret);
+	dev_dbg(&spi->dev, "%s()\n", __func__);
 
 	info = fbtft_framebuffer_alloc(&adafruit22_display, &spi->dev);
 	if (!info)
@@ -202,6 +295,26 @@ static int __devinit adafruit22fb_probe(struct spi_device *spi)
 	par->fbtftops.blank = adafruit22fb_blank;
 	par->fbtftops.write_data_command = fbtft_write_data_command8_bus9;
 	par->fbtftops.write_vmem = fbtft_write_vmem16_bus9;
+	par->fbtftops.set_addr_win = adafruit22fb_set_addr_win;
+
+	spi->bits_per_word=9;
+	ret = spi->master->setup(spi);
+	if (ret) {
+		dev_warn(&spi->dev, "9-bit SPI not available, emulating using 8-bit.\n");
+		spi->bits_per_word=8;
+		ret = spi->master->setup(spi);
+		if (ret)
+			goto fbreg_fail;
+
+		/* allocate buffer with room for dc bits */
+		par->extra = vzalloc(par->txbuf.len + (par->txbuf.len / 8));
+		if (!par->extra) {
+			ret = -ENOMEM;
+			goto fbreg_fail;
+		}
+
+		par->fbtftops.write = adafruit22fb_write_emulate_9bit;
+	}
 
 	ret = fbtft_register_framebuffer(info);
 	if (ret < 0)
@@ -213,6 +326,8 @@ static int __devinit adafruit22fb_probe(struct spi_device *spi)
 	return 0;
 
 fbreg_fail:
+	if (par->extra)
+		vfree(par->extra);
 	fbtft_framebuffer_release(info);
 
 	return ret;
@@ -221,11 +336,15 @@ fbreg_fail:
 static int __devexit adafruit22fb_remove(struct spi_device *spi)
 {
 	struct fb_info *info = spi_get_drvdata(spi);
+	struct fbtft_par *par;
 
-	dev_dbg(&spi->dev, "adafruit22fb_remove()\n");
+	dev_dbg(&spi->dev, "%s()\n", __func__);
 
 	if (info) {
 		fbtft_unregister_framebuffer(info);
+		par = info->par;
+		if (par->extra)
+			vfree(par->extra);
 		fbtft_framebuffer_release(info);
 	}
 
@@ -243,13 +362,13 @@ static struct spi_driver adafruit22fb_driver = {
 
 static int __init adafruit22fb_init(void)
 {
-	pr_debug("\n\n"DRVNAME" - init\n");
+	pr_debug("\n\n"DRVNAME": %s()\n", __func__);
 	return spi_register_driver(&adafruit22fb_driver);
 }
 
 static void __exit adafruit22fb_exit(void)
 {
-	pr_debug(DRVNAME" - exit\n");
+	pr_debug(DRVNAME": %s()\n", __func__);
 	spi_unregister_driver(&adafruit22fb_driver);
 }
 

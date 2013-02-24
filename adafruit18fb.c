@@ -175,7 +175,7 @@ static int adafruit18fb_verify_gpios(struct fbtft_par *par)
 	return 0;
 }
 
-void fbtft_adafruit18fb_write_data_command8_bus8_slow(struct fbtft_par *par, unsigned dc, u32 val)
+static void fbtft_adafruit18fb_write_data_command8_bus8_slow(struct fbtft_par *par, unsigned dc, u32 val)
 {
 	int ret;
 	struct spi_transfer	t = {
@@ -198,6 +198,26 @@ void fbtft_adafruit18fb_write_data_command8_bus8_slow(struct fbtft_par *par, uns
 
 	if (ret < 0)
 		dev_err(par->info->device, "%s: dc=%d, val=0x%X, failed with status %d\n", __func__, dc, val, ret);
+}
+
+/* special for Green tab model */
+static void adafruit18fb_set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
+{
+	dev_dbg(par->info->device, "%s(%d, %d, %d, %d)\n", __func__, xs, ys, xe, ye);
+
+	write_cmd(par, FBTFT_CASET);
+	write_data(par, 0x00);
+	write_data(par, xs + 2);
+	write_data(par, 0x00);
+	write_data(par, xe + 2);
+
+	write_cmd(par, FBTFT_RASET);
+	write_data(par, 0x00);
+	write_data(par, ys + 1);
+	write_data(par, 0x00);
+	write_data(par, ye + 1);
+
+	write_cmd(par, FBTFT_RAMWR);
 }
 
 struct fbtft_display adafruit18fb_display = {
@@ -224,6 +244,8 @@ static int __devinit adafruit18fb_probe(struct spi_device *spi)
 	par->fbtftops.init_display = adafruit18fb_init_display;
 	par->fbtftops.verify_gpios = adafruit18fb_verify_gpios;
 	par->fbtftops.write_data_command = fbtft_adafruit18fb_write_data_command8_bus8_slow;
+	if (spi_get_device_id(spi)->driver_data == 1) 
+		par->fbtftops.set_addr_win = adafruit18fb_set_addr_win; /* Green tab model */
 
 	ret = fbtft_register_framebuffer(info);
 	if (ret < 0)
@@ -251,11 +273,20 @@ static int __devexit adafruit18fb_remove(struct spi_device *spi)
 	return 0;
 }
 
+static const struct spi_device_id adafruit18fb_ids[] = {
+	{ "adafruit18fb", 0 },
+	{ "adafruit18greenfb", 1 },
+	{ },
+};
+
+MODULE_DEVICE_TABLE(spi, adafruit18fb_ids);
+
 static struct spi_driver adafruit18fb_driver = {
 	.driver = {
 		.name   = DRVNAME,
 		.owner  = THIS_MODULE,
 	},
+	.id_table = adafruit18fb_ids,
 	.probe  = adafruit18fb_probe,
 	.remove = __devexit_p(adafruit18fb_remove),
 };

@@ -165,6 +165,16 @@ static int adafruit18fb_init_display(struct fbtft_par *par)
 	return 0;
 }
 
+static unsigned long adafruit18fb_request_gpios_match(struct fbtft_par *par, const struct fbtft_gpio *gpio)
+{
+	if (strcasecmp(gpio->name, "led") == 0) {
+		par->gpio.led[0] = gpio->gpio;
+		return GPIOF_OUT_INIT_LOW;
+	}
+
+	return FBTFT_GPIO_NO_MATCH;
+}
+
 static int adafruit18fb_verify_gpios(struct fbtft_par *par)
 {
 	if (par->gpio.dc < 0) {
@@ -220,6 +230,23 @@ static void adafruit18fb_set_addr_win(struct fbtft_par *par, int xs, int ys, int
 	write_cmd(par, FBTFT_RAMWR);
 }
 
+static int adafruit18fb_blank(struct fbtft_par *par, bool on)
+{
+	if (par->gpio.led[0] == -1)
+		return -EINVAL;
+
+	dev_dbg(par->info->device, "%s(%s)\n", __func__, on ? "on" : "off");
+	
+	if (on)
+		/* Turn off backlight */
+		gpio_set_value(par->gpio.led[0], 0);
+	else
+		/* Turn on backlight */
+		gpio_set_value(par->gpio.led[0], 1);
+
+	return 0;
+}
+
 struct fbtft_display adafruit18fb_display = {
 	.width = WIDTH,
 	.height = HEIGHT,
@@ -242,14 +269,19 @@ static int __devinit adafruit18fb_probe(struct spi_device *spi)
 	par = info->par;
 	par->spi = spi;
 	par->fbtftops.init_display = adafruit18fb_init_display;
+	par->fbtftops.request_gpios_match = adafruit18fb_request_gpios_match;
 	par->fbtftops.verify_gpios = adafruit18fb_verify_gpios;
 	par->fbtftops.write_data_command = fbtft_adafruit18fb_write_data_command8_bus8_slow;
+	par->fbtftops.blank = adafruit18fb_blank;
 	if (spi_get_device_id(spi)->driver_data == 1) 
 		par->fbtftops.set_addr_win = adafruit18fb_set_addr_win; /* Green tab model */
 
 	ret = fbtft_register_framebuffer(info);
 	if (ret < 0)
 		goto out_release;
+
+	/* turn on backlight */
+	adafruit18fb_blank(par, false);
 
 	return 0;
 

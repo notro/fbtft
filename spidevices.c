@@ -70,6 +70,7 @@ static struct spi_board_info spidevices_spi_displays[] = {
 			.gpios = (const struct fbtft_gpio []) {
 				{ "reset", 25 },
 				{ "dc", 24 },
+				{ "led", 23 },
 				{},
 			},
 		}
@@ -81,6 +82,7 @@ static struct spi_board_info spidevices_spi_displays[] = {
 			.gpios = (const struct fbtft_gpio []) {
 				{ "reset", 25 },
 				{ "dc", 24 },
+				{ "led", 23 },
 				{},
 			},
 		}

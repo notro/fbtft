@@ -19,6 +19,12 @@ config FB_ADAFRUIT18
 	help
 	  Framebuffer support for the Adafruit 1.8\" LCD display in 8-bit SPI mode.
 
+config FB_R61505U
+	tristate "FB driver for the R61505U LCD display controller"
+	depends on FB_TFT
+	help
+	  Framebuffer support for the R61505U LCD display controller in 8-bit SPI mode.
+
 config FB_SAINSMART18
 	tristate "FB driver for the Sainsmart 1.8\" LCD display"
 	depends on FB_TFT

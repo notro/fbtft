@@ -64,6 +64,17 @@ static struct spi_board_info spidevices_spi_displays[] = {
 			},
 		}
 	}, {
+		.modalias = "spidev",
+		.max_speed_hz = 500000,
+		.bus_num = 0,
+		.chip_select = 0,
+		.mode = SPI_MODE_0,
+		.platform_data = &(struct fbtft_platform_data) {  /* this is so the module won't break */
+			.gpios = (const struct fbtft_gpio []) {
+				{},
+			},
+		}
+	}, {
 		.modalias = "adafruit22fb",
 		.max_speed_hz = 32000000,
 		.mode = SPI_MODE_0,

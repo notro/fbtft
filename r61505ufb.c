@@ -176,17 +176,6 @@ static void r61505ufb_set_addr_win(struct fbtft_par *par, int xs, int ys, int xe
 	write_cmd(par, 0x08, yeh);
 }
 
-void r61505ufb_reset(struct fbtft_par *par)
-{
-	if (par->gpio.reset == -1)
-		return;
-	dev_dbg(par->info->device, "r61505ufb_reset()\n");
-	gpio_set_value(par->gpio.reset, 0);
-	mdelay(50);
-	gpio_set_value(par->gpio.reset, 1);
-	mdelay(50);
-}
-
 static int r61505ufb_write_vmem(struct fbtft_par *par)
 {
 	u16 *vmem16;
@@ -302,7 +291,6 @@ static int __devinit r61505ufb_probe(struct spi_device *spi)
 	par->fbtftops.blank = r61505ufb_blank;
 	par->fbtftops.set_addr_win = r61505ufb_set_addr_win;
 	par->fbtftops.write_vmem = r61505ufb_write_vmem;
-	par->fbtftops.reset = r61505ufb_reset;
 
 	ret = fbtft_register_framebuffer(info);
 	if (ret < 0)

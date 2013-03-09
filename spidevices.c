@@ -63,6 +63,17 @@ static struct spi_board_info spidevices_spi_displays[] = {
 			},
 		}
 	}, {
+		.modalias = "ili9341fb",
+		.max_speed_hz = 32000000,
+		.mode = SPI_MODE_0,
+		.platform_data = &(struct fbtft_platform_data) {
+			.gpios = (const struct fbtft_gpio []) {
+				{ "reset", 23 },
+				{ "led", 24 },
+				{},
+			},
+		}
+	}, {
 		.modalias = "r61505ufb",
 		.max_speed_hz = 32000000,
 		.mode = SPI_MODE_0,

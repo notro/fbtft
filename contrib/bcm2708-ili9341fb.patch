@@ -1,0 +1,34 @@
+diff --git a/arch/arm/mach-bcm2708/bcm2708.c b/arch/arm/mach-bcm2708/bcm2708.c
+index 7294aa0..7c49703 100644
+--- a/arch/arm/mach-bcm2708/bcm2708.c
++++ b/arch/arm/mach-bcm2708/bcm2708.c
+@@ -64,6 +64,7 @@
+ #include <linux/broadcom/vc_cma.h>
+ #endif
+ 
++#include <linux/fbtft.h>
+ 
+ /* Effectively we have an IOMMU (ARM<->VideoCore map) that is set up to
+  * give us IO access only to 64Mbytes of physical memory (26 bits).  We could
+@@ -594,11 +595,19 @@ static struct spi_board_info bcm2708_spi_devices[] = {
+ 		.chip_select = 0,
+ 		.mode = SPI_MODE_0,
+ 	}, {
+-		.modalias = "spidev",
+-		.max_speed_hz = 500000,
++		.modalias = "ili9341fb",
++		.max_speed_hz = 32000000,
+ 		.bus_num = 0,
+ 		.chip_select = 1,
+ 		.mode = SPI_MODE_0,
++		.platform_data = &(struct fbtft_platform_data) {
++			.gpios = (const struct fbtft_gpio []) {
++				{ "reset", 23 },
++				{ "led", 24 },
++				{},
++			},
++			.fps = 25
++		}
+ 	}
+ };
+ #endif

@@ -183,7 +183,8 @@ static int ili9341fb_init_display(struct fbtft_par *par)
 
     // orientation
     write_cmd(par, LCD_CMD_MEMACCESS_CTRL);
-    write_data(par, (1<<MEM_BGR) | (1<<MEM_X) | (1<<MEM_Y) | (1<<MEM_V));
+    //write_data(par, (1<<MEM_BGR) | (1<<MEM_X) | (1<<MEM_Y) | (1<<MEM_V)); // 0 degree
+    write_data(par, (1<<MEM_BGR) | (1<<MEM_L) | (1<<MEM_V)); // 180 degree
 
     write_cmd(par, LCD_CMD_SLEEPOUT);
     write_flush(par);

@@ -37,10 +37,18 @@
 #include "fbtft.h"
 
 
+// This will be used if the driver doesn't provide debug support
+#ifdef DEBUG
+static unsigned long dummy_debug = 0xFFFFFFFF;
+#else
+static unsigned long dummy_debug = 0;
+#endif
 
 
 unsigned long fbtft_request_gpios_match(struct fbtft_par *par, const struct fbtft_gpio *gpio)
 {
+	fbtft_fbtft_dev_dbg(DEBUG_REQUEST_GPIOS_MATCH, par, par->info->device, "%s('%s')\n", __func__, gpio->name);
+
 	if (strcasecmp(gpio->name, "reset") == 0) {
 		par->gpio.reset = gpio->gpio;
 		return GPIOF_OUT_INIT_HIGH;
@@ -85,10 +93,10 @@ int fbtft_request_gpios(struct fbtft_par *par)
 			if (flags != FBTFT_GPIO_NO_MATCH) {
 				ret = gpio_request_one(gpio->gpio, flags, par->info->device->driver->name);
 				if (ret < 0) {
-					dev_err(par->info->device, "fbtft_request_gpios: could not acquire '%s' GPIO%d\n", gpio->name, gpio->gpio);
+					dev_err(par->info->device, "%s: no match for '%s' GPIO%d\n", __func__, gpio->name, gpio->gpio);
 					return ret;
 				}
-				dev_dbg(par->info->device, "fbtft_request_gpios: acquired '%s' GPIO%d\n", gpio->name, gpio->gpio);
+				fbtft_fbtft_dev_dbg(DEBUG_REQUEST_GPIOS, par, par->info->device, "%s: '%s' = GPIO%d\n", __func__, gpio->name, gpio->gpio);
 			}
 			gpio++;
 		}
@@ -101,6 +109,8 @@ void fbtft_free_gpios(struct fbtft_par *par)
 {
 	struct fbtft_platform_data *pdata = NULL;
 	const struct fbtft_gpio *gpio;
+
+	fbtft_fbtft_dev_dbg(DEBUG_FREE_GPIOS, par, par->info->device, "%s()\n", __func__);
 
 	if(par->spi)
 		pdata = par->spi->dev.platform_data;
@@ -120,7 +130,7 @@ void fbtft_free_gpios(struct fbtft_par *par)
 
 void fbtft_set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 {
-	dev_dbg(par->info->device, "fbtft_set_addr_win(%d, %d, %d, %d)\n", xs, ys, xe, ye);
+	fbtft_fbtft_dev_dbg(DEBUG_SET_ADDR_WIN, par, par->info->device, "%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
 
 	write_cmd(par, FBTFT_CASET);
 	write_data(par, 0x00);
@@ -142,7 +152,7 @@ void fbtft_reset(struct fbtft_par *par)
 {
 	if (par->gpio.reset == -1)
 		return;
-	dev_dbg(par->info->device, "fbtft_reset()\n");
+	fbtft_fbtft_dev_dbg(DEBUG_RESET, par, par->info->device, "%s()\n", __func__);
 	gpio_set_value(par->gpio.reset, 0);
 	udelay(20);
 	gpio_set_value(par->gpio.reset, 1);
@@ -152,7 +162,14 @@ void fbtft_reset(struct fbtft_par *par)
 
 void fbtft_update_display(struct fbtft_par *par)
 {
+	struct timespec ts_start,ts_end,test_of_time;
+	long ms, us, ns;
 	int ret = 0;
+
+	if (unlikely(!par->first_update_done)) {
+		if (*par->debug & DEBUG_TIME_FIRST_UPDATE)
+			getnstimeofday(&ts_start);
+	}
 
 	// Sanity checks
 	if (par->dirty_lines_start > par->dirty_lines_end) {
@@ -170,7 +187,7 @@ void fbtft_update_display(struct fbtft_par *par)
 		par->dirty_lines_end = par->info->var.yres - 1;
 	}
 
-	dev_dbg(par->info->device, "%s: dirty_lines_start=%d dirty_lines_end=%d\n", __func__, par->dirty_lines_start, par->dirty_lines_end);
+	fbtft_fbtft_dev_dbg(DEBUG_UPDATE_DISPLAY, par, par->info->device, "%s: dirty_lines_start=%d dirty_lines_end=%d\n", __func__, par->dirty_lines_start, par->dirty_lines_end);
 
 	if (par->fbtftops.set_addr_win)
 		par->fbtftops.set_addr_win(par, 0, par->dirty_lines_start, par->info->var.xres-1, par->dirty_lines_end);
@@ -183,7 +200,17 @@ void fbtft_update_display(struct fbtft_par *par)
 	par->dirty_lines_start = par->info->var.yres - 1;
 	par->dirty_lines_end = 0;
 
-	dev_dbg(par->info->device, "\n");
+	if (unlikely(!par->first_update_done)) {
+		if (*par->debug & DEBUG_TIME_FIRST_UPDATE) {
+			getnstimeofday(&ts_end);
+			test_of_time = timespec_sub(ts_end,ts_start);
+			us = (test_of_time.tv_nsec / 1000) % 1000;
+			ms = (test_of_time.tv_nsec / 1000000) % 1000;
+			ns = test_of_time.tv_nsec % 1000;
+			dev_info(par->info->device, "Elapsed time for first full display update: %lus  %lums  %luus  %luns (fps: %lu)\n", test_of_time.tv_sec, ms, us, ns, test_of_time.tv_nsec ? 1000000000 / test_of_time.tv_nsec : 0);
+		}
+		par->first_update_done = true;
+	}
 }
 
 
@@ -216,13 +243,16 @@ void fbtft_deferred_io(struct fb_info *info, struct list_head *pagelist)
 	unsigned y_low=0, y_high=0;
 	int count = 0;
 
-	// Mark display lines as dirty
+	/* debug can be changed via sysfs */
+	fbtft_debug_sync_value(par);
+
+	/* Mark display lines as dirty */
 	list_for_each_entry(page, pagelist, lru) {
 		count++;
 		index = page->index << PAGE_SHIFT;
 		y_low = index / info->fix.line_length;
 		y_high = (index + PAGE_SIZE - 1) / info->fix.line_length;
-dev_dbg(info->device, "page->index=%lu y_low=%d y_high=%d\n", page->index, y_low, y_high);
+		fbtft_fbtft_dev_dbg(DEBUG_DEFERRED_IO, par, info->device, "page->index=%lu y_low=%d y_high=%d\n", page->index, y_low, y_high);
 		if (y_high > info->var.yres - 1)
 			y_high = info->var.yres - 1;
 		if (y_low < par->dirty_lines_start)
@@ -230,8 +260,6 @@ dev_dbg(info->device, "page->index=%lu y_low=%d y_high=%d\n", page->index, y_low
 		if (y_high > par->dirty_lines_end)
 			par->dirty_lines_end = y_high;
 	}
-
-//dev_err(info->device, "deferred_io count=%d\n", count);
 
 	par->fbtftops.update_display(info->par);
 }
@@ -241,7 +269,7 @@ void fbtft_fb_fillrect(struct fb_info *info, const struct fb_fillrect *rect)
 {
 	struct fbtft_par *par = info->par;
 
-	dev_dbg(info->dev, "fillrect dx=%d, dy=%d, width=%d, height=%d\n", rect->dx, rect->dy, rect->width, rect->height);
+	fbtft_fbtft_dev_dbg(DEBUG_FB_FILLRECT, par, info->dev, "%s: dx=%d, dy=%d, width=%d, height=%d\n", __func__, rect->dx, rect->dy, rect->width, rect->height);
 	sys_fillrect(info, rect);
 
 	par->fbtftops.mkdirty(info, rect->dy, rect->height);
@@ -251,7 +279,7 @@ void fbtft_fb_copyarea(struct fb_info *info, const struct fb_copyarea *area)
 {
 	struct fbtft_par *par = info->par;
 
-	dev_dbg(info->dev, "copyarea dx=%d, dy=%d, width=%d, height=%d\n", area->dx, area->dy, area->width, area->height);
+	fbtft_fbtft_dev_dbg(DEBUG_FB_COPYAREA, par, info->dev, "%s: dx=%d, dy=%d, width=%d, height=%d\n", __func__,  area->dx, area->dy, area->width, area->height);
 	sys_copyarea(info, area);
 
 	par->fbtftops.mkdirty(info, area->dy, area->height);
@@ -261,7 +289,7 @@ void fbtft_fb_imageblit(struct fb_info *info, const struct fb_image *image)
 {
 	struct fbtft_par *par = info->par;
 
-	dev_dbg(info->dev, "imageblit dx=%d, dy=%d, width=%d, height=%d\n", image->dx, image->dy, image->width, image->height);
+	fbtft_fbtft_dev_dbg(DEBUG_FB_IMAGEBLIT, par, info->dev, "%s: dx=%d, dy=%d, width=%d, height=%d\n", __func__,  image->dx, image->dy, image->width, image->height);
 	sys_imageblit(info, image);
 
 	par->fbtftops.mkdirty(info, image->dy, image->height);
@@ -272,7 +300,7 @@ ssize_t fbtft_fb_write(struct fb_info *info, const char __user *buf, size_t coun
 	struct fbtft_par *par = info->par;
 	ssize_t res;
 
-	dev_dbg(info->dev, "write count=%zd, ppos=%llu)\n", count, *ppos);
+	fbtft_fbtft_dev_dbg(DEBUG_FB_WRITE, par, info->dev, "%s: count=%zd, ppos=%llu\n", __func__,  count, *ppos);
 	res = fb_sys_write(info, buf, count, ppos);
 
 	// TODO: only mark changed area
@@ -294,8 +322,11 @@ int fbtft_fb_setcolreg(unsigned regno,
 			       unsigned red, unsigned green, unsigned blue,
 			       unsigned transp, struct fb_info *info)
 {
+	struct fbtft_par *par = info->par;
 	unsigned val;
 	int ret = 1;
+
+	fbtft_fbtft_dev_dbg(DEBUG_FB_SETCOLREG, par, info->dev, "%s(regno=%u, red=0x%X, green=0x%X, blue=0x%X, trans=0x%X)\n", __func__, regno, red, green, blue, transp);
 
 	switch (info->fix.visual) {
 	case FB_VISUAL_TRUECOLOR:
@@ -319,6 +350,8 @@ int fbtft_fb_blank(int blank, struct fb_info *info)
 {
 	struct fbtft_par *par = info->par;
 	int ret = -EINVAL;
+
+	fbtft_fbtft_dev_dbg(DEBUG_FB_BLANK, par, info->dev, "%s(blank=%d)\n", __func__, blank);
 
 	if (!par->fbtftops.blank)
 		return ret;
@@ -544,16 +577,18 @@ int fbtft_register_framebuffer(struct fb_info *fb_info)
 	int ret;
 	char text1[50] = "";
 	char text2[50] = "";
-	char text3[50] = "";
-	char text4[50] = "";
 	struct fbtft_par *par = fb_info->par;
 	struct spi_device *spi = par->spi;
 
-	// sanity check
+	// sanity checks
 	if (!par->fbtftops.init_display) {
-		dev_err(fb_info->device, "missing init_display()\n");
+		dev_err(fb_info->device, "missing fbtftops.init_display()\n");
 		return -EINVAL;
 	}
+	if (!par->debug)
+		par->debug = &dummy_debug;
+
+	fbtft_debug_sync_value(par);
 
 	if (spi)
 		spi_set_drvdata(spi, fb_info);
@@ -580,17 +615,13 @@ int fbtft_register_framebuffer(struct fb_info *fb_info)
 	if (ret < 0)
 		goto reg_fail;
 
-	// [Tue Jan  8 19:36:41 2013] graphics fb1: hx8340fb frame buffer, 75 KiB video memory, 151 KiB buffer memory, spi0.0 at 32 MHz, GPIO25 for reset
+	// [Tue Jan  8 19:36:41 2013] graphics fb1: hx8340fb frame buffer, 75 KiB video memory, 151 KiB buffer memory, spi0.0 at 32 MHz
 	if (par->txbuf.buf)
 		sprintf(text1, ", %d KiB buffer memory", par->txbuf.len >> 10);
 	if (spi)
 		sprintf(text2, ", spi%d.%d at %d MHz", spi->master->bus_num, spi->chip_select, spi->max_speed_hz/1000000);
-	if (par->gpio.reset != -1)
-		sprintf(text3, ", GPIO%d for reset", par->gpio.reset);
-	if (par->gpio.dc != -1)
-		sprintf(text4, ", GPIO%d for D/C", par->gpio.dc);
-	dev_info(fb_info->dev, "%s frame buffer, %d KiB video memory%s, fps=%lu%s%s%s\n",
-		fb_info->fix.id, fb_info->fix.smem_len >> 10, text1, HZ/fb_info->fbdefio->delay, text2, text3, text4);
+	dev_info(fb_info->dev, "%s frame buffer, %d KiB video memory%s, fps=%lu%s\n",
+		fb_info->fix.id, fb_info->fix.smem_len >> 10, text1, HZ/fb_info->fbdefio->delay, text2);
 
 	return 0;
 

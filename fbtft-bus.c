@@ -7,7 +7,7 @@ void fbtft_write_data_command8_bus8(struct fbtft_par *par, unsigned dc, u32 val)
 {
 	int ret;
 
-	dev_dbg(par->info->device, "%s: dc=%d, val=0x%X\n", __func__, dc, val);
+	fbtft_fbtft_dev_dbg(DEBUG_WRITE_DATA_COMMAND, par, par->info->device, "%s: dc=%d, val=0x%X\n", __func__, dc, val);
 
 	if (par->gpio.dc != -1)
 		gpio_set_value(par->gpio.dc, dc);
@@ -24,7 +24,7 @@ void fbtft_write_data_command8_bus9(struct fbtft_par *par, unsigned dc, u32 val)
 {
 	int ret;
 
-	dev_dbg(par->info->device, "%s: dc=%d, val=0x%X\n", __func__, dc, val);
+	fbtft_fbtft_dev_dbg(DEBUG_WRITE_DATA_COMMAND, par, par->info->device, "%s: dc=%d, val=0x%X\n", __func__, dc, val);
 
 	*(u16 *)par->buf = dc ? 0x100 | (u8)val : (u8)val;
 
@@ -61,7 +61,7 @@ int fbtft_write_vmem16_bus8(struct fbtft_par *par)
 	remain = len;
 	vmem8 = par->info->screen_base + offset;
 
-	dev_dbg(par->info->device, "%s: offset=%d, len=%d\n", __func__, offset, len);
+	fbtft_fbtft_dev_dbg(DEBUG_WRITE_VMEM, par, par->info->device, "%s: offset=%d, len=%d\n", __func__, offset, len);
 
 	if (par->gpio.dc != -1)
 		gpio_set_value(par->gpio.dc, 1);
@@ -118,7 +118,7 @@ int fbtft_write_vmem16_bus9(struct fbtft_par *par)
 	remain = len;
 	vmem8 = par->info->screen_base + offset;
 
-	dev_dbg(par->info->device, "%s: offset=%d, len=%d\n", __func__, offset, len);
+	fbtft_fbtft_dev_dbg(DEBUG_WRITE_VMEM, par, par->info->device, "%s: offset=%d, len=%d\n", __func__, offset, len);
 
 	tx_array_size = par->txbuf.len / 2;
 

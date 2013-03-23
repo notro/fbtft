@@ -35,12 +35,34 @@ void fbtft_write_data_command8_bus9(struct fbtft_par *par, unsigned dc, u32 val)
 
 void fbtft_write_data_command16_bus16(struct fbtft_par *par, unsigned dc, u32 val)
 {
-	dev_err(par->info->device, "%s: function not implemented\n", __func__);
+	int ret;
+
+	fbtft_fbtft_dev_dbg(DEBUG_WRITE_DATA_COMMAND, par, par->info->device, "%s: dc=%d, val=0x%X\n", __func__, dc, val);
+
+	if (par->gpio.dc != -1)
+		gpio_set_value(par->gpio.dc, dc);
+
+	*(u16 *)par->buf = (u16)val;
+
+	ret = par->fbtftops.write(par, par->buf, 2);
+	if (ret < 0)
+		dev_err(par->info->device, "%s: dc=%d, val=0x%X, failed with status %d\n", __func__, dc, val, ret);
 }
 
 void fbtft_write_data_command16_bus8(struct fbtft_par *par, unsigned dc, u32 val)
 {
-	dev_err(par->info->device, "%s: function not implemented\n", __func__);
+	int ret;
+
+	fbtft_fbtft_dev_dbg(DEBUG_WRITE_DATA_COMMAND, par, par->info->device, "%s: dc=%d, val=0x%X\n", __func__, dc, val);
+
+	if (par->gpio.dc != -1)
+		gpio_set_value(par->gpio.dc, dc);
+
+	*(u16 *)par->buf = cpu_to_be16((u16)val);
+
+	ret = par->fbtftops.write(par, par->buf, 2);
+	if (ret < 0)
+		dev_err(par->info->device, "%s: dc=%d, val=0x%X, failed with status %d\n", __func__, dc, val, ret);
 }
 
 

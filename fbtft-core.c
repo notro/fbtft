@@ -47,6 +47,9 @@ static unsigned long dummy_debug = 0;
 
 unsigned long fbtft_request_gpios_match(struct fbtft_par *par, const struct fbtft_gpio *gpio)
 {
+	int ret;
+	long val;
+
 	fbtft_fbtft_dev_dbg(DEBUG_REQUEST_GPIOS_MATCH, par, par->info->device, "%s('%s')\n", __func__, gpio->name);
 
 	if (strcasecmp(gpio->name, "reset") == 0) {
@@ -55,6 +58,29 @@ unsigned long fbtft_request_gpios_match(struct fbtft_par *par, const struct fbtf
 	}
 	else if (strcasecmp(gpio->name, "dc") == 0) {
 		par->gpio.dc = gpio->gpio;
+		return GPIOF_OUT_INIT_LOW;
+	}
+	else if (strcasecmp(gpio->name, "cs") == 0) {
+		par->gpio.cs = gpio->gpio;
+		return GPIOF_OUT_INIT_HIGH;
+	}
+	else if (strcasecmp(gpio->name, "wr") == 0) {
+		par->gpio.wr = gpio->gpio;
+		return GPIOF_OUT_INIT_HIGH;
+	}
+	else if (strcasecmp(gpio->name, "rd") == 0) {
+		par->gpio.rd = gpio->gpio;
+		return GPIOF_OUT_INIT_HIGH;
+	}
+	else if (gpio->name[0] == 'd' && gpio->name[1] == 'b') {
+		ret = kstrtol(&gpio->name[2], 10, &val);
+		if (ret == 0 && val < 16) {
+			par->gpio.db[val] = gpio->gpio;
+			return GPIOF_OUT_INIT_LOW;
+		}
+	}
+	else if (strcasecmp(gpio->name, "led") == 0) {
+		par->gpio.led[0] = gpio->gpio;
 		return GPIOF_OUT_INIT_LOW;
 	}
 

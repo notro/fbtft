@@ -40,12 +40,15 @@
 #define TXBUFLEN	4*PAGE_SIZE
 
 
+/* Module Parameter: debug  (also available through sysfs) */
+MODULE_PARM_DEBUG;
+
 // ftp://imall.iteadstudio.com/IM120419001_ITDB02_1.8SP/DS_ST7735.pdf
 // https://github.com/johnmccombs/arduino-libraries/blob/master/ST7735/ST7735.cpp
 
 static int sainsmart18fb_init_display(struct fbtft_par *par)
 {
-	dev_dbg(par->info->device, "sainsmart18fb_init_display()\n");
+	fbtft_dev_dbg(DEBUG_INIT_DISPLAY, par->info->device, "%s()\n", __func__);
 
 	par->fbtftops.reset(par);
 
@@ -228,7 +231,7 @@ static int sainsmart18fb_write_vmem(struct fbtft_par *par)
 	remain = len;
 	vmem16 = (u16 *)(par->info->screen_base + offset);
 
-	dev_dbg(par->info->device, "sainsmart18fb_write_vmem: offset=%d, len=%d\n", offset, len);
+	fbtft_fbtft_dev_dbg(DEBUG_WRITE_VMEM, par, par->info->device, "%s: offset=%d, len=%d\n", __func__, offset, len);
 
 	if (par->gpio.dc != -1)
 		gpio_set_value(par->gpio.dc, 1);
@@ -269,6 +272,8 @@ static int sainsmart18fb_write_vmem(struct fbtft_par *par)
 
 static int sainsmart18fb_verify_gpios(struct fbtft_par *par)
 {
+	fbtft_dev_dbg(DEBUG_VERIFY_GPIOS, par->info->device, "%s()\n", __func__);
+
 	if (par->gpio.dc < 0) {
 		dev_err(par->info->device, "Missing info about 'dc' gpio. Aborting.\n");
 		return -EINVAL;
@@ -291,7 +296,7 @@ static int __devinit sainsmart18fb_probe(struct spi_device *spi)
 	struct fbtft_par *par;
 	int ret;
 
-	dev_dbg(&spi->dev, "probe()\n");
+	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &spi->dev, "%s()\n", __func__);
 
 	info = fbtft_framebuffer_alloc(&sainsmart18_display, &spi->dev);
 	if (!info)
@@ -299,6 +304,7 @@ static int __devinit sainsmart18fb_probe(struct spi_device *spi)
 
 	par = info->par;
 	par->spi = spi;
+	fbtft_debug_init(par);
 	par->fbtftops.init_display = sainsmart18fb_init_display;
 	par->fbtftops.write_vmem = sainsmart18fb_write_vmem;
 	par->fbtftops.verify_gpios = sainsmart18fb_verify_gpios;
@@ -319,7 +325,7 @@ static int __devexit sainsmart18fb_remove(struct spi_device *spi)
 {
 	struct fb_info *info = spi_get_drvdata(spi);
 
-	dev_dbg(&spi->dev, "remove()\n");
+	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &spi->dev, "%s()\n", __func__);
 
 	if (info) {
 		fbtft_unregister_framebuffer(info);
@@ -340,13 +346,13 @@ static struct spi_driver sainsmart18fb_driver = {
 
 static int __init sainsmart18fb_init(void)
 {
-	pr_debug("\n\n"DRVNAME" - init\n");
+	fbtft_pr_debug("\n\n"DRVNAME": %s()\n", __func__);
 	return spi_register_driver(&sainsmart18fb_driver);
 }
 
 static void __exit sainsmart18fb_exit(void)
 {
-	pr_debug(DRVNAME" - exit\n");
+	fbtft_pr_debug(DRVNAME": %s()\n", __func__);
 	spi_unregister_driver(&sainsmart18fb_driver);
 }
 

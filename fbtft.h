@@ -182,7 +182,19 @@ extern void fbtft_write_data_command16_bus8(struct fbtft_par *par, unsigned dc, 
 #define fbtft_debug_init(par) \
         par->debug = &debug
 
+#define fbtft_debug_expand_shorthand(debug)       \
+		switch (*debug & 0b111) {                 \
+		case 1:  *debug |= DEBUG_LEVEL_1; break;  \
+		case 2:  *debug |= DEBUG_LEVEL_2; break;  \
+		case 3:  *debug |= DEBUG_LEVEL_3; break;  \
+		case 4:  *debug |= DEBUG_LEVEL_4; break;  \
+		case 5:  *debug |= DEBUG_LEVEL_5; break;  \
+		case 6:  *debug |= DEBUG_LEVEL_6; break;  \
+		case 7:  *debug = 0xFFFFFFFF; break;      \
+		}
+
 #define fbtft_pr_debug(fmt, ...) \
+        fbtft_debug_expand_shorthand(&debug); \
         if (debug & DEBUG_DRIVER_INIT_FUNCTIONS) { pr_info(fmt, ##__VA_ARGS__); }
 
 /* used in drivers */
@@ -195,15 +207,7 @@ extern void fbtft_write_data_command16_bus8(struct fbtft_par *par, unsigned dc, 
 
 #define fbtft_debug_sync_value(par)                        \
         if (*par->debug != par->current_debug) {           \
-            switch (*par->debug & 0b111) {                 \
-            case 1:  *par->debug |= DEBUG_LEVEL_1; break;  \
-            case 2:  *par->debug |= DEBUG_LEVEL_2; break;  \
-            case 3:  *par->debug |= DEBUG_LEVEL_3; break;  \
-            case 4:  *par->debug |= DEBUG_LEVEL_4; break;  \
-            case 5:  *par->debug |= DEBUG_LEVEL_5; break;  \
-            case 6:  *par->debug |= DEBUG_LEVEL_6; break;  \
-            case 7:  *par->debug = 0xFFFFFFFF; break;      \
-            }                                              \
+            fbtft_debug_expand_shorthand(par->debug)       \
             par->current_debug = *par->debug;              \
         }
 

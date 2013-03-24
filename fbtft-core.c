@@ -588,8 +588,6 @@ int fbtft_register_framebuffer(struct fb_info *fb_info)
 	if (!par->debug)
 		par->debug = &dummy_debug;
 
-	fbtft_debug_sync_value(par);
-
 	if (spi)
 		spi_set_drvdata(spi, fb_info);
 	if (par->pdev)

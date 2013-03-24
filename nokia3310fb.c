@@ -36,6 +36,9 @@
 #define FPS			5
 
 
+/* Module Parameter: debug  (also available through sysfs) */
+MODULE_PARM_DEBUG;
+
 static bool rotate = 0;
 module_param(rotate, bool, 0);
 MODULE_PARM_DESC(rotate, "Rotate display");
@@ -46,7 +49,7 @@ static int nokia3310fb_init_display(struct fbtft_par *par)
 	u8 tc = 0;           /* Temperature coefficient, between 0 and 3 */
 	u8 bias = 4;         /* Bias, between 0 and 7 */
 
-	dev_dbg(par->info->device, "%s()\n", __func__);
+	fbtft_dev_dbg(DEBUG_INIT_DISPLAY, par->info->device, "%s()\n", __func__);
 
 	par->fbtftops.reset(par);
 
@@ -104,7 +107,7 @@ void nokia3310fb_update_display(struct fbtft_par *par)
 	int i;
 	int ret = 0;
 
-	dev_dbg(par->info->device, "%s()\n", __func__);
+	fbtft_dev_dbg(DEBUG_UPDATE_DISPLAY, par->info->device, "%s()\n", __func__);
 
 	if (par->info->var.xres == WIDTH) {
 		/* rearrange */
@@ -142,6 +145,8 @@ void nokia3310fb_update_display(struct fbtft_par *par)
 
 static unsigned long nokia3310fb_request_gpios_match(struct fbtft_par *par, const struct fbtft_gpio *gpio)
 {
+	fbtft_dev_dbg(DEBUG_REQUEST_GPIOS_MATCH, par->info->device, "%s('%s')\n", __func__, gpio->name);
+
 	if (strcasecmp(gpio->name, "led") == 0) {
 		par->gpio.led[0] = gpio->gpio;
 		return GPIOF_OUT_INIT_LOW;
@@ -152,6 +157,8 @@ static unsigned long nokia3310fb_request_gpios_match(struct fbtft_par *par, cons
 
 static int nokia3310fb_verify_gpios(struct fbtft_par *par)
 {
+	fbtft_dev_dbg(DEBUG_VERIFY_GPIOS, par->info->device, "%s()\n", __func__);
+
 	if (par->gpio.dc < 0) {
 		dev_err(par->info->device, "Missing info about 'dc' gpio. Aborting.\n");
 		return -EINVAL;
@@ -165,7 +172,7 @@ int nokia3310fb_blank(struct fbtft_par *par, bool on)
 	if (par->gpio.led[0] == -1)
 		return -EINVAL;
 
-	dev_dbg(par->info->device, "%s(%s)\n", __func__, on ? "on" : "off");
+	fbtft_dev_dbg(DEBUG_BLANK, par->info->device, "%s(%s)\n", __func__, on ? "on" : "off");
 	
 	if (on)
 		/* Turn off backlight */
@@ -191,7 +198,7 @@ static int __devinit nokia3310fb_probe(struct spi_device *spi)
 	struct fbtft_par *par;
 	int ret;
 
-	dev_dbg(&spi->dev, "%s()\n", __func__);
+	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &spi->dev, "%s()\n", __func__);
 
 	if (rotate) {
 		nokia3310fb_display.width = HEIGHT;
@@ -215,6 +222,7 @@ static int __devinit nokia3310fb_probe(struct spi_device *spi)
 
 	par = info->par;
 	par->spi = spi;
+	fbtft_debug_init(par);
 	par->fbtftops.write_data_command = fbtft_write_data_command8_bus8;
 	par->fbtftops.request_gpios_match = nokia3310fb_request_gpios_match;
 	par->fbtftops.verify_gpios = nokia3310fb_verify_gpios;
@@ -241,7 +249,7 @@ static int __devexit nokia3310fb_remove(struct spi_device *spi)
 {
 	struct fb_info *info = spi_get_drvdata(spi);
 
-	dev_dbg(&spi->dev, "%s()\n", __func__);
+	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &spi->dev, "%s()\n", __func__);
 
 	if (info) {
 		nokia3310fb_blank(info->par, true);   /* turn off backlight */
@@ -263,13 +271,13 @@ static struct spi_driver nokia3310fb_driver = {
 
 static int __init nokia3310fb_init(void)
 {
-	pr_debug("\n\n"DRVNAME": %s()\n", __func__);
+	fbtft_pr_debug("\n\n"DRVNAME": %s()\n", __func__);
 	return spi_register_driver(&nokia3310fb_driver);
 }
 
 static void __exit nokia3310fb_exit(void)
 {
-	pr_debug(DRVNAME": %s()\n", __func__);
+	fbtft_pr_debug(DRVNAME": %s()\n", __func__);
 	spi_unregister_driver(&nokia3310fb_driver);
 }
 

@@ -118,8 +118,8 @@ extern int fbtft_unregister_framebuffer(struct fb_info *fb_info);
 
 /* fbtft-io.c */
 extern int fbtft_write_spi(struct fbtft_par *par, void *buf, size_t len);
-extern int fbtft_write_gpio8(struct fbtft_par *par, void *buf, size_t len);
-extern int fbtft_write_gpio16(struct fbtft_par *par, void *buf, size_t len);
+extern int fbtft_write_gpio8_wr(struct fbtft_par *par, void *buf, size_t len);
+extern int fbtft_write_gpio16_wr(struct fbtft_par *par, void *buf, size_t len);
 
 /* fbtft-bus.c */
 extern int fbtft_write_vmem8_bus8(struct fbtft_par *par);

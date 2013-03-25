@@ -143,8 +143,9 @@ extern void fbtft_write_data_command16_bus8(struct fbtft_par *par, unsigned dc, 
 #define DEBUG_LEVEL_6               (DEBUG_LEVEL_4 | DEBUG_LEVEL_5)
 #define DEBUG_LEVEL_7               0xFFFFFFFF
 
-#define DEBUG_DRIVER_INIT_FUNCTIONS (1<<4)
-#define DEBUG_TIME_FIRST_UPDATE     (1<<5)
+#define DEBUG_DRIVER_INIT_FUNCTIONS (1<<3)
+#define DEBUG_TIME_FIRST_UPDATE     (1<<4)
+#define DEBUG_TIME_EACH_UPDATE      (1<<5)
 #define DEBUG_DEFERRED_IO           (1<<6)
 #define DEBUG_FBTFT_INIT_FUNCTIONS  (1<<7)
 

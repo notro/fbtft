@@ -190,11 +190,16 @@ void fbtft_update_display(struct fbtft_par *par)
 {
 	struct timespec ts_start,ts_end,test_of_time;
 	long ms, us, ns;
+	bool timeit = false;
 	int ret = 0;
 
-	if (unlikely(!par->first_update_done)) {
-		if (*par->debug & DEBUG_TIME_FIRST_UPDATE)
+	if (unlikely(*par->debug & (DEBUG_TIME_FIRST_UPDATE | DEBUG_TIME_EACH_UPDATE))) {
+		if ( (*par->debug & DEBUG_TIME_EACH_UPDATE) || \
+			 ((*par->debug & DEBUG_TIME_FIRST_UPDATE) && !par->first_update_done) )
+		{
 			getnstimeofday(&ts_start);
+			timeit = true;
+		}
 	}
 
 	// Sanity checks
@@ -222,21 +227,20 @@ void fbtft_update_display(struct fbtft_par *par)
 	if (ret < 0)
 		dev_err(par->info->device, "%s: write_vmem failed to update display buffer\n", __func__);
 
+	if (unlikely(timeit)) {
+		getnstimeofday(&ts_end);
+		test_of_time = timespec_sub(ts_end,ts_start);
+		us = (test_of_time.tv_nsec / 1000) % 1000;
+		ms = (test_of_time.tv_sec * 1000) + ((test_of_time.tv_nsec / 1000000) % 1000);
+		ns = test_of_time.tv_nsec % 1000;
+		dev_info(par->info->device, "Elapsed time for display update: %4lu.%.3lu%.3lu ms (fps: %2lu, lines=%u)\n", 
+		                            ms, us, ns, test_of_time.tv_nsec ? 1000000000 / test_of_time.tv_nsec : 0, par->dirty_lines_end - par->dirty_lines_start + 1);
+		par->first_update_done = true;
+	}
+
 	// set display line markers as clean
 	par->dirty_lines_start = par->info->var.yres - 1;
 	par->dirty_lines_end = 0;
-
-	if (unlikely(!par->first_update_done)) {
-		if (*par->debug & DEBUG_TIME_FIRST_UPDATE) {
-			getnstimeofday(&ts_end);
-			test_of_time = timespec_sub(ts_end,ts_start);
-			us = (test_of_time.tv_nsec / 1000) % 1000;
-			ms = (test_of_time.tv_nsec / 1000000) % 1000;
-			ns = test_of_time.tv_nsec % 1000;
-			dev_info(par->info->device, "Elapsed time for first full display update: %lus  %lums  %luus  %luns (fps: %lu)\n", test_of_time.tv_sec, ms, us, ns, test_of_time.tv_nsec ? 1000000000 / test_of_time.tv_nsec : 0);
-		}
-		par->first_update_done = true;
-	}
 }
 
 

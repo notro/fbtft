@@ -5,7 +5,8 @@
 
 int fbtft_write_spi(struct fbtft_par *par, void *buf, size_t len)
 {
-	fbtft_fbtft_dev_dbg(DEBUG_WRITE, par, par->info->device, "%s(len=%d)\n", __func__, len);
+	fbtft_dev_dbg_hex(DEBUG_WRITE, par, par->info->device, u8, buf, len, "%s(len=%d): ", __func__, len);
+
 	if (!par->spi) {
 		dev_err(par->info->device, "%s: par->spi is unexpectedly NULL\n", __func__);
 		return -1;
@@ -23,7 +24,7 @@ int fbtft_write_gpio8_wr(struct fbtft_par *par, void *buf, size_t len)
 	unsigned int reset=0;
 	u8 data;
 
-	fbtft_fbtft_dev_dbg(DEBUG_WRITE, par, par->info->device, "%s(len=%d)\n", __func__, len);
+	fbtft_dev_dbg_hex(DEBUG_WRITE, par, par->info->device, u8, buf, len, "%s(len=%d): ", __func__, len);
 
 	while (len--) {
 		data = *(u8 *) buf;

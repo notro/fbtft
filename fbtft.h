@@ -206,6 +206,11 @@ extern void fbtft_write_data_command16_bus8(struct fbtft_par *par, unsigned dc, 
 #define fbtft_fbtft_dev_dbg(level, par, dev, format, arg...) \
         if (*par->debug & level) { dev_info(dev, format, ##arg); }
 
+/* only used in the fbtft module */
+extern void _fbtft_dev_dbg_hex(const struct device *dev, int groupsize, void *buf, size_t len, const char *fmt, ...);
+#define fbtft_dev_dbg_hex(level, par, dev, type, buf, num, format, arg...) \
+        if (*par->debug & level) { _fbtft_dev_dbg_hex(dev, sizeof(type), buf, num * sizeof(type), format, ##arg); }
+
 #define fbtft_debug_sync_value(par)                        \
         if (*par->debug != par->current_debug) {           \
             fbtft_debug_expand_shorthand(par->debug)       \

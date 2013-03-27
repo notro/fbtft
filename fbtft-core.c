@@ -45,6 +45,25 @@ static unsigned long dummy_debug = 0;
 #endif
 
 
+void _fbtft_dev_dbg_hex(const struct device *dev, int groupsize, void *buf, size_t len, const char *fmt, ...)
+{
+	va_list args;
+	static char textbuf[512];
+	char *text = textbuf;
+	size_t text_len;
+
+	va_start(args, fmt);
+	text_len = vscnprintf(text, sizeof(textbuf), fmt, args);
+	va_end(args);
+
+	hex_dump_to_buffer(buf, len, 32, groupsize, text + text_len, 512 - text_len, false);
+
+	if (len > 32)
+		dev_info(dev, "%s ...\n", text);
+	else
+		dev_info(dev, "%s\n", text);
+}
+
 unsigned long fbtft_request_gpios_match(struct fbtft_par *par, const struct fbtft_gpio *gpio)
 {
 	int ret;

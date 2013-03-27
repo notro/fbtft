@@ -561,6 +561,7 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 	par->fbtftops.write = fbtft_write_spi;
 	par->fbtftops.write_vmem = fbtft_write_vmem16_bus8;
 	par->fbtftops.write_data_command = fbtft_write_data_command8_bus8;
+	par->fbtftops.write_reg = fbtft_write_reg8_bus8;
 	par->fbtftops.set_addr_win = fbtft_set_addr_win;
 	par->fbtftops.reset = fbtft_reset;
 	par->fbtftops.mkdirty = fbtft_mkdirty;

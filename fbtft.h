@@ -52,6 +52,7 @@ struct fbtft_ops {
 	int (*write)(struct fbtft_par *par, void *buf, size_t len);
 	int (*write_vmem)(struct fbtft_par *par);
 	void (*write_data_command)(struct fbtft_par *par, unsigned dc, u32 val);
+	void (*write_reg)(struct fbtft_par *par, int len, ...);
 
 	void (*set_addr_win)(struct fbtft_par *par, int xs, int ys, int xe, int ye);
 	void (*reset)(struct fbtft_par *par);
@@ -107,6 +108,8 @@ struct fbtft_par {
 	void *extra;
 };
 
+#define NUMARGS(...)  (sizeof((int[]){__VA_ARGS__})/sizeof(int))
+#define write_reg(par, ...)  par->fbtftops.write_reg(par, NUMARGS(__VA_ARGS__), __VA_ARGS__)
 #define write_cmd(par, val)  par->fbtftops.write_data_command(par, 0, val)
 #define write_data(par, val) par->fbtftops.write_data_command(par, 1, val)
 
@@ -126,6 +129,8 @@ extern int fbtft_write_vmem8_bus8(struct fbtft_par *par);
 extern int fbtft_write_vmem16_bus16(struct fbtft_par *par);
 extern int fbtft_write_vmem16_bus8(struct fbtft_par *par);
 extern int fbtft_write_vmem16_bus9(struct fbtft_par *par);
+extern void fbtft_write_reg8_bus8(struct fbtft_par *par, int len, ...);
+extern void fbtft_write_reg16_bus8(struct fbtft_par *par, int len, ...);
 extern void fbtft_write_data_command8_bus8(struct fbtft_par *par, unsigned dc, u32 val);
 extern void fbtft_write_data_command8_bus9(struct fbtft_par *par, unsigned dc, u32 val);
 extern void fbtft_write_data_command16_bus16(struct fbtft_par *par, unsigned dc, u32 val);

@@ -149,6 +149,31 @@ static struct spi_board_info spidevices_spi_displays[] = {
 static void spidevices_pdev_release(struct device *dev);
 
 static struct platform_device spidevices_pdev_displays[] = {
+	{
+		.name = "itdb28fb",
+		.id = 0,
+		.dev = {
+					.release = spidevices_pdev_release,
+					.platform_data = &(struct fbtft_platform_data) {
+						.gpios = (const struct fbtft_gpio []) {
+							{ "reset", 17 },
+							{ "dc", 1 },
+							{ "wr", 0 },
+							{ "cs", 21 },
+							{ "db00", 9 },
+							{ "db01", 11 },
+							{ "db02", 18 },
+							{ "db03", 23 },
+							{ "db04", 24 },
+							{ "db05", 25 },
+							{ "db06", 8 },
+							{ "db07", 7 },
+							{ "led", 4 },
+							{},
+						},
+					},
+				},
+	}
 };
 
 /* used if gpios parameter is present */

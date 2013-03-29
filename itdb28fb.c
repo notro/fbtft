@@ -36,23 +36,27 @@
 #define BPP         16
 #define FPS			20
 
-#define UPSIDEDOWN
-
 
 /* Module Parameter: debug  (also available through sysfs) */
 MODULE_PARM_DEBUG;
+
+/* Module Parameter: rotate */
+static unsigned rotate = 0;
+module_param(rotate, uint, 0);
+MODULE_PARM_DESC(rotate, "Rotate display (0=normal, 2=upside down)");
 
 
 static void itdb28fb_set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 {
 	fbtft_dev_dbg(DEBUG_SET_ADDR_WIN, par->info->device, "%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
-#ifdef UPSIDEDOWN
-	write_reg(par, 0x0020, ys); // Horizontal GRAM Start Address
-	write_reg(par, 0x0021, (par->info->var.xres - 1)-xs); // Vertical GRAM Start Address
-#else
-	write_reg(par, 0x0020, (par->info->var.yres - 1)-ys); // Horizontal GRAM Start Address
-	write_reg(par, 0x0021, xs); // Vertical GRAM Start Address
-#endif
+	if (rotate) {
+		write_reg(par, 0x0020, ys); // Horizontal GRAM Start Address
+		write_reg(par, 0x0021, (par->info->var.xres - 1)-xs); // Vertical GRAM Start Address
+	}
+	else {
+		write_reg(par, 0x0020, (par->info->var.yres - 1)-ys); // Horizontal GRAM Start Address
+		write_reg(par, 0x0021, xs); // Vertical GRAM Start Address
+	}
 	write_reg(par, 0x0022);
 }
 
@@ -87,11 +91,10 @@ static int itdb28fb_init_display(struct fbtft_par *par)
 	msleep(200);
 
 	write_reg(par, 0x0002, 0x0700); // set 1 line inversion
-#ifdef UPSIDEDOWN
-	write_reg(par, 0x0003, 0x1018); // set GRAM write direction and BGR=1.
-#else
-	write_reg(par, 0x0003, 0x1028); // set GRAM write direction and BGR=1.
-#endif
+	if (rotate)
+		write_reg(par, 0x0003, 0x1018); // set GRAM write direction and BGR=1.
+	else
+		write_reg(par, 0x0003, 0x1028); // set GRAM write direction and BGR=1.
 	msleep(100);
 	write_reg(par, 0x0004, 0x0000); // Resize register
 	msleep(100);
@@ -583,10 +586,15 @@ static int __devinit itdb28fb_probe(struct platform_device *pdev)
 
 	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &pdev->dev, "%s()\n", __func__);
 
+	if (!(rotate == 0 || rotate == 2)) {
+		dev_warn(&pdev->dev, "module parameter 'rotate' can only be 0=Normal or 2=Upside down. Setting it to Normal.\n");
+		rotate = 0;
+	}
 	info = fbtft_framebuffer_alloc(&itdb28fb_display, &pdev->dev);
 	if (!info)
 		return -ENOMEM;
 
+	info->var.rotate = rotate;
 	par = info->par;
 	par->pdev = pdev;
 	fbtft_debug_init(par);

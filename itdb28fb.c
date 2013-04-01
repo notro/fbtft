@@ -263,7 +263,6 @@ static int __devinit itdb28fb_probe(struct platform_device *pdev)
 	fbtft_debug_init(par);
 	par->fbtftops.init_display = itdb28fb_init_display;
 	par->fbtftops.write = fbtft_write_gpio8_wr;
-	par->fbtftops.write_data_command = fbtft_write_data_command16_bus8;
 	par->fbtftops.write_reg = fbtft_write_reg16_bus8;
 	par->fbtftops.set_addr_win = itdb28fb_set_addr_win;
 	par->fbtftops.blank = itdb28fb_blank;

@@ -65,6 +65,9 @@ struct fbtft_ops {
 	int (*request_gpios)(struct fbtft_par *par);
 	void (*free_gpios)(struct fbtft_par *par);
 	int (*verify_gpios)(struct fbtft_par *par);
+
+	void (*register_backlight)(struct fbtft_par *par);
+	void (*unregister_backlight)(struct fbtft_par *par);
 };
 
 struct fbtft_display {
@@ -118,6 +121,8 @@ extern struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, st
 extern void fbtft_framebuffer_release(struct fb_info *info);
 extern int fbtft_register_framebuffer(struct fb_info *fb_info);
 extern int fbtft_unregister_framebuffer(struct fb_info *fb_info);
+extern void fbtft_register_backlight(struct fbtft_par *par);
+extern void fbtft_unregister_backlight(struct fbtft_par *par);
 
 /* fbtft-io.c */
 extern int fbtft_write_spi(struct fbtft_par *par, void *buf, size_t len);
@@ -142,7 +147,7 @@ extern void fbtft_write_data_command16_bus8(struct fbtft_par *par, unsigned dc, 
 /* shorthand debug levels */
 #define DEBUG_LEVEL_1               DEBUG_REQUEST_GPIOS
 #define DEBUG_LEVEL_2               (DEBUG_LEVEL_1 | DEBUG_DRIVER_INIT_FUNCTIONS | DEBUG_TIME_FIRST_UPDATE)
-#define DEBUG_LEVEL_3               (DEBUG_LEVEL_2 | DEBUG_RESET | DEBUG_INIT_DISPLAY | DEBUG_BLANK | DEBUG_FREE_GPIOS | DEBUG_VERIFY_GPIOS)
+#define DEBUG_LEVEL_3               (DEBUG_LEVEL_2 | DEBUG_RESET | DEBUG_INIT_DISPLAY | DEBUG_BLANK | DEBUG_FREE_GPIOS | DEBUG_VERIFY_GPIOS | DEBUG_BACKLIGHT)
 #define DEBUG_LEVEL_4               (DEBUG_LEVEL_2 | DEBUG_FB_READ | DEBUG_FB_WRITE | DEBUG_FB_FILLRECT | DEBUG_FB_COPYAREA | DEBUG_FB_IMAGEBLIT | DEBUG_FB_BLANK)
 #define DEBUG_LEVEL_5               (DEBUG_LEVEL_3 | DEBUG_UPDATE_DISPLAY)
 #define DEBUG_LEVEL_6               (DEBUG_LEVEL_4 | DEBUG_LEVEL_5)
@@ -164,6 +169,7 @@ extern void fbtft_write_data_command16_bus8(struct fbtft_par *par, unsigned dc, 
 #define DEBUG_FB_BLANK              (1<<14)
 
 /* fbtftops */
+#define DEBUG_BACKLIGHT             (1<<17)
 #define DEBUG_READ                  (1<<18)  /* not in use */
 #define DEBUG_WRITE                 (1<<19)
 #define DEBUG_WRITE_VMEM            (1<<20)

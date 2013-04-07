@@ -6,6 +6,7 @@ menuconfig FB_TFT
 	select FB_SYS_IMAGEBLIT
 	select FB_SYS_FOPS
 	select FB_DEFERRED_IO
+	select FB_BACKLIGHT
 
 config FB_ADAFRUIT22
 	tristate "FB driver for the Adafruit 2.2\" LCD display"

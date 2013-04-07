@@ -33,6 +33,7 @@
 #include <linux/spi/spi.h>
 #include <linux/delay.h>
 #include <linux/uaccess.h>
+#include <linux/backlight.h>
 
 #include "fbtft.h"
 
@@ -172,6 +173,86 @@ void fbtft_free_gpios(struct fbtft_par *par)
 		}
 	}
 }
+
+int fbtft_backlight_update_status(struct backlight_device *bd)
+{
+	struct fbtft_par *par = bl_get_data(bd);
+	bool polarity = !!(bd->props.state & BL_CORE_DRIVER1);
+
+	fbtft_fbtft_dev_dbg(DEBUG_BACKLIGHT, par, par->info->device, "%s: polarity=%d, power=%d\n", __func__, polarity, bd->props.power);
+
+	if (bd->props.power == FB_BLANK_UNBLANK)
+		gpio_set_value(par->gpio.led[0], polarity);
+	else
+		gpio_set_value(par->gpio.led[0], !polarity);
+
+	return 0;
+}
+
+int fbtft_backlight_get_brightness(struct backlight_device *bd)
+{
+	return bd->props.brightness;
+}
+
+void fbtft_unregister_backlight(struct fbtft_par *par)
+{
+	const struct backlight_ops *bl_ops;
+
+	fbtft_fbtft_dev_dbg(DEBUG_BACKLIGHT, par, par->info->device, "%s()\n", __func__);
+
+	if (par->info->bl_dev) {
+		bl_ops = par->info->bl_dev->ops;
+		backlight_device_unregister(par->info->bl_dev);
+		par->info->bl_dev = NULL;
+		kfree(bl_ops);
+	}
+}
+EXPORT_SYMBOL(fbtft_unregister_backlight);
+
+void fbtft_register_backlight(struct fbtft_par *par)
+{
+	struct backlight_device *bd;
+	struct backlight_properties bl_props = { 0, };
+	struct backlight_ops *bl_ops;
+
+	fbtft_fbtft_dev_dbg(DEBUG_BACKLIGHT, par, par->info->device, "%s()\n", __func__);
+
+	if (par->gpio.led[0] == -1) {
+		fbtft_fbtft_dev_dbg(DEBUG_BACKLIGHT, par, par->info->device, "%s(): led pin not set, exiting.\n", __func__);
+		return;
+	}
+
+	bl_ops = kzalloc(sizeof(struct backlight_ops), GFP_KERNEL);
+	if (!bl_ops) {
+		dev_err(par->info->device, "%s: could not allocate memeory for backlight operations.\n", __func__);
+		return;
+	}
+
+	bl_ops->get_brightness = fbtft_backlight_get_brightness;
+	bl_ops->update_status = fbtft_backlight_update_status;
+	bl_props.type = BACKLIGHT_RAW;
+	/* Assume backlight is off, get polarity from current state of pin */
+	bl_props.power = FB_BLANK_POWERDOWN;
+	if (!gpio_get_value(par->gpio.led[0]))
+		bl_props.state |= BL_CORE_DRIVER1;
+
+	bd = backlight_device_register(dev_driver_string(par->info->device), par->info->device, par, bl_ops, &bl_props);
+	if (IS_ERR(bd)) {
+		dev_err(par->info->device, "cannot register backlight device (%ld)\n", PTR_ERR(bd));
+		goto failed;
+	}
+	par->info->bl_dev = bd;
+
+	if (!par->fbtftops.unregister_backlight)
+		par->fbtftops.unregister_backlight = fbtft_unregister_backlight;
+
+	return;
+
+failed:
+	if (bl_ops)
+		kfree(bl_ops);
+}
+EXPORT_SYMBOL(fbtft_register_backlight);
 
 void fbtft_set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 {
@@ -659,6 +740,9 @@ int fbtft_register_framebuffer(struct fb_info *fb_info)
 
 	par->fbtftops.update_display(par);
 
+	if (par->fbtftops.register_backlight)
+		par->fbtftops.register_backlight(par);
+
 	ret = register_framebuffer(fb_info);
 	if (ret < 0)
 		goto reg_fail;
@@ -670,6 +754,12 @@ int fbtft_register_framebuffer(struct fb_info *fb_info)
 		sprintf(text2, ", spi%d.%d at %d MHz", spi->master->bus_num, spi->chip_select, spi->max_speed_hz/1000000);
 	dev_info(fb_info->dev, "%s frame buffer, %d KiB video memory%s, fps=%lu%s\n",
 		fb_info->fix.id, fb_info->fix.smem_len >> 10, text1, HZ/fb_info->fbdefio->delay, text2);
+
+	/* Turn on backlight if available */
+	if (fb_info->bl_dev) {
+		fb_info->bl_dev->props.power = FB_BLANK_UNBLANK;
+		fb_info->bl_dev->ops->update_status(fb_info->bl_dev);
+	}
 
 	return 0;
 
@@ -697,13 +787,17 @@ int fbtft_unregister_framebuffer(struct fb_info *fb_info)
 {
 	struct fbtft_par *par = fb_info->par;
 	struct spi_device *spi = par->spi;
+	int ret;
 
 	if (spi)
 		spi_set_drvdata(spi, NULL);
 	if (par->pdev)
 		platform_set_drvdata(par->pdev, NULL);
 	par->fbtftops.free_gpios(par);
-	return unregister_framebuffer(fb_info);
+	ret = unregister_framebuffer(fb_info);
+	if (par->fbtftops.unregister_backlight)
+		par->fbtftops.unregister_backlight(par);
+	return ret;
 }
 EXPORT_SYMBOL(fbtft_unregister_framebuffer);
 

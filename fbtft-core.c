@@ -529,12 +529,17 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 	void *txbuf = NULL;
 	void *buf = NULL;
 	int txbuflen = display->txbuflen;
+	unsigned bpp = display->bpp;
 	unsigned fps = display->fps;
-	int vmem_size = display->width*display->height*display->bpp/8;
+	int vmem_size;
 
-	// sanity checks
+	/* defaults */
 	if (!fps)
-		fps = 1;
+		fps = 20;
+	if (!bpp)
+		bpp = 16;
+
+	vmem_size = display->width*display->height*bpp/8;
 
 	/* platform_data override ? */
 	if (pdata) {
@@ -587,7 +592,7 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 	info->fix.xpanstep =	   0;
 	info->fix.ypanstep =	   0;
 	info->fix.ywrapstep =	   0;
-	info->fix.line_length =    display->width*display->bpp/8;
+	info->fix.line_length =    display->width*bpp/8;
 	info->fix.accel =          FB_ACCEL_NONE;
 	info->fix.smem_len =       vmem_size;
 
@@ -595,7 +600,7 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 	info->var.yres =           display->height;
 	info->var.xres_virtual =   display->width;
 	info->var.yres_virtual =   display->height;
-	info->var.bits_per_pixel = display->bpp;
+	info->var.bits_per_pixel = bpp;
 	info->var.nonstd =         1;
 
 	// RGB565
@@ -626,7 +631,7 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 		txbuflen = vmem_size;
 
 #ifdef __LITTLE_ENDIAN
-	if ((!txbuflen) && (display->bpp > 8))
+	if ((!txbuflen) && (bpp > 8))
 		txbuflen = PAGE_SIZE; /* need buffer for byteswapping */
 #endif
 

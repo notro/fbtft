@@ -36,8 +36,6 @@
 #define DRVNAME	    "adafruit22fb"
 #define WIDTH       176
 #define HEIGHT      220
-#define BPP         16
-#define FPS			10
 #define TXBUFLEN	4*PAGE_SIZE
 
 
@@ -247,8 +245,6 @@ static int adafruit22fb_write_emulate_9bit(struct fbtft_par *par, void *buf, siz
 struct fbtft_display adafruit22_display = {
 	.width = WIDTH,
 	.height = HEIGHT,
-	.bpp = BPP,
-	.fps = FPS,
 	.txbuflen = TXBUFLEN,
 };
 

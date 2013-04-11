@@ -33,8 +33,6 @@
 #define DRVNAME	    "adafruit18fb"
 #define WIDTH       128
 #define HEIGHT      160
-#define BPP         16
-#define FPS			10
 
 
 /* Module Parameter: debug  (also available through sysfs) */
@@ -257,8 +255,6 @@ static int adafruit18fb_blank(struct fbtft_par *par, bool on)
 struct fbtft_display adafruit18fb_display = {
 	.width = WIDTH,
 	.height = HEIGHT,
-	.bpp = BPP,
-	.fps = FPS,
 };
 
 static int __devinit adafruit18fb_probe(struct spi_device *spi)

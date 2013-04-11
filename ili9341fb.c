@@ -37,8 +37,6 @@
 #define DRVNAME        "ili9341fb"
 #define WIDTH       320
 #define HEIGHT      240
-#define BPP         16
-#define FPS         10
 #define TXBUFLEN    4*PAGE_SIZE
 
 /* write_cmd and write_data transfers need to be buffered so we can, if needed, do 9-bit emulation */
@@ -292,8 +290,6 @@ int ili9341fb_blank(struct fbtft_par *par, bool on)
 struct fbtft_display adafruit22_display = {
     .width = WIDTH,
     .height = HEIGHT,
-    .bpp = BPP,
-    .fps = FPS,
     .txbuflen = TXBUFLEN,
 };
 

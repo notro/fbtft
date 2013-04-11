@@ -35,8 +35,6 @@
 #define DRVNAME	    "sainsmart18fb"
 #define WIDTH       128
 #define HEIGHT      160
-#define BPP         16
-#define FPS			10
 #define TXBUFLEN	4*PAGE_SIZE
 
 
@@ -189,8 +187,6 @@ static int sainsmart18fb_verify_gpios(struct fbtft_par *par)
 struct fbtft_display sainsmart18_display = {
 	.width = WIDTH,
 	.height = HEIGHT,
-	.bpp = BPP,
-	.fps = FPS,
 	.txbuflen = TXBUFLEN,
 };
 

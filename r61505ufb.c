@@ -35,8 +35,6 @@
 #define DRVNAME	    "r61505ufb"
 #define WIDTH       320
 #define HEIGHT      240
-#define BPP         16
-#define FPS         10
 
 #define LCD_DATA		0x72
 #define LCD_REGISTER	0x70
@@ -267,8 +265,6 @@ static int r61505ufb_blank(struct fbtft_par *par, bool on)
 struct fbtft_display r61505ufb_display = {
 	.width = WIDTH,
 	.height = HEIGHT,
-	.bpp = BPP,
-	.fps = FPS,
 };
 
 static int __devinit r61505ufb_probe(struct spi_device *spi)

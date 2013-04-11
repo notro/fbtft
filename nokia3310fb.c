@@ -53,27 +53,27 @@ static int nokia3310fb_init_display(struct fbtft_par *par)
 	par->fbtftops.reset(par);
 
 	/* Function set */
-	write_cmd(par, 0x21); /* 5:1  1
+	write_reg(par, 0x21); /* 5:1  1
 	                         2:0  PD - Powerdown control: chip is active
 							 1:0  V  - Entry mode: horizontal addressing
 							 0:1  H  - Extended instruction set control: extended
 						  */
 
 	/* H=1 Set Vop (contrast) */
-	write_cmd(par, 0x80 | contrast); /*
+	write_reg(par, 0x80 | contrast); /*
 	                         7:1  1
 	                         6-0: Vop[6:0] - Operation voltage
 	                      */
 
 	/* H=1 Temperature control */
-	write_cmd(par, 0x04 | tc); /* 
+	write_reg(par, 0x04 | tc); /* 
 	                         2:1  1
 	                         1:x  TC1 - Temperature Coefficient: 0x10
 							 0:x  TC0
 						  */
 
 	/* H=1 Bias system */
-	write_cmd(par, 0x10 | bias); /* 
+	write_reg(par, 0x10 | bias); /* 
 	                         4:1  1
 	                         3:0  0
 							 2:x  BS2 - Bias System
@@ -82,14 +82,14 @@ static int nokia3310fb_init_display(struct fbtft_par *par)
 	                      */
 
 	/* Function set */
-	write_cmd(par, 0x22); /* 5:1  1
+	write_reg(par, 0x22); /* 5:1  1
 	                         2:0  PD - Powerdown control: chip is active
 							 1:1  V  - Entry mode: vertical addressing
 							 0:0  H  - Extended instruction set control: basic
 						  */
 
 	/* H=0 Display control */
-	write_cmd(par, 0x08 | 4); /* 
+	write_reg(par, 0x08 | 4); /* 
 	                         3:1  1
 	                         2:1  D  - DE: 10=normal mode
 							 1:0  0
@@ -125,12 +125,12 @@ void nokia3310fb_update_display(struct fbtft_par *par)
 	}
 
 	/* H=0 Set X address of RAM */
-	write_cmd(par, 0x80); /* 7:1  1
+	write_reg(par, 0x80); /* 7:1  1
 	                         6-0: X[6:0] - 0x00
 	                      */
 
 	/* H=0 Set Y address of RAM */
-	write_cmd(par, 0x40); /* 7:0  0
+	write_reg(par, 0x40); /* 7:0  0
 	                         6:1  1
 	                         2-0: Y[2:0] - 0x0
 	                      */

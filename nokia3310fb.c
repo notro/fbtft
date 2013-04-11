@@ -142,18 +142,6 @@ void nokia3310fb_update_display(struct fbtft_par *par)
 		dev_err(par->info->device, "%s: write failed and returned: %d\n", __func__, ret);
 }
 
-static unsigned long nokia3310fb_request_gpios_match(struct fbtft_par *par, const struct fbtft_gpio *gpio)
-{
-	fbtft_dev_dbg(DEBUG_REQUEST_GPIOS_MATCH, par->info->device, "%s('%s')\n", __func__, gpio->name);
-
-	if (strcasecmp(gpio->name, "led") == 0) {
-		par->gpio.led[0] = gpio->gpio;
-		return GPIOF_OUT_INIT_LOW;
-	}
-
-	return FBTFT_GPIO_NO_MATCH;
-}
-
 static int nokia3310fb_verify_gpios(struct fbtft_par *par)
 {
 	fbtft_dev_dbg(DEBUG_VERIFY_GPIOS, par->info->device, "%s()\n", __func__);
@@ -206,7 +194,6 @@ static int __devinit nokia3310fb_probe(struct spi_device *spi)
 	par->spi = spi;
 	fbtft_debug_init(par);
 	par->fbtftops.write_data_command = fbtft_write_data_command8_bus8;
-	par->fbtftops.request_gpios_match = nokia3310fb_request_gpios_match;
 	par->fbtftops.verify_gpios = nokia3310fb_verify_gpios;
 	par->fbtftops.init_display = nokia3310fb_init_display;
 	par->fbtftops.register_backlight = fbtft_register_backlight;

@@ -686,7 +686,6 @@ void fbtft_framebuffer_release(struct fb_info *info)
 	kfree(info->fbops);
 	kfree(info->fbdefio);
 	framebuffer_release(info);
-	gpio_free(par->gpio.reset);
 }
 EXPORT_SYMBOL(fbtft_framebuffer_release);
 

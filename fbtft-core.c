@@ -179,9 +179,9 @@ int fbtft_backlight_update_status(struct backlight_device *bd)
 	struct fbtft_par *par = bl_get_data(bd);
 	bool polarity = !!(bd->props.state & BL_CORE_DRIVER1);
 
-	fbtft_fbtft_dev_dbg(DEBUG_BACKLIGHT, par, par->info->device, "%s: polarity=%d, power=%d\n", __func__, polarity, bd->props.power);
+	fbtft_fbtft_dev_dbg(DEBUG_BACKLIGHT, par, par->info->device, "%s: polarity=%d, power=%d, fb_blank=%d\n", __func__, polarity, bd->props.power, bd->props.fb_blank);
 
-	if (bd->props.power == FB_BLANK_UNBLANK)
+	if ((bd->props.power == FB_BLANK_UNBLANK) && (bd->props.fb_blank == FB_BLANK_UNBLANK))
 		gpio_set_value(par->gpio.led[0], polarity);
 	else
 		gpio_set_value(par->gpio.led[0], !polarity);
@@ -484,7 +484,7 @@ int fbtft_fb_blank(int blank, struct fb_info *info)
 	fbtft_fbtft_dev_dbg(DEBUG_FB_BLANK, par, info->dev, "%s(blank=%d)\n", __func__, blank);
 
 	if (!par->fbtftops.blank)
-		return ret;
+		return 0;
 
 	switch (blank) {
 	case FB_BLANK_POWERDOWN:

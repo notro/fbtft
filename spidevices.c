@@ -49,7 +49,7 @@ MODULE_PARM_DESC(fps, "Frames per second (used to override default)");
 module_param(txbuflen, int, 0);
 MODULE_PARM_DESC(txbuflen, "txbuflen (used to override default)");
 module_param(verbose, uint, 0);
-MODULE_PARM_DESC(fps, "0=silent, 0< show gpios, 1< show devices, 2< show devices before (default)");
+MODULE_PARM_DESC(verbose, "0=silent, 0< show gpios, 1< show devices, 2< show devices before (default)");
 
 
 /* supported SPI displays */

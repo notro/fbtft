@@ -210,23 +210,6 @@ static void itdb28fb_set_addr_win(struct fbtft_par *par, int xs, int ys, int xe,
 	write_reg(par, 0x0022); /* Write Data to GRAM */
 }
 
-static int itdb28fb_blank(struct fbtft_par *par, bool on)
-{
-	if (par->gpio.led[0] == -1)
-		return -EINVAL;
-
-	fbtft_dev_dbg(DEBUG_BLANK, par->info->device, "%s(%s)\n", __func__, on ? "on" : "off");
-	
-	if (on)
-		/* Turn off backlight */
-		gpio_set_value(par->gpio.led[0], 0);
-	else
-		/* Turn on backlight */
-		gpio_set_value(par->gpio.led[0], 1);
-
-	return 0;
-}
-
 static int itdb28fb_verify_gpios(struct fbtft_par *par)
 {
 	int i;
@@ -294,18 +277,15 @@ static int __devinit itdb28fb_probe(struct platform_device *pdev)
 	par->pdev = pdev;
 	fbtft_debug_init(par);
 	par->fbtftops.init_display = itdb28fb_init_display;
+	par->fbtftops.register_backlight = fbtft_register_backlight;
 	par->fbtftops.write = fbtft_write_gpio8_wr;
 	par->fbtftops.write_reg = fbtft_write_reg16_bus8;
 	par->fbtftops.set_addr_win = itdb28fb_set_addr_win;
-	par->fbtftops.blank = itdb28fb_blank;
 	par->fbtftops.verify_gpios = itdb28fb_verify_gpios;
 
 	ret = fbtft_register_framebuffer(info);
 	if (ret < 0)
 		goto out_release;
-
-	/* turn on backlight */
-	itdb28fb_blank(par, false);
 
 	return 0;
 

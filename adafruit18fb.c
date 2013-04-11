@@ -165,18 +165,6 @@ static int adafruit18fb_init_display(struct fbtft_par *par)
 	return 0;
 }
 
-static unsigned long adafruit18fb_request_gpios_match(struct fbtft_par *par, const struct fbtft_gpio *gpio)
-{
-	fbtft_dev_dbg(DEBUG_REQUEST_GPIOS_MATCH, par->info->device, "%s('%s')\n", __func__, gpio->name);
-
-	if (strcasecmp(gpio->name, "led") == 0) {
-		par->gpio.led[0] = gpio->gpio;
-		return GPIOF_OUT_INIT_LOW;
-	}
-
-	return FBTFT_GPIO_NO_MATCH;
-}
-
 static int adafruit18fb_verify_gpios(struct fbtft_par *par)
 {
 	fbtft_dev_dbg(DEBUG_VERIFY_GPIOS, par->info->device, "%s()\n", __func__);
@@ -256,7 +244,6 @@ static int __devinit adafruit18fb_probe(struct spi_device *spi)
 	fbtft_debug_init(par);
 	par->fbtftops.init_display = adafruit18fb_init_display;
 	par->fbtftops.register_backlight = fbtft_register_backlight;
-	par->fbtftops.request_gpios_match = adafruit18fb_request_gpios_match;
 	par->fbtftops.verify_gpios = adafruit18fb_verify_gpios;
 	par->fbtftops.write_data_command = fbtft_adafruit18fb_write_data_command8_bus8_slow;
 	if (spi_get_device_id(spi)->driver_data == 1) 

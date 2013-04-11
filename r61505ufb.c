@@ -249,23 +249,6 @@ static int r61505ufb_write_vmem(struct fbtft_par *par)
 	return ret;
 }
 
-static int r61505ufb_blank(struct fbtft_par *par, bool on)
-{
-	if (par->gpio.led[0] == -1)
-		return -EINVAL;
-
-	dev_dbg(par->info->device, "%s(%s)\n", __func__, on ? "on" : "off");
-
-	if (on)
-		/* Turn off backlight */
-		gpio_set_value(par->gpio.led[0], 0);
-	else
-		/* Turn on backlight */
-		gpio_set_value(par->gpio.led[0], 1);
-
-	return 0;
-}
-
 struct fbtft_display r61505ufb_display = {
 	.width = WIDTH,
 	.height = HEIGHT,
@@ -287,18 +270,15 @@ static int __devinit r61505ufb_probe(struct spi_device *spi)
 	par->spi = spi;
 	fbtft_debug_init(par);
 	par->fbtftops.init_display = r61505ufb_init_display;
+	par->fbtftops.register_backlight = fbtft_register_backlight;
 	par->fbtftops.request_gpios_match = r61505ufb_request_gpios_match;
 	par->fbtftops.verify_gpios = r61505ufb_verify_gpios;
-	par->fbtftops.blank = r61505ufb_blank;
 	par->fbtftops.set_addr_win = r61505ufb_set_addr_win;
 	par->fbtftops.write_vmem = r61505ufb_write_vmem;
 
 	ret = fbtft_register_framebuffer(info);
 	if (ret < 0)
 		goto out_release;
-
-	/* turn on backlight */
-	r61505ufb_blank(par, false);
 
 	return 0;
 

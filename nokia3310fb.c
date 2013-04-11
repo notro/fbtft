@@ -167,23 +167,6 @@ static int nokia3310fb_verify_gpios(struct fbtft_par *par)
 	return 0;
 }
 
-int nokia3310fb_blank(struct fbtft_par *par, bool on)
-{
-	if (par->gpio.led[0] == -1)
-		return -EINVAL;
-
-	fbtft_dev_dbg(DEBUG_BLANK, par->info->device, "%s(%s)\n", __func__, on ? "on" : "off");
-	
-	if (on)
-		/* Turn off backlight */
-		gpio_set_value(par->gpio.led[0], 0);
-	else
-		/* Turn on backlight */
-		gpio_set_value(par->gpio.led[0], 1);
-
-	return 0;
-}
-
 struct fbtft_display nokia3310fb_display = {
 	.width = WIDTH,
 	.height = HEIGHT,
@@ -227,15 +210,12 @@ static int __devinit nokia3310fb_probe(struct spi_device *spi)
 	par->fbtftops.request_gpios_match = nokia3310fb_request_gpios_match;
 	par->fbtftops.verify_gpios = nokia3310fb_verify_gpios;
 	par->fbtftops.init_display = nokia3310fb_init_display;
+	par->fbtftops.register_backlight = fbtft_register_backlight;
 	par->fbtftops.update_display = nokia3310fb_update_display;
-	par->fbtftops.blank = nokia3310fb_blank;
 
 	ret = fbtft_register_framebuffer(info);
 	if (ret < 0)
 		goto out_release;
-
-	/* turn on backlight */
-	nokia3310fb_blank(par, false);
 
 	return 0;
 
@@ -252,7 +232,11 @@ static int __devexit nokia3310fb_remove(struct spi_device *spi)
 	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &spi->dev, "%s()\n", __func__);
 
 	if (info) {
-		nokia3310fb_blank(info->par, true);   /* turn off backlight */
+		if (info->bl_dev) {
+			/* turn off backlight or else it will fade out */
+			info->bl_dev->props.power = FB_BLANK_POWERDOWN;
+			info->bl_dev->ops->update_status(info->bl_dev);
+		}
 		fbtft_unregister_framebuffer(info);
 		fbtft_framebuffer_release(info);
 	}

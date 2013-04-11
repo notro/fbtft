@@ -274,23 +274,6 @@ static unsigned long ili9341fb_request_gpios_match(struct fbtft_par *par, const 
     return FBTFT_GPIO_NO_MATCH;
 }
 
-int ili9341fb_blank(struct fbtft_par *par, bool on)
-{
-    if (par->gpio.led[0] == -1)
-        return -EINVAL;
-
-    dev_dbg(par->info->device, "%s(%s)\n", __func__, on ? "on" : "off");
-
-    if (on)
-        /* Turn off backlight */
-        gpio_set_value(par->gpio.led[0], 0);
-    else
-        /* Turn on backlight */
-        gpio_set_value(par->gpio.led[0], 1);
-
-    return 0;
-}
-
 struct fbtft_display adafruit22_display = {
     .width = WIDTH,
     .height = HEIGHT,
@@ -313,8 +296,8 @@ static int __devinit ili9341fb_probe(struct spi_device *spi)
     par->spi = spi;
     fbtft_debug_init(par);
     par->fbtftops.init_display = ili9341fb_init_display;
+    par->fbtftops.register_backlight = fbtft_register_backlight;
     par->fbtftops.request_gpios_match = ili9341fb_request_gpios_match;
-    par->fbtftops.blank = ili9341fb_blank;
     par->fbtftops.write_data_command = fbtft_write_data_command8_bus9;
     par->fbtftops.write_vmem = fbtft_write_vmem16_bus9;
     par->fbtftops.set_addr_win = ili9341fb_set_addr_win;
@@ -341,9 +324,6 @@ static int __devinit ili9341fb_probe(struct spi_device *spi)
     ret = fbtft_register_framebuffer(info);
     if (ret < 0)
         goto fbreg_fail;
-
-    /* turn on backlight */
-    ili9341fb_blank(par, false);
 
     return 0;
 

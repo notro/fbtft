@@ -304,7 +304,7 @@ void fbtft_update_display(struct fbtft_par *par)
 
 	// Sanity checks
 	if (par->dirty_lines_start > par->dirty_lines_end) {
-		dev_warn(par->info->device, 
+		fbtft_fbtft_dev_dbg(0xFFFFFFFF, par, par->info->device,
 			"%s: dirty_lines_start=%d is larger than dirty_lines_end=%d. Shouldn't happen, will do full display update\n", 
 			__func__, par->dirty_lines_start, par->dirty_lines_end);
 		par->dirty_lines_start = 0;

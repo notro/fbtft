@@ -30,6 +30,7 @@ static char *gpios[MAX_GPIOS] = { NULL, };
 static int gpios_num = 0;
 static unsigned fps = 0;
 static int txbuflen = 0;
+static unsigned verbose = 3;
 
 module_param(name, charp, 0);
 MODULE_PARM_DESC(name, "Devicename (required). name=list lists supported devices.");
@@ -47,6 +48,8 @@ module_param(fps, uint, 0);
 MODULE_PARM_DESC(fps, "Frames per second (used to override default)");
 module_param(txbuflen, int, 0);
 MODULE_PARM_DESC(txbuflen, "txbuflen (used to override default)");
+module_param(verbose, uint, 0);
+MODULE_PARM_DESC(fps, "0=silent, 0< show gpios, 1< show devices, 2< show devices before (default)");
 
 
 /* supported SPI displays */
@@ -279,11 +282,11 @@ static int __init spidevices_init(void)
 		}
 	}
 
-	/* print list of registered SPI devices */
-	pr_spi_devices();
+	if (verbose > 2)
+		pr_spi_devices(); /* print list of registered SPI devices */
 
-	/* print list of 'fb' platform devices */
-	pr_p_devices();
+	if (verbose > 2)
+		pr_p_devices(); /* print list of 'fb' platform devices */
 
 	if (name == NULL) {
 		pr_err(DRVNAME":  missing module parameter: 'name'\n");
@@ -367,20 +370,21 @@ static int __init spidevices_init(void)
 		return -EINVAL;
 	}
 
-	pr_info(DRVNAME":  GPIOS used by '%s':\n", name);
+	if (verbose)
+		pr_info(DRVNAME":  GPIOS used by '%s':\n", name);
 	gpio = pdata->gpios;
 	if (!gpio) {
 		pr_err(DRVNAME":  gpio is unexspectedly empty\n");
 		return -EINVAL;
 	}
-	while (gpio->name[0]) {
+	while (verbose && gpio->name[0]) {
 		pr_info(DRVNAME":    '%s' = GPIO%d\n", gpio->name, gpio->gpio);
 		gpio++;
 	}
 
-	if (spi_device)
+	if (spi_device && (verbose > 1))
 		pr_spi_devices();
-	if (p_device)
+	if (p_device && (verbose > 1))
 		pr_p_devices();
 
 	return 0;

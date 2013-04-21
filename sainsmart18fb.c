@@ -24,7 +24,6 @@
 
 #include <linux/module.h>
 #include <linux/kernel.h>
-#include <linux/errno.h>
 #include <linux/init.h>
 #include <linux/gpio.h>
 #include <linux/spi/spi.h>
@@ -35,177 +34,82 @@
 #define DRVNAME	    "sainsmart18fb"
 #define WIDTH       128
 #define HEIGHT      160
-#define BPP         16
-#define FPS			10
 #define TXBUFLEN	4*PAGE_SIZE
 
+
+/* Module Parameter: debug  (also available through sysfs) */
+MODULE_PARM_DEBUG;
 
 // ftp://imall.iteadstudio.com/IM120419001_ITDB02_1.8SP/DS_ST7735.pdf
 // https://github.com/johnmccombs/arduino-libraries/blob/master/ST7735/ST7735.cpp
 
 static int sainsmart18fb_init_display(struct fbtft_par *par)
 {
-	dev_dbg(par->info->device, "sainsmart18fb_init_display()\n");
+	fbtft_dev_dbg(DEBUG_INIT_DISPLAY, par->info->device, "%s()\n", __func__);
 
 	par->fbtftops.reset(par);
 
-	// SWRESET - Software reset
-	write_cmd(par, 0x01);
+	/* SWRESET - Software reset */
+	write_reg(par, 0x01);
 	mdelay(150);
 
-	// SLPOUT - Sleep out & booster on
-	write_cmd(par, 0x11);
+	/* SLPOUT - Sleep out & booster on */
+	write_reg(par, 0x11);
 	mdelay(500);
 
-	// FRMCTR1 - frame rate control - normal mode
-	write_cmd(par, 0xB1);
-	write_data(par, 0x01);	// frame rate = fosc / (1 x 2 + 40) * (LINE + 2C + 2D)
-	write_data(par, 0x2C);
-	write_data(par, 0x2D);
+	/* FRMCTR1 - frame rate control - normal mode */
+	write_reg(par, 0xB1, 0x01, 0x2C, 0x2D); /* frame rate = fosc / (1 x 2 + 40) * (LINE + 2C + 2D) */
 
-	// FRMCTR2 - frame rate control - idle mode
-	write_cmd(par, 0xB2);
-	write_data(par, 0x01);	// frame rate = fosc / (1 x 2 + 40) * (LINE + 2C + 2D)
-	write_data(par, 0x2C);
-	write_data(par, 0x2D);
+	/* FRMCTR2 - frame rate control - idle mode */
+	write_reg(par, 0xB2, 0x01, 0x2C, 0x2D); /* frame rate = fosc / (1 x 2 + 40) * (LINE + 2C + 2D) */
 
-	// FRMCTR1 - frame rate control - partial mode
-	write_cmd(par, 0xB3);
-	write_data(par, 0x01);	// dot inversion mode
-	write_data(par, 0x2C);
-	write_data(par, 0x2D);
-	write_data(par, 0x01);	// line inversion mode
-	write_data(par, 0x2C);
-	write_data(par, 0x2D);
+	/* FRMCTR1 - frame rate control - partial mode */
+	write_reg(par, 0xB3, 0x01, 0x2C, 0x2D, 0x01, 0x2C, 0x2D); /* dot inversion mode, line inversion mode */
 
-	// INVCTR - // display inversion control
-	write_cmd(par, 0xB4);
-	write_data(par, 0x07);	// no inversion
+	/* INVCTR - // display inversion control */
+	write_reg(par, 0xB4, 0x07);	/* no inversion */
 
-	// PWCTR1 - Power Control
-	write_cmd(par, 0xC0);
-	write_data(par, 0xA2);
-	write_data(par, 0x02);	// -4.6V
-	write_data(par, 0x84);	// AUTO mode
+	/* PWCTR1 - Power Control */
+	write_reg(par, 0xC0, 0xA2, 0x02, 0x84); /* -4.6V, AUTO mode */
 
-	// PWCTR2 - Power Control
-	write_cmd(par, 0xC1);
-	write_data(par, 0xC5);	// VGH25 = 2.4C VGSEL = -10 VGH = 3 * AVDD
+	/* PWCTR2 - Power Control */
+	write_reg(par, 0xC1, 0xC5);	/* VGH25 = 2.4C VGSEL = -10 VGH = 3 * AVDD */
 
-	// PWCTR3 - Power Control
-	write_cmd(par, 0xC2);
-	write_data(par, 0x0A);	// Opamp current small
-	write_data(par, 0x00);	// Boost frequency
+	/* PWCTR3 - Power Control */
+	write_reg(par, 0xC2, 0x0A, 0x00); /* Opamp current small, Boost frequency */
 
-	// PWCTR4 - Power Control
-	write_cmd(par, 0xC3);
-	write_data(par, 0x8A);	// BCLK/2, Opamp current small & Medium low
-	write_data(par, 0x2A);
+	/* PWCTR4 - Power Control */
+	write_reg(par, 0xC3, 0x8A, 0x2A); /* BCLK/2, Opamp current small & Medium low */
 
-	// PWCTR5 - Power Control
-	write_cmd(par, 0xC4);
-	write_data(par, 0x8A);
-	write_data(par, 0xEE);
+	/* PWCTR5 - Power Control */
+	write_reg(par, 0xC4, 0x8A, 0xEE);
 
-	// VMCTR1 - Power Control
-	write_cmd(par, 0xC5);
-	write_data(par, 0x0E);
+	/* VMCTR1 - Power Control */
+	write_reg(par, 0xC5, 0x0E);
 
-	// INVOFF - Display inversion off
-	write_cmd(par, 0x20);
+	/* INVOFF - Display inversion off */
+	write_reg(par, 0x20);
 
-	// MADCTL - Memory data access control
-	write_cmd(par, 0x36);
-	write_data(par, 0xC8);	// row address/col address, bottom to top refresh
+	/* MADCTL - Memory data access control */
+	write_reg(par, 0x36, 0xC8);	/* row address/col address, bottom to top refresh */
 
-	// COLMOD - Interface pixel format
-	write_cmd(par, 0x3A);
-	write_data(par, 0x05);
+	/* COLMOD - Interface pixel format */
+	write_reg(par, 0x3A, 0x05);
 
-/*
-	// GMCTRP1
-	write_cmd(par, 0xE0);
-	write_data(par, 0x02);
-	write_data(par, 0x1c);
-	write_data(par, 0x07);
-	write_data(par, 0x12);
-	write_data(par, 0x37);
-	write_data(par, 0x32);
-	write_data(par, 0x29);
-	write_data(par, 0x2d);
-	write_data(par, 0x29);
-	write_data(par, 0x25);
-	write_data(par, 0x2b);
-	write_data(par, 0x39);
-	write_data(par, 0x00);
-	write_data(par, 0x01);
-	write_data(par, 0x03);
-	write_data(par, 0x10);
-
-	// GMCTRN1
-	write_cmd(par, 0xE1);
-	write_data(par, 0x03);
-	write_data(par, 0x1d);
-	write_data(par, 0x07);
-	write_data(par, 0x06);
-	write_data(par, 0x2e);
-	write_data(par, 0x2c);
-	write_data(par, 0x29);
-	write_data(par, 0x2d);
-	write_data(par, 0x2e);
-	write_data(par, 0x2e);
-	write_data(par, 0x37);
-	write_data(par, 0x3f);
-	write_data(par, 0x00);
-	write_data(par, 0x00);
-	write_data(par, 0x02);
-	write_data(par, 0x10);
-*/
-
-	// GMCTRP1 - Gamma control
-	write_cmd(par, 0xE0);
-	write_data(par, 0x0f);
-	write_data(par, 0x1a);
-	write_data(par, 0x0f);
-	write_data(par, 0x18);
-	write_data(par, 0x2f);
-	write_data(par, 0x28);
-	write_data(par, 0x20);
-	write_data(par, 0x22);
-	write_data(par, 0x1f);
-	write_data(par, 0x1b);
-	write_data(par, 0x23);
-	write_data(par, 0x37);
-	write_data(par, 0x00);
-	write_data(par, 0x07);
-	write_data(par, 0x02);
-	write_data(par, 0x10);
+	/* GMCTRP1 - Gamma control */
+	write_reg(par, 0xE0, 0x0f, 0x1a, 0x0f, 0x18, 0x2f, 0x28, 0x20, 0x22, 0x1f, 0x1b, 0x23, 0x37, 0x00, 0x07, 0x02, 0x10);
+/*	write_reg(par, 0xE0, 0x02, 0x1c, 0x07, 0x12, 0x37, 0x32, 0x29, 0x2d, 0x29, 0x25, 0x2b, 0x39, 0x00, 0x01, 0x03, 0x10); */
   
-	// GMCTRN1 - Gamma control
-	write_cmd(par, 0xE1);
-	write_data(par, 0x0f); 
-	write_data(par, 0x1b); 
-	write_data(par, 0x0f); 
-	write_data(par, 0x17); 
-	write_data(par, 0x33); 
-	write_data(par, 0x2c); 
-	write_data(par, 0x29); 
-	write_data(par, 0x2e); 
-	write_data(par, 0x30); 
-	write_data(par, 0x30); 
-	write_data(par, 0x39); 
-	write_data(par, 0x3f); 
-	write_data(par, 0x00); 
-	write_data(par, 0x07); 
-	write_data(par, 0x03); 
-	write_data(par, 0x10); 
+	/* GMCTRN1 - Gamma control */
+	write_reg(par, 0xE1, 0x0f , 0x1b , 0x0f , 0x17 , 0x33 , 0x2c , 0x29 , 0x2e , 0x30 , 0x30 , 0x39 , 0x3f , 0x00 , 0x07 , 0x03 , 0x10); 
+/*	write_reg(par, 0xE1, 0x03, 0x1d, 0x07, 0x06, 0x2e, 0x2c, 0x29, 0x2d, 0x2e, 0x2e, 0x37, 0x3f, 0x00, 0x00, 0x02, 0x10); */
 
-	// DISPON - Display On
-	write_cmd(par, 0x29);
+	/* DISPON - Display On */
+	write_reg(par, 0x29);
 	mdelay(100);
 
-	// NORON - Partial off (Normal)
-	write_cmd(par, 0x13);
+	/* NORON - Partial off (Normal) */
+	write_reg(par, 0x13);
 	mdelay(10);
 
 	return 0;
@@ -228,7 +132,7 @@ static int sainsmart18fb_write_vmem(struct fbtft_par *par)
 	remain = len;
 	vmem16 = (u16 *)(par->info->screen_base + offset);
 
-	dev_dbg(par->info->device, "sainsmart18fb_write_vmem: offset=%d, len=%d\n", offset, len);
+	fbtft_fbtft_dev_dbg(DEBUG_WRITE_VMEM, par, par->info->device, "%s: offset=%d, len=%d\n", __func__, offset, len);
 
 	if (par->gpio.dc != -1)
 		gpio_set_value(par->gpio.dc, 1);
@@ -269,6 +173,8 @@ static int sainsmart18fb_write_vmem(struct fbtft_par *par)
 
 static int sainsmart18fb_verify_gpios(struct fbtft_par *par)
 {
+	fbtft_dev_dbg(DEBUG_VERIFY_GPIOS, par->info->device, "%s()\n", __func__);
+
 	if (par->gpio.dc < 0) {
 		dev_err(par->info->device, "Missing info about 'dc' gpio. Aborting.\n");
 		return -EINVAL;
@@ -280,8 +186,6 @@ static int sainsmart18fb_verify_gpios(struct fbtft_par *par)
 struct fbtft_display sainsmart18_display = {
 	.width = WIDTH,
 	.height = HEIGHT,
-	.bpp = BPP,
-	.fps = FPS,
 	.txbuflen = TXBUFLEN,
 };
 
@@ -291,7 +195,7 @@ static int __devinit sainsmart18fb_probe(struct spi_device *spi)
 	struct fbtft_par *par;
 	int ret;
 
-	dev_dbg(&spi->dev, "probe()\n");
+	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &spi->dev, "%s()\n", __func__);
 
 	info = fbtft_framebuffer_alloc(&sainsmart18_display, &spi->dev);
 	if (!info)
@@ -299,6 +203,7 @@ static int __devinit sainsmart18fb_probe(struct spi_device *spi)
 
 	par = info->par;
 	par->spi = spi;
+	fbtft_debug_init(par);
 	par->fbtftops.init_display = sainsmart18fb_init_display;
 	par->fbtftops.write_vmem = sainsmart18fb_write_vmem;
 	par->fbtftops.verify_gpios = sainsmart18fb_verify_gpios;
@@ -319,7 +224,7 @@ static int __devexit sainsmart18fb_remove(struct spi_device *spi)
 {
 	struct fb_info *info = spi_get_drvdata(spi);
 
-	dev_dbg(&spi->dev, "remove()\n");
+	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &spi->dev, "%s()\n", __func__);
 
 	if (info) {
 		fbtft_unregister_framebuffer(info);
@@ -340,13 +245,13 @@ static struct spi_driver sainsmart18fb_driver = {
 
 static int __init sainsmart18fb_init(void)
 {
-	pr_debug("\n\n"DRVNAME" - init\n");
+	fbtft_pr_debug("\n\n"DRVNAME": %s()\n", __func__);
 	return spi_register_driver(&sainsmart18fb_driver);
 }
 
 static void __exit sainsmart18fb_exit(void)
 {
-	pr_debug(DRVNAME" - exit\n");
+	fbtft_pr_debug(DRVNAME": %s()\n", __func__);
 	spi_unregister_driver(&sainsmart18fb_driver);
 }
 

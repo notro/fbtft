@@ -2,12 +2,80 @@
 #include <linux/spi/spi.h>
 #include "fbtft.h"
 
+
+
+
+/**********************************************************************************
+ *
+ *   void (*write_reg)(struct fbtft_par *par, int len, ...);
+ *
+ **********************************************************************************/
+
+#define define_fbtft_write_reg(func, type, modifier)                                                             \
+void func(struct fbtft_par *par, int len, ...)                                                                   \
+{                                                                                                                \
+    va_list args;                                                                                                \
+    int i, ret;                                                                                                  \
+    type *buf = (type *)par->buf;                                                                                \
+                                                                                                                 \
+    if (*par->debug & DEBUG_WRITE_DATA_COMMAND) {                                                                \
+        va_start(args, len);                                                                                     \
+        for (i=0;i<len;i++) {                                                                                    \
+            buf[i] = (type)va_arg(args, unsigned int);                                                           \
+        }                                                                                                        \
+        va_end(args);                                                                                            \
+        fbtft_dev_dbg_hex(DEBUG_WRITE_DATA_COMMAND, par, par->info->device, type, buf, len, "%s: ", __func__);   \
+    }                                                                                                            \
+                                                                                                                 \
+    va_start(args, len);                                                                                         \
+                                                                                                                 \
+    *buf = modifier((type)va_arg(args, unsigned int));                                                           \
+    if (par->gpio.dc != -1)                                                                                      \
+        gpio_set_value(par->gpio.dc, 0);                                                                         \
+    ret = par->fbtftops.write(par, par->buf, sizeof(type));                                                      \
+    if (ret < 0) {                                                                                               \
+        va_end(args);                                                                                            \
+        dev_err(par->info->device, "%s: write() failed and returned %d\n", __func__, ret);                       \
+        return;                                                                                                  \
+    }                                                                                                            \
+    len--;                                                                                                       \
+                                                                                                                 \
+    if (len) {                                                                                                   \
+        i = len;                                                                                                 \
+        while (i--) {                                                                                            \
+            *buf++ = modifier((type)va_arg(args, unsigned int));                                                 \
+        }                                                                                                        \
+        if (par->gpio.dc != -1)                                                                                  \
+            gpio_set_value(par->gpio.dc, 1);                                                                     \
+            ret = par->fbtftops.write(par, par->buf, len * sizeof(type));                                        \
+        if (ret < 0) {                                                                                           \
+            va_end(args);                                                                                        \
+            dev_err(par->info->device, "%s: write() failed and returned %d\n", __func__, ret);                   \
+            return;                                                                                              \
+        }                                                                                                        \
+    }                                                                                                            \
+    va_end(args);                                                                                                \
+}                                                                                                                \
+EXPORT_SYMBOL(func);
+
+define_fbtft_write_reg(fbtft_write_reg8_bus8, u8, )
+define_fbtft_write_reg(fbtft_write_reg16_bus8, u16, cpu_to_be16)
+
+
+
+
+/**********************************************************************************
+ *
+ *   void (*write_data_command)(struct fbtft_par *par, unsigned dc, u32 val);
+ *
+ **********************************************************************************/
+
 /* 8-bit register over 8-bit databus */
 void fbtft_write_data_command8_bus8(struct fbtft_par *par, unsigned dc, u32 val)
 {
 	int ret;
 
-	dev_dbg(par->info->device, "%s: dc=%d, val=0x%X\n", __func__, dc, val);
+	fbtft_fbtft_dev_dbg(DEBUG_WRITE_DATA_COMMAND, par, par->info->device, "%s: dc=%d, val=0x%X\n", __func__, dc, val);
 
 	if (par->gpio.dc != -1)
 		gpio_set_value(par->gpio.dc, dc);
@@ -24,7 +92,7 @@ void fbtft_write_data_command8_bus9(struct fbtft_par *par, unsigned dc, u32 val)
 {
 	int ret;
 
-	dev_dbg(par->info->device, "%s: dc=%d, val=0x%X\n", __func__, dc, val);
+	fbtft_fbtft_dev_dbg(DEBUG_WRITE_DATA_COMMAND, par, par->info->device, "%s: dc=%d, val=0x%X\n", __func__, dc, val);
 
 	*(u16 *)par->buf = dc ? 0x100 | (u8)val : (u8)val;
 
@@ -35,14 +103,44 @@ void fbtft_write_data_command8_bus9(struct fbtft_par *par, unsigned dc, u32 val)
 
 void fbtft_write_data_command16_bus16(struct fbtft_par *par, unsigned dc, u32 val)
 {
-	dev_err(par->info->device, "%s: function not implemented\n", __func__);
+	int ret;
+
+	fbtft_fbtft_dev_dbg(DEBUG_WRITE_DATA_COMMAND, par, par->info->device, "%s: dc=%d, val=0x%X\n", __func__, dc, val);
+
+	if (par->gpio.dc != -1)
+		gpio_set_value(par->gpio.dc, dc);
+
+	*(u16 *)par->buf = (u16)val;
+
+	ret = par->fbtftops.write(par, par->buf, 2);
+	if (ret < 0)
+		dev_err(par->info->device, "%s: dc=%d, val=0x%X, failed with status %d\n", __func__, dc, val, ret);
 }
 
 void fbtft_write_data_command16_bus8(struct fbtft_par *par, unsigned dc, u32 val)
 {
-	dev_err(par->info->device, "%s: function not implemented\n", __func__);
+	int ret;
+
+	fbtft_fbtft_dev_dbg(DEBUG_WRITE_DATA_COMMAND, par, par->info->device, "%s: dc=%d, val=0x%X\n", __func__, dc, val);
+
+	if (par->gpio.dc != -1)
+		gpio_set_value(par->gpio.dc, dc);
+
+	*(u16 *)par->buf = cpu_to_be16((u16)val);
+
+	ret = par->fbtftops.write(par, par->buf, 2);
+	if (ret < 0)
+		dev_err(par->info->device, "%s: dc=%d, val=0x%X, failed with status %d\n", __func__, dc, val, ret);
 }
 
+
+
+
+/**********************************************************************************
+ *
+ *   int (*write_vmem)(struct fbtft_par *par);
+ *
+ **********************************************************************************/
 
 /* 16 bit pixel over 8-bit databus */
 int fbtft_write_vmem16_bus8(struct fbtft_par *par)
@@ -61,7 +159,7 @@ int fbtft_write_vmem16_bus8(struct fbtft_par *par)
 	remain = len;
 	vmem8 = par->info->screen_base + offset;
 
-	dev_dbg(par->info->device, "%s: offset=%d, len=%d\n", __func__, offset, len);
+	fbtft_fbtft_dev_dbg(DEBUG_WRITE_VMEM, par, par->info->device, "%s: offset=%d, len=%d\n", __func__, offset, len);
 
 	if (par->gpio.dc != -1)
 		gpio_set_value(par->gpio.dc, 1);
@@ -118,7 +216,7 @@ int fbtft_write_vmem16_bus9(struct fbtft_par *par)
 	remain = len;
 	vmem8 = par->info->screen_base + offset;
 
-	dev_dbg(par->info->device, "%s: offset=%d, len=%d\n", __func__, offset, len);
+	fbtft_fbtft_dev_dbg(DEBUG_WRITE_VMEM, par, par->info->device, "%s: offset=%d, len=%d\n", __func__, offset, len);
 
 	tx_array_size = par->txbuf.len / 2;
 

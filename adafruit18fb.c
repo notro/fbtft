@@ -22,7 +22,6 @@
 
 #include <linux/module.h>
 #include <linux/kernel.h>
-#include <linux/errno.h>
 #include <linux/init.h>
 #include <linux/gpio.h>
 #include <linux/spi/spi.h>
@@ -33,13 +32,14 @@
 #define DRVNAME	    "adafruit18fb"
 #define WIDTH       128
 #define HEIGHT      160
-#define BPP         16
-#define FPS			10
 
+
+/* Module Parameter: debug  (also available through sysfs) */
+MODULE_PARM_DEBUG;
 
 static int adafruit18fb_init_display(struct fbtft_par *par)
 {
-	dev_dbg(par->info->device, "adafruit18fb_init_display()\n");
+	fbtft_dev_dbg(DEBUG_INIT_DISPLAY, par->info->device, "%s()\n", __func__);
 
 	par->fbtftops.reset(par);
 
@@ -165,18 +165,10 @@ static int adafruit18fb_init_display(struct fbtft_par *par)
 	return 0;
 }
 
-static unsigned long adafruit18fb_request_gpios_match(struct fbtft_par *par, const struct fbtft_gpio *gpio)
-{
-	if (strcasecmp(gpio->name, "led") == 0) {
-		par->gpio.led[0] = gpio->gpio;
-		return GPIOF_OUT_INIT_LOW;
-	}
-
-	return FBTFT_GPIO_NO_MATCH;
-}
-
 static int adafruit18fb_verify_gpios(struct fbtft_par *par)
 {
+	fbtft_dev_dbg(DEBUG_VERIFY_GPIOS, par->info->device, "%s()\n", __func__);
+
 	if (par->gpio.dc < 0) {
 		dev_err(par->info->device, "Missing info about 'dc' gpio. Aborting.\n");
 		return -EINVAL;
@@ -195,7 +187,7 @@ static void fbtft_adafruit18fb_write_data_command8_bus8_slow(struct fbtft_par *p
 		};
 	struct spi_message	m;
 
-	dev_dbg(par->info->device, "%s: dc=%d, val=0x%X\n", __func__, dc, val);
+	fbtft_fbtft_dev_dbg(DEBUG_WRITE_DATA_COMMAND, par, par->info->device, "%s: dc=%d, val=0x%X\n", __func__, dc, val);
 
 	if (par->gpio.dc != -1)
 		gpio_set_value(par->gpio.dc, dc);
@@ -213,7 +205,7 @@ static void fbtft_adafruit18fb_write_data_command8_bus8_slow(struct fbtft_par *p
 /* special for Green tab model */
 static void adafruit18fb_set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 {
-	dev_dbg(par->info->device, "%s(%d, %d, %d, %d)\n", __func__, xs, ys, xe, ye);
+	fbtft_dev_dbg(DEBUG_SET_ADDR_WIN, par->info->device, "%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
 
 	write_cmd(par, FBTFT_CASET);
 	write_data(par, 0x00);
@@ -230,28 +222,9 @@ static void adafruit18fb_set_addr_win(struct fbtft_par *par, int xs, int ys, int
 	write_cmd(par, FBTFT_RAMWR);
 }
 
-static int adafruit18fb_blank(struct fbtft_par *par, bool on)
-{
-	if (par->gpio.led[0] == -1)
-		return -EINVAL;
-
-	dev_dbg(par->info->device, "%s(%s)\n", __func__, on ? "on" : "off");
-	
-	if (on)
-		/* Turn off backlight */
-		gpio_set_value(par->gpio.led[0], 0);
-	else
-		/* Turn on backlight */
-		gpio_set_value(par->gpio.led[0], 1);
-
-	return 0;
-}
-
 struct fbtft_display adafruit18fb_display = {
 	.width = WIDTH,
 	.height = HEIGHT,
-	.bpp = BPP,
-	.fps = FPS,
 };
 
 static int __devinit adafruit18fb_probe(struct spi_device *spi)
@@ -260,7 +233,7 @@ static int __devinit adafruit18fb_probe(struct spi_device *spi)
 	struct fbtft_par *par;
 	int ret;
 
-	dev_dbg(&spi->dev, "probe()\n");
+	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &spi->dev, "%s()\n", __func__);
 
 	info = fbtft_framebuffer_alloc(&adafruit18fb_display, &spi->dev);
 	if (!info)
@@ -268,20 +241,17 @@ static int __devinit adafruit18fb_probe(struct spi_device *spi)
 
 	par = info->par;
 	par->spi = spi;
+	fbtft_debug_init(par);
 	par->fbtftops.init_display = adafruit18fb_init_display;
-	par->fbtftops.request_gpios_match = adafruit18fb_request_gpios_match;
+	par->fbtftops.register_backlight = fbtft_register_backlight;
 	par->fbtftops.verify_gpios = adafruit18fb_verify_gpios;
 	par->fbtftops.write_data_command = fbtft_adafruit18fb_write_data_command8_bus8_slow;
-	par->fbtftops.blank = adafruit18fb_blank;
 	if (spi_get_device_id(spi)->driver_data == 1) 
 		par->fbtftops.set_addr_win = adafruit18fb_set_addr_win; /* Green tab model */
 
 	ret = fbtft_register_framebuffer(info);
 	if (ret < 0)
 		goto out_release;
-
-	/* turn on backlight */
-	adafruit18fb_blank(par, false);
 
 	return 0;
 
@@ -295,7 +265,7 @@ static int __devexit adafruit18fb_remove(struct spi_device *spi)
 {
 	struct fb_info *info = spi_get_drvdata(spi);
 
-	dev_dbg(&spi->dev, "remove()\n");
+	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &spi->dev, "%s()\n", __func__);
 
 	if (info) {
 		fbtft_unregister_framebuffer(info);
@@ -325,13 +295,13 @@ static struct spi_driver adafruit18fb_driver = {
 
 static int __init adafruit18fb_init(void)
 {
-	pr_debug("\n\n"DRVNAME" - init\n");
+	fbtft_pr_debug("\n\n"DRVNAME": %s()\n", __func__);
 	return spi_register_driver(&adafruit18fb_driver);
 }
 
 static void __exit adafruit18fb_exit(void)
 {
-	pr_debug(DRVNAME" - exit\n");
+	fbtft_pr_debug(DRVNAME": %s()\n", __func__);
 	spi_unregister_driver(&adafruit18fb_driver);
 }
 

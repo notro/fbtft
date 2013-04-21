@@ -52,6 +52,7 @@ struct fbtft_ops {
 	int (*write)(struct fbtft_par *par, void *buf, size_t len);
 	int (*write_vmem)(struct fbtft_par *par);
 	void (*write_data_command)(struct fbtft_par *par, unsigned dc, u32 val);
+	void (*write_reg)(struct fbtft_par *par, int len, ...);
 
 	void (*set_addr_win)(struct fbtft_par *par, int xs, int ys, int xe, int ye);
 	void (*reset)(struct fbtft_par *par);
@@ -64,6 +65,9 @@ struct fbtft_ops {
 	int (*request_gpios)(struct fbtft_par *par);
 	void (*free_gpios)(struct fbtft_par *par);
 	int (*verify_gpios)(struct fbtft_par *par);
+
+	void (*register_backlight)(struct fbtft_par *par);
+	void (*unregister_backlight)(struct fbtft_par *par);
 };
 
 struct fbtft_display {
@@ -101,9 +105,14 @@ struct fbtft_par {
 		int led[16];
 		int aux[16];
 	} gpio;
+	unsigned long *debug;
+	unsigned long current_debug;
+	bool first_update_done;
 	void *extra;
 };
 
+#define NUMARGS(...)  (sizeof((int[]){__VA_ARGS__})/sizeof(int))
+#define write_reg(par, ...)  par->fbtftops.write_reg(par, NUMARGS(__VA_ARGS__), __VA_ARGS__)
 #define write_cmd(par, val)  par->fbtftops.write_data_command(par, 0, val)
 #define write_data(par, val) par->fbtftops.write_data_command(par, 1, val)
 
@@ -112,20 +121,111 @@ extern struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, st
 extern void fbtft_framebuffer_release(struct fb_info *info);
 extern int fbtft_register_framebuffer(struct fb_info *fb_info);
 extern int fbtft_unregister_framebuffer(struct fb_info *fb_info);
+extern void fbtft_register_backlight(struct fbtft_par *par);
+extern void fbtft_unregister_backlight(struct fbtft_par *par);
 
 /* fbtft-io.c */
 extern int fbtft_write_spi(struct fbtft_par *par, void *buf, size_t len);
-extern int fbtft_write_gpio8(struct fbtft_par *par, void *buf, size_t len);
-extern int fbtft_write_gpio16(struct fbtft_par *par, void *buf, size_t len);
+extern int fbtft_write_gpio8_wr(struct fbtft_par *par, void *buf, size_t len);
+extern int fbtft_write_gpio16_wr(struct fbtft_par *par, void *buf, size_t len);
 
 /* fbtft-bus.c */
 extern int fbtft_write_vmem8_bus8(struct fbtft_par *par);
 extern int fbtft_write_vmem16_bus16(struct fbtft_par *par);
 extern int fbtft_write_vmem16_bus8(struct fbtft_par *par);
 extern int fbtft_write_vmem16_bus9(struct fbtft_par *par);
+extern void fbtft_write_reg8_bus8(struct fbtft_par *par, int len, ...);
+extern void fbtft_write_reg16_bus8(struct fbtft_par *par, int len, ...);
 extern void fbtft_write_data_command8_bus8(struct fbtft_par *par, unsigned dc, u32 val);
 extern void fbtft_write_data_command8_bus9(struct fbtft_par *par, unsigned dc, u32 val);
 extern void fbtft_write_data_command16_bus16(struct fbtft_par *par, unsigned dc, u32 val);
 extern void fbtft_write_data_command16_bus8(struct fbtft_par *par, unsigned dc, u32 val);
+
+
+/* Debug macros */
+
+/* shorthand debug levels */
+#define DEBUG_LEVEL_1               DEBUG_REQUEST_GPIOS
+#define DEBUG_LEVEL_2               (DEBUG_LEVEL_1 | DEBUG_DRIVER_INIT_FUNCTIONS | DEBUG_TIME_FIRST_UPDATE)
+#define DEBUG_LEVEL_3               (DEBUG_LEVEL_2 | DEBUG_RESET | DEBUG_INIT_DISPLAY | DEBUG_BLANK | DEBUG_FREE_GPIOS | DEBUG_VERIFY_GPIOS | DEBUG_BACKLIGHT)
+#define DEBUG_LEVEL_4               (DEBUG_LEVEL_2 | DEBUG_FB_READ | DEBUG_FB_WRITE | DEBUG_FB_FILLRECT | DEBUG_FB_COPYAREA | DEBUG_FB_IMAGEBLIT | DEBUG_FB_BLANK)
+#define DEBUG_LEVEL_5               (DEBUG_LEVEL_3 | DEBUG_UPDATE_DISPLAY)
+#define DEBUG_LEVEL_6               (DEBUG_LEVEL_4 | DEBUG_LEVEL_5)
+#define DEBUG_LEVEL_7               0xFFFFFFFF
+
+#define DEBUG_DRIVER_INIT_FUNCTIONS (1<<3)
+#define DEBUG_TIME_FIRST_UPDATE     (1<<4)
+#define DEBUG_TIME_EACH_UPDATE      (1<<5)
+#define DEBUG_DEFERRED_IO           (1<<6)
+#define DEBUG_FBTFT_INIT_FUNCTIONS  (1<<7)
+
+/* fbops */
+#define DEBUG_FB_READ               (1<<8)   /* not in use */
+#define DEBUG_FB_WRITE              (1<<9)
+#define DEBUG_FB_FILLRECT           (1<<10)
+#define DEBUG_FB_COPYAREA           (1<<11)
+#define DEBUG_FB_IMAGEBLIT          (1<<12)
+#define DEBUG_FB_SETCOLREG          (1<<13)
+#define DEBUG_FB_BLANK              (1<<14)
+
+/* fbtftops */
+#define DEBUG_BACKLIGHT             (1<<17)
+#define DEBUG_READ                  (1<<18)  /* not in use */
+#define DEBUG_WRITE                 (1<<19)
+#define DEBUG_WRITE_VMEM            (1<<20)
+#define DEBUG_WRITE_DATA_COMMAND    (1<<21)
+#define DEBUG_SET_ADDR_WIN          (1<<22)
+#define DEBUG_RESET                 (1<<23)
+#define DEBUG_MKDIRTY               (1<<24)  /* not in use */
+#define DEBUG_UPDATE_DISPLAY        (1<<25)
+#define DEBUG_INIT_DISPLAY          (1<<26)
+#define DEBUG_BLANK                 (1<<27)
+#define DEBUG_REQUEST_GPIOS         (1<<28)
+#define DEBUG_FREE_GPIOS            (1<<29)
+#define DEBUG_REQUEST_GPIOS_MATCH   (1<<30)
+#define DEBUG_VERIFY_GPIOS          (1<<31)
+
+
+#define MODULE_PARM_DEBUG                                                                  \
+        static unsigned long debug = 0;                                                    \
+        module_param(debug, ulong , 0664);                                                 \
+        MODULE_PARM_DESC(debug,"level: 0-7 (the remaining 29 bits is for advanced usage)");
+
+#define fbtft_debug_init(par) \
+        par->debug = &debug
+
+#define fbtft_debug_expand_shorthand(debug)       \
+		switch (*debug & 0b111) {                 \
+		case 1:  *debug |= DEBUG_LEVEL_1; break;  \
+		case 2:  *debug |= DEBUG_LEVEL_2; break;  \
+		case 3:  *debug |= DEBUG_LEVEL_3; break;  \
+		case 4:  *debug |= DEBUG_LEVEL_4; break;  \
+		case 5:  *debug |= DEBUG_LEVEL_5; break;  \
+		case 6:  *debug |= DEBUG_LEVEL_6; break;  \
+		case 7:  *debug = 0xFFFFFFFF; break;      \
+		}
+
+#define fbtft_pr_debug(fmt, ...) \
+        fbtft_debug_expand_shorthand(&debug); \
+        if (debug & DEBUG_DRIVER_INIT_FUNCTIONS) { pr_info(fmt, ##__VA_ARGS__); }
+
+/* used in drivers */
+#define fbtft_dev_dbg(level, dev, format, arg...) \
+        if (debug & level) { dev_info(dev, format, ##arg); }
+
+/* used in the fbtft module */
+#define fbtft_fbtft_dev_dbg(level, par, dev, format, arg...) \
+        if (*par->debug & level) { dev_info(dev, format, ##arg); }
+
+/* only used in the fbtft module */
+extern void _fbtft_dev_dbg_hex(const struct device *dev, int groupsize, void *buf, size_t len, const char *fmt, ...);
+#define fbtft_dev_dbg_hex(level, par, dev, type, buf, num, format, arg...) \
+        if (*par->debug & level) { _fbtft_dev_dbg_hex(dev, sizeof(type), buf, num * sizeof(type), format, ##arg); }
+
+#define fbtft_debug_sync_value(par)                        \
+        if (*par->debug != par->current_debug) {           \
+            fbtft_debug_expand_shorthand(par->debug)       \
+            par->current_debug = *par->debug;              \
+        }
 
 #endif /* __LINUX_FBTFT_H */

@@ -1,0 +1,341 @@
+/*
+ * FB driver for the ITDB02-2.8 LCD display
+ *
+ * Copyright (C) 2013 Noralf Tronnes
+ *
+ * Based on ili9325.c by Jeroen Domburg
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ */
+
+#include <linux/module.h>
+#include <linux/kernel.h>
+#include <linux/init.h>
+#include <linux/gpio.h>
+#include <linux/delay.h>
+
+#include "fbtft.h"
+
+#define DRVNAME     "itdb28fb"
+#define WIDTH       240
+#define HEIGHT      320
+#define BPP         16
+#define FPS         20
+
+
+/* Module Parameter: debug  (also available through sysfs) */
+MODULE_PARM_DEBUG;
+
+/* Module Parameter: rotate */
+static unsigned rotate = 0;
+module_param(rotate, uint, 0);
+MODULE_PARM_DESC(rotate, "Rotate display (0=normal, 1=clockwise, 2=upside down, 3=counterclockwise)");
+
+
+/* Power supply configuration */
+#define ILI9325_BT  6        /* VGL=Vci*4 , VGH=Vci*4 */
+#define ILI9325_VC  0b011    /* Vci1=Vci*0.80 */
+#define ILI9325_VRH 0b1101   /* VREG1OUT=Vci*1.85 */
+#define ILI9325_VDV 0b10010  /* VCOMH amplitude=VREG1OUT*0.98 */
+#define ILI9325_VCM 0b001010 /* VCOMH=VREG1OUT*0.735 */
+
+/* 
+Verify that this configuration is within the Voltage limits
+
+Display module configuration: Vcc = IOVcc = Vci = 3.3V
+
+ Voltages
+----------
+Vci                                =   3.3
+Vci1           =  Vci * 0.80       =   2.64
+DDVDH          =  Vci1 * 2         =   5.28
+VCL            = -Vci1             =  -2.64
+VREG1OUT       =  Vci * 1.85       =   4.88
+VCOMH          =  VREG1OUT * 0.735 =   3.59
+VCOM amplitude =  VREG1OUT * 0.98  =   4.79
+VGH            =  Vci * 4          =  13.2
+VGL            = -Vci * 4          = -13.2
+
+ Limits
+--------
+Power supplies
+1.65 < IOVcc < 3.30   =>  1.65 < 3.3 < 3.30
+2.40 < Vcc   < 3.30   =>  2.40 < 3.3 < 3.30
+2.50 < Vci   < 3.30   =>  2.50 < 3.3 < 3.30
+
+Source/VCOM power supply voltage
+ 4.50 < DDVDH < 6.0   =>  4.50 <  5.28 <  6.0
+-3.0  < VCL   < -2.0  =>  -3.0 < -2.64 < -2.0
+VCI - VCL < 6.0       =>  5.94 < 6.0
+
+Gate driver output voltage
+ 10  < VGH   < 20     =>   10 <  13.2  < 20
+-15  < VGL   < -5     =>  -15 < -13.2  < -5
+VGH - VGL < 32        =>   26.4 < 32
+
+VCOM driver output voltage
+VCOMH - VCOML < 6.0   =>  4.79 < 6.0
+*/
+
+static int itdb28fb_init_display(struct fbtft_par *par)
+{
+	fbtft_dev_dbg(DEBUG_INIT_DISPLAY, par->info->device, "%s()\n", __func__);
+
+	par->fbtftops.reset(par);
+
+	/* Activate chip */
+	gpio_set_value(par->gpio.cs, 0);
+
+	/* Initialization sequence from ILI9325 Application Notes */
+
+	/* ----------- Start Initial Sequence ----------- */
+	write_reg(par, 0x00E3, 0x3008); /* Set internal timing */
+	write_reg(par, 0x00E7, 0x0012); /* Set internal timing */
+	write_reg(par, 0x00EF, 0x1231); /* Set internal timing */
+	write_reg(par, 0x0001, 0x0100); /* set SS and SM bit */
+	write_reg(par, 0x0002, 0x0700); /* set 1 line inversion */
+	switch (rotate) {
+	/* AM: GRAM update direction: horiz/vert. I/D: Inc/Dec address counter */
+	case 0:
+		write_reg(par, 0x03, 0x1030);
+		break;
+	case 2:
+		write_reg(par, 0x03, 0x1000);
+		break;
+	case 1:
+		write_reg(par, 0x03, 0x1028);
+		break;
+	case 3:
+		write_reg(par, 0x03, 0x1018);
+		break;
+	}
+	write_reg(par, 0x0004, 0x0000); /* Resize register */
+	write_reg(par, 0x0008, 0x0207); /* set the back porch and front porch */
+	write_reg(par, 0x0009, 0x0000); /* set non-display area refresh cycle ISC[3:0] */
+	write_reg(par, 0x000A, 0x0000); /* FMARK function */
+	write_reg(par, 0x000C, 0x0000); /* RGB interface setting */
+	write_reg(par, 0x000D, 0x0000); /* Frame marker Position */
+	write_reg(par, 0x000F, 0x0000); /* RGB interface polarity */
+
+	/* ----------- Power On sequence ----------- */
+	write_reg(par, 0x0010, 0x0000); /* SAP, BT[3:0], AP, DSTB, SLP, STB */
+	write_reg(par, 0x0011, 0x0007); /* DC1[2:0], DC0[2:0], VC[2:0] */
+	write_reg(par, 0x0012, 0x0000); /* VREG1OUT voltage */
+	write_reg(par, 0x0013, 0x0000); /* VDV[4:0] for VCOM amplitude */
+	mdelay(200); /* Dis-charge capacitor power voltage */
+	write_reg(par, 0x0010, ( (1 << 12) | ((ILI9325_BT & 0b111) << 8) | (1 << 7) | (0b001 << 4) ) ); /* SAP, BT[3:0], AP, DSTB, SLP, STB */
+	write_reg(par, 0x0011, (0x220 | (ILI9325_VC & 0b111)) ); /* DC1[2:0], DC0[2:0], VC[2:0] */
+	mdelay(50); /* Delay 50ms */
+	write_reg(par, 0x0012, (ILI9325_VRH & 0b1111)); /* Internal reference voltage= Vci; */
+	mdelay(50); /* Delay 50ms */
+	write_reg(par, 0x0013, ((ILI9325_VDV & 0b11111) << 8) ); /* Set VDV[4:0] for VCOM amplitude */
+	write_reg(par, 0x0029, (ILI9325_VCM & 0b111111) ); /* Set VCM[5:0] for VCOMH */
+	write_reg(par, 0x002B, 0x000C); /* Set Frame Rate */
+	mdelay(50); /* Delay 50ms */
+	write_reg(par, 0x0020, 0x0000); /* GRAM horizontal Address */
+	write_reg(par, 0x0021, 0x0000); /* GRAM Vertical Address */
+
+	/* ----------- Adjust the Gamma Curve ---------- */
+	write_reg(par, 0x0030, 0x0000);
+	write_reg(par, 0x0031, 0x0506);
+	write_reg(par, 0x0032, 0x0104);
+	write_reg(par, 0x0035, 0x0207);
+	write_reg(par, 0x0036, 0x000F);
+	write_reg(par, 0x0037, 0x0306);
+	write_reg(par, 0x0038, 0x0102);
+	write_reg(par, 0x0039, 0x0707);
+	write_reg(par, 0x003C, 0x0702);
+	write_reg(par, 0x003D, 0x1604);
+
+	/*------------------ Set GRAM area --------------- */
+	write_reg(par, 0x0050, 0x0000); /* Horizontal GRAM Start Address */
+	write_reg(par, 0x0051, 0x00EF); /* Horizontal GRAM End Address */
+	write_reg(par, 0x0052, 0x0000); /* Vertical GRAM Start Address */
+	write_reg(par, 0x0053, 0x013F); /* Vertical GRAM Start Address */
+	write_reg(par, 0x0060, 0xA700); /* Gate Scan Line a-Si TFT LCD Single Chip Driver */
+	write_reg(par, 0x0061, 0x0001); /* NDL,VLE, REV */
+	write_reg(par, 0x006A, 0x0000); /* set scrolling line */
+
+	/*-------------- Partial Display Control --------- */
+	write_reg(par, 0x0080, 0x0000);
+	write_reg(par, 0x0081, 0x0000);
+	write_reg(par, 0x0082, 0x0000);
+	write_reg(par, 0x0083, 0x0000);
+	write_reg(par, 0x0084, 0x0000);
+	write_reg(par, 0x0085, 0x0000);
+
+	/*-------------- Panel Control ------------------- */
+	write_reg(par, 0x0090, 0x0010);
+	write_reg(par, 0x0092, 0x0600);
+	write_reg(par, 0x0007, 0x0133); /* 262K color and display ON */
+
+	return 0;
+}
+
+static void itdb28fb_set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
+{
+	fbtft_dev_dbg(DEBUG_SET_ADDR_WIN, par->info->device, "%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
+	switch (rotate) {
+	/* R20h = Horizontal GRAM Start Address */
+	/* R21h = Vertical GRAM Start Address */
+	case 0:
+		write_reg(par, 0x0020, xs);
+		write_reg(par, 0x0021, ys);
+		break;
+	case 2:
+		write_reg(par, 0x0020, WIDTH - 1 - xs);
+		write_reg(par, 0x0021, HEIGHT - 1 - ys);
+		break;
+	case 1:
+		write_reg(par, 0x0020, WIDTH - 1 - ys);
+		write_reg(par, 0x0021, xs);
+		break;
+	case 3:
+		write_reg(par, 0x0020, ys);
+		write_reg(par, 0x0021, HEIGHT - 1 - xs);
+		break;
+	}
+	write_reg(par, 0x0022); /* Write Data to GRAM */
+}
+
+static int itdb28fb_verify_gpios(struct fbtft_par *par)
+{
+	int i;
+
+	fbtft_dev_dbg(DEBUG_VERIFY_GPIOS, par->info->device, "%s()\n", __func__);
+
+	if (par->gpio.cs < 0) {
+		dev_err(par->info->device, "Missing info about 'cs' gpio. Aborting.\n");
+		return -EINVAL;
+	}
+	if (par->gpio.dc < 0) {
+		dev_err(par->info->device, "Missing info about 'dc' gpio. Aborting.\n");
+		return -EINVAL;
+	}
+	if (par->gpio.wr < 0) {
+		dev_err(par->info->device, "Missing info about 'wr' gpio. Aborting.\n");
+		return -EINVAL;
+	}
+	for (i=0;i < 8;i++) {
+		if (par->gpio.db[i] < 0) {
+			dev_err(par->info->device, "Missing info about 'db%02d' gpio. Aborting.\n", i);
+			return -EINVAL;
+		}
+	}
+
+	return 0;
+}
+
+struct fbtft_display itdb28fb_display = {
+	.bpp = BPP,
+	.fps = FPS,
+};
+
+static int __devinit itdb28fb_probe(struct platform_device *pdev)
+{
+	struct fb_info *info;
+	struct fbtft_par *par;
+	int ret;
+
+	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &pdev->dev, "%s()\n", __func__);
+
+	if (rotate > 3) {
+		dev_warn(&pdev->dev, "module parameter 'rotate' illegal value: %d. Can only be 0,1,2,3. Setting it to 0.\n", rotate);
+		rotate = 0;
+	}
+	switch (rotate) {
+	case 0:
+	case 2:
+		itdb28fb_display.width = WIDTH;
+		itdb28fb_display.height = HEIGHT;
+		break;
+	case 1:
+	case 3:
+		itdb28fb_display.width = HEIGHT;
+		itdb28fb_display.height = WIDTH;
+		break;
+	}
+
+	info = fbtft_framebuffer_alloc(&itdb28fb_display, &pdev->dev);
+	if (!info)
+		return -ENOMEM;
+
+	info->var.rotate = rotate;
+	par = info->par;
+	par->pdev = pdev;
+	fbtft_debug_init(par);
+	par->fbtftops.init_display = itdb28fb_init_display;
+	par->fbtftops.register_backlight = fbtft_register_backlight;
+	par->fbtftops.write = fbtft_write_gpio8_wr;
+	par->fbtftops.write_reg = fbtft_write_reg16_bus8;
+	par->fbtftops.set_addr_win = itdb28fb_set_addr_win;
+	par->fbtftops.verify_gpios = itdb28fb_verify_gpios;
+
+	ret = fbtft_register_framebuffer(info);
+	if (ret < 0)
+		goto out_release;
+
+	return 0;
+
+out_release:
+	fbtft_framebuffer_release(info);
+
+	return ret;
+}
+
+static int __devexit itdb28fb_remove(struct platform_device *pdev)
+{
+	struct fb_info *info = platform_get_drvdata(pdev);
+
+	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &pdev->dev, "%s()\n", __func__);
+
+	if (info) {
+		fbtft_unregister_framebuffer(info);
+		fbtft_framebuffer_release(info);
+	}
+
+	return 0;
+}
+
+static struct platform_driver itdb28fb_driver = {
+	.driver = {
+		.name   = DRVNAME,
+		.owner  = THIS_MODULE,
+	},
+	.probe  = itdb28fb_probe,
+	.remove = __devexit_p(itdb28fb_remove),
+};
+
+static int __init itdb28fb_init(void)
+{
+	fbtft_pr_debug("\n\n"DRVNAME" - %s()\n", __func__);
+
+	return platform_driver_register(&itdb28fb_driver);
+}
+
+static void __exit itdb28fb_exit(void)
+{
+	fbtft_pr_debug(DRVNAME" - %s()\n", __func__);
+	platform_driver_unregister(&itdb28fb_driver);
+}
+
+/* ------------------------------------------------------------------------- */
+
+module_init(itdb28fb_init);
+module_exit(itdb28fb_exit);
+
+MODULE_DESCRIPTION("FB driver for the ITDB02-2.8 LCD display");
+MODULE_AUTHOR("Noralf Tronnes");
+MODULE_LICENSE("GPL");

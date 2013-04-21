@@ -24,7 +24,6 @@
 
 #include <linux/module.h>
 #include <linux/kernel.h>
-#include <linux/errno.h>
 #include <linux/init.h>
 #include <linux/gpio.h>
 #include <linux/spi/spi.h>
@@ -35,11 +34,13 @@
 #define DRVNAME	    "r61505ufb"
 #define WIDTH       320
 #define HEIGHT      240
-#define BPP         16
-#define FPS         10
 
 #define LCD_DATA		0x72
 #define LCD_REGISTER	0x70
+
+
+/* Module Parameter: debug  (also available through sysfs) */
+MODULE_PARM_DEBUG;
 
 #undef write_cmd
 #undef write_data
@@ -48,23 +49,23 @@
 
 static inline void set_dc(struct fbtft_par *par, int val)
 {
- 	if (par->gpio.dc != -1)
- 		gpio_set_value(par->gpio.dc, val);
+	if (par->gpio.dc != -1)
+		gpio_set_value(par->gpio.dc, val);
 }
- 
+
 #define enable_cs(par)	set_dc(par, 0)
 #define disable_cs(par)	set_dc(par, 1)
- 
+
 static void r61505ufb_write_cmd(struct fbtft_par *par, uint8_t reg, uint8_t data)
 {
 	uint8_t buf[2];
-	
+
 	buf[0] = LCD_REGISTER;
 	buf[1] = reg;
 	enable_cs(par);
 	par->fbtftops.write(par, buf, 2);
 	disable_cs(par);
-	
+
 	buf[0] = LCD_DATA;
 	buf[1] = data;
 	enable_cs(par);
@@ -74,7 +75,7 @@ static void r61505ufb_write_cmd(struct fbtft_par *par, uint8_t reg, uint8_t data
 
 static int r61505ufb_init_display(struct fbtft_par *par)
 {
-	dev_dbg(par->info->device, "r61505ufb_init_display()\n");
+	fbtft_dev_dbg(DEBUG_INIT_DISPLAY, par->info->device, "%s()\n", __func__);
 
 	par->fbtftops.reset(par);
 
@@ -123,7 +124,7 @@ static int r61505ufb_init_display(struct fbtft_par *par)
 	write_cmd(par, 0x28, 0x3C);
 
 	//orientation
-	write_cmd(par, 0x16, 0x68); 
+	write_cmd(par, 0x16, 0x68);
 
 	return 0;
 }
@@ -151,9 +152,9 @@ static int r61505ufb_verify_gpios(struct fbtft_par *par)
 static void r61505ufb_set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 {
 	uint8_t xsl, xsh, xel, xeh, ysl, ysh, yel, yeh;
-	
-	dev_dbg(par->info->device, "%s(%d, %d, %d, %d)\n", __func__, xs, ys, xe, ye);
-	
+
+	fbtft_dev_dbg(DEBUG_SET_ADDR_WIN, par->info->device, "%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
+
 	xsl = (uint8_t)(xs & 0xff);
 	xsh = (uint8_t)((xs >> 8) & 0xff);
 	xel = (uint8_t)(xe & 0xff);
@@ -165,7 +166,7 @@ static void r61505ufb_set_addr_win(struct fbtft_par *par, int xs, int ys, int xe
 	yeh = (uint8_t)((ye >> 8) & 0xff);
 
 	dev_dbg(par->info->device, "%s(%02x/%02x, %02x/%02x, %02x/%02x, %02x/%02x)\n", __func__, xsl, xsh, ysl, ysh, xel, xeh, yel, yeh);
-	
+
 	write_cmd(par, 0x03, xsl);
 	write_cmd(par, 0x02, xsh);
 	write_cmd(par, 0x05, xel);
@@ -180,7 +181,7 @@ static int r61505ufb_write_vmem(struct fbtft_par *par)
 {
 	u16 *vmem16;
 	u16 *txbuf16 = NULL;
-    size_t remain;
+	size_t remain;
 	size_t to_copy;
 	int i;
 	int ret = 0;
@@ -196,7 +197,7 @@ static int r61505ufb_write_vmem(struct fbtft_par *par)
 	vmem16 = (u16 *)(par->info->screen_base + offset);
 	buf_len = par->txbuf.len;
 
-	dev_dbg(par->info->device, "r61505ufb_write_vmem: offset=%d, len=%d\n", offset, len);
+	fbtft_fbtft_dev_dbg(DEBUG_WRITE_VMEM, par, par->info->device, "%s: offset=%d, len=%d\n", __func__, offset, len);
 
 	// sanity check
 	if (!par->txbuf.buf) {
@@ -217,7 +218,7 @@ static int r61505ufb_write_vmem(struct fbtft_par *par)
 	par->fbtftops.write(par, buf, 1);
 
 	while (remain) {
-		
+
 		// buffer needs to start with LCD_DATA so skip first byte
 		to_copy = remain > buf_len ? buf_len : remain;
 		txbuf16 = (u16 *)(par->txbuf.buf);
@@ -247,28 +248,9 @@ static int r61505ufb_write_vmem(struct fbtft_par *par)
 	return ret;
 }
 
-static int r61505ufb_blank(struct fbtft_par *par, bool on)
-{
-	if (par->gpio.led[0] == -1)
-		return -EINVAL;
-
-	dev_dbg(par->info->device, "%s(%s)\n", __func__, on ? "on" : "off");
-	
-	if (on)
-		/* Turn off backlight */
-		gpio_set_value(par->gpio.led[0], 0);
-	else
-		/* Turn on backlight */
-		gpio_set_value(par->gpio.led[0], 1);
-
-	return 0;
-}
-
 struct fbtft_display r61505ufb_display = {
 	.width = WIDTH,
 	.height = HEIGHT,
-	.bpp = BPP,
-	.fps = FPS,
 };
 
 static int __devinit r61505ufb_probe(struct spi_device *spi)
@@ -277,7 +259,7 @@ static int __devinit r61505ufb_probe(struct spi_device *spi)
 	struct fbtft_par *par;
 	int ret;
 
-	dev_dbg(&spi->dev, "probe()\n");
+	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &spi->dev, "%s()\n", __func__);
 
 	info = fbtft_framebuffer_alloc(&r61505ufb_display, &spi->dev);
 	if (!info)
@@ -285,19 +267,17 @@ static int __devinit r61505ufb_probe(struct spi_device *spi)
 
 	par = info->par;
 	par->spi = spi;
+	fbtft_debug_init(par);
 	par->fbtftops.init_display = r61505ufb_init_display;
+	par->fbtftops.register_backlight = fbtft_register_backlight;
 	par->fbtftops.request_gpios_match = r61505ufb_request_gpios_match;
 	par->fbtftops.verify_gpios = r61505ufb_verify_gpios;
-	par->fbtftops.blank = r61505ufb_blank;
 	par->fbtftops.set_addr_win = r61505ufb_set_addr_win;
 	par->fbtftops.write_vmem = r61505ufb_write_vmem;
 
 	ret = fbtft_register_framebuffer(info);
 	if (ret < 0)
 		goto out_release;
-
-	/* turn on backlight */
-	r61505ufb_blank(par, false);
 
 	return 0;
 
@@ -311,7 +291,7 @@ static int __devexit r61505ufb_remove(struct spi_device *spi)
 {
 	struct fb_info *info = spi_get_drvdata(spi);
 
-	dev_dbg(&spi->dev, "remove()\n");
+	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &spi->dev, "%s()\n", __func__);
 
 	if (info) {
 		fbtft_unregister_framebuffer(info);
@@ -332,13 +312,13 @@ static struct spi_driver r61505ufb_driver = {
 
 static int __init r61505ufb_init(void)
 {
-	pr_debug("\n\n"DRVNAME" - init\n");
+	fbtft_pr_debug("\n\n"DRVNAME": %s()\n", __func__);
 	return spi_register_driver(&r61505ufb_driver);
 }
 
 static void __exit r61505ufb_exit(void)
 {
-	pr_debug(DRVNAME" - exit\n");
+	fbtft_pr_debug(DRVNAME": %s()\n", __func__);
 	spi_unregister_driver(&r61505ufb_driver);
 }
 

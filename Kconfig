@@ -8,6 +8,12 @@ menuconfig FB_TFT
 	select FB_DEFERRED_IO
 	select FB_BACKLIGHT
 
+config FB_FLEX
+	tristate "Generic FB driver for TFT LCD displays"
+	depends on FB_TFT
+	help
+	  Generic Framebuffer support for TFT LCD displays.
+
 config FB_ADAFRUIT22
 	tristate "FB driver for the Adafruit 2.2\" LCD display"
 	depends on FB_TFT

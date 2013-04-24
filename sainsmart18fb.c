@@ -40,6 +40,11 @@
 /* Module Parameter: debug  (also available through sysfs) */
 MODULE_PARM_DEBUG;
 
+static bool bgr = false;
+module_param(bgr, bool, 0);
+MODULE_PARM_DESC(bgr, "Use if Red and Blue is swapped (set MADCTL RGB bit).");
+
+
 // ftp://imall.iteadstudio.com/IM120419001_ITDB02_1.8SP/DS_ST7735.pdf
 // https://github.com/johnmccombs/arduino-libraries/blob/master/ST7735/ST7735.cpp
 
@@ -91,7 +96,12 @@ static int sainsmart18fb_init_display(struct fbtft_par *par)
 	write_reg(par, 0x20);
 
 	/* MADCTL - Memory data access control */
-	write_reg(par, 0x36, 0xC8);	/* row address/col address, bottom to top refresh */
+	/*    Mode selection pin SRGB: RGB direction select H/W pin for color filter setting: 0=RGB, 1=BGR   */
+	/*    MADCTL RGB bit: RGB-BGR ORDER: 0=RGB color filter panel, 1=BGR color filter panel              */
+	if (bgr)
+		write_reg(par, 0x36, 0xC8);	/* row address/col address, bottom to top refresh, BGR */
+	else
+		write_reg(par, 0x36, 0xC0);	/* row address/col address, bottom to top refresh, RGB */
 
 	/* COLMOD - Interface pixel format */
 	write_reg(par, 0x3A, 0x05);
@@ -113,62 +123,6 @@ static int sainsmart18fb_init_display(struct fbtft_par *par)
 	mdelay(10);
 
 	return 0;
-}
-
-static int sainsmart18fb_write_vmem(struct fbtft_par *par)
-{
-	u16 *vmem16;
-	u16 *txbuf16 = NULL;
-    size_t remain;
-	size_t to_copy;
-	int i;
-	int ret = 0;
-	u16 val;
-	unsigned red, green, blue;
-	size_t offset, len;
-
-	offset = par->dirty_lines_start * par->info->fix.line_length;
-	len = (par->dirty_lines_end - par->dirty_lines_start + 1) * par->info->fix.line_length;
-	remain = len;
-	vmem16 = (u16 *)(par->info->screen_base + offset);
-
-	fbtft_fbtft_dev_dbg(DEBUG_WRITE_VMEM, par, par->info->device, "%s: offset=%d, len=%d\n", __func__, offset, len);
-
-	if (par->gpio.dc != -1)
-		gpio_set_value(par->gpio.dc, 1);
-
-	// sanity check
-	if (!par->txbuf.buf) {
-		dev_err(par->info->device, "sainsmart18fb_write_vmem: txbuf.buf is needed to do conversion\n");
-		return -1;
-	}
-
-	while (remain) {
-		to_copy = remain > par->txbuf.len ? par->txbuf.len : remain;
-		txbuf16 = (u16 *)par->txbuf.buf;
-		dev_dbg(par->info->device, "    to_copy=%d, remain=%d\n", to_copy, remain - to_copy);
-		for (i=0;i<to_copy;i+=2) {
-			val = *vmem16++;
-
-			// Convert to BGR565
-			red   = (val >> par->info->var.red.offset)   & ((1<<par->info->var.red.length) - 1);
-			green = (val >> par->info->var.green.offset) & ((1<<par->info->var.green.length) - 1);
-			blue  = (val >> par->info->var.blue.offset)  & ((1<<par->info->var.blue.length) - 1);
-			val  = (blue <<11) | (green <<5) | red;
-
-#ifdef __LITTLE_ENDIAN
-				*txbuf16++ = swab16(val);
-#else
-				*txbuf16++ = val;
-#endif
-		}
-		ret = par->fbtftops.write(par, par->txbuf.buf, to_copy);
-		if (ret < 0)
-			return ret;
-		remain -= to_copy;
-	}
-
-	return ret;
 }
 
 static int sainsmart18fb_verify_gpios(struct fbtft_par *par)
@@ -205,7 +159,6 @@ static int __devinit sainsmart18fb_probe(struct spi_device *spi)
 	par->spi = spi;
 	fbtft_debug_init(par);
 	par->fbtftops.init_display = sainsmart18fb_init_display;
-	par->fbtftops.write_vmem = sainsmart18fb_write_vmem;
 	par->fbtftops.verify_gpios = sainsmart18fb_verify_gpios;
 
 	ret = fbtft_register_framebuffer(info);

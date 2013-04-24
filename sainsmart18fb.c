@@ -1,10 +1,6 @@
 /*
  * FB driver for the Sainsmart 1.8" LCD display
  *
- * This display module want the color as BGR565
- * Some programs writes RGB565 regardless of what is said in info->var.[color].{offset,length}.
- * So conversion from RGB565 to BGR565 has to be done.
- *
  * Copyright (C) 2013 Noralf Tronnes
  *
  * This program is free software; you can redistribute it and/or modify
@@ -43,8 +39,6 @@ static bool bgr = false;
 module_param(bgr, bool, 0);
 MODULE_PARM_DESC(bgr, "Use if Red and Blue is swapped (set MADCTL RGB bit).");
 
-/*  Mode selection pin SRGB: RGB direction select H/W pin for color filter setting: 0=RGB, 1=BGR   */
-/*  MADCTL RGB bit: RGB-BGR ORDER: 0=RGB color filter panel, 1=BGR color filter panel              */
 static unsigned rotate = 0;
 module_param(rotate, uint, 0);
 MODULE_PARM_DESC(rotate, "Rotate display (0=normal, 1=clockwise, 2=upside down, 3=counterclockwise)");
@@ -101,6 +95,8 @@ static int sainsmart18fb_init_display(struct fbtft_par *par)
 	write_reg(par, 0x20);
 
 	/* MADCTL - Memory data access control */
+	/*   Mode selection pin SRGB: RGB direction select H/W pin for color filter setting: 0=RGB, 1=BGR   */
+	/*   MADCTL RGB bit: RGB-BGR ORDER: 0=RGB color filter panel, 1=BGR color filter panel              */
 	#define MY (1 << 7)
 	#define MX (1 << 6)
 	#define MV (1 << 5)

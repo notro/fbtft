@@ -34,7 +34,6 @@
 #define DRVNAME	    "sainsmart18fb"
 #define WIDTH       128
 #define HEIGHT      160
-#define TXBUFLEN	4*PAGE_SIZE
 
 
 /* Module Parameter: debug  (also available through sysfs) */
@@ -43,6 +42,12 @@ MODULE_PARM_DEBUG;
 static bool bgr = false;
 module_param(bgr, bool, 0);
 MODULE_PARM_DESC(bgr, "Use if Red and Blue is swapped (set MADCTL RGB bit).");
+
+/*  Mode selection pin SRGB: RGB direction select H/W pin for color filter setting: 0=RGB, 1=BGR   */
+/*  MADCTL RGB bit: RGB-BGR ORDER: 0=RGB color filter panel, 1=BGR color filter panel              */
+static unsigned rotate = 0;
+module_param(rotate, uint, 0);
+MODULE_PARM_DESC(rotate, "Rotate display (0=normal, 1=clockwise, 2=upside down, 3=counterclockwise)");
 
 
 // ftp://imall.iteadstudio.com/IM120419001_ITDB02_1.8SP/DS_ST7735.pdf
@@ -96,12 +101,23 @@ static int sainsmart18fb_init_display(struct fbtft_par *par)
 	write_reg(par, 0x20);
 
 	/* MADCTL - Memory data access control */
-	/*    Mode selection pin SRGB: RGB direction select H/W pin for color filter setting: 0=RGB, 1=BGR   */
-	/*    MADCTL RGB bit: RGB-BGR ORDER: 0=RGB color filter panel, 1=BGR color filter panel              */
-	if (bgr)
-		write_reg(par, 0x36, 0xC8);	/* row address/col address, bottom to top refresh, BGR */
-	else
-		write_reg(par, 0x36, 0xC0);	/* row address/col address, bottom to top refresh, RGB */
+	#define MY (1 << 7)
+	#define MX (1 << 6)
+	#define MV (1 << 5)
+	switch (rotate) {
+	case 0:
+		write_reg(par, 0x36, MX | MY | (bgr << 3));
+		break;
+	case 1:
+		write_reg(par, 0x36, MY | MV | (bgr << 3));
+		break;
+	case 2:
+		write_reg(par, 0x36, (bgr << 3));
+		break;
+	case 3:
+		write_reg(par, 0x36, MX | MV | (bgr << 3));
+		break;
+	}
 
 	/* COLMOD - Interface pixel format */
 	write_reg(par, 0x3A, 0x05);
@@ -137,11 +153,7 @@ static int sainsmart18fb_verify_gpios(struct fbtft_par *par)
 	return 0;
 }
 
-struct fbtft_display sainsmart18_display = {
-	.width = WIDTH,
-	.height = HEIGHT,
-	.txbuflen = TXBUFLEN,
-};
+struct fbtft_display sainsmart18_display = { };
 
 static int __devinit sainsmart18fb_probe(struct spi_device *spi)
 {
@@ -151,10 +163,28 @@ static int __devinit sainsmart18fb_probe(struct spi_device *spi)
 
 	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &spi->dev, "%s()\n", __func__);
 
+	if (rotate > 3) {
+		dev_warn(&spi->dev, "argument 'rotate' illegal value: %d (0-3). Setting it to 0.\n", rotate);
+		rotate = 0;
+	}
+	switch (rotate) {
+	case 0:
+	case 2:
+		sainsmart18_display.width = WIDTH;
+		sainsmart18_display.height = HEIGHT;
+		break;
+	case 1:
+	case 3:
+		sainsmart18_display.width = HEIGHT;
+		sainsmart18_display.height = WIDTH;
+		break;
+	}
+
 	info = fbtft_framebuffer_alloc(&sainsmart18_display, &spi->dev);
 	if (!info)
 		return -ENOMEM;
 
+	info->var.rotate = rotate;
 	par = info->par;
 	par->spi = spi;
 	fbtft_debug_init(par);

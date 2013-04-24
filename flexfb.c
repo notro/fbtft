@@ -39,12 +39,12 @@ MODULE_PARM_DESC(width, "Display width (required)");
 
 static unsigned int height = 0;
 module_param(height, uint, 0);
-MODULE_PARM_DESC(width, "Display heigth (required)");
+MODULE_PARM_DESC(height, "Display height (required)");
 
 static int init[512];
 static int init_num = 0;
 module_param_array(init, int, &init_num, 0);
-MODULE_PARM_DESC(gamctrn1, "Init sequence (required)");
+MODULE_PARM_DESC(init, "Init sequence (required)");
 
 static unsigned int setaddrwin = 0;
 module_param(setaddrwin, uint, 0);

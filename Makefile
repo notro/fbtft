@@ -12,6 +12,5 @@ obj-$(CONFIG_FB_R61505U)         += r61505ufb.o
 obj-$(CONFIG_FB_ILI9341)         += ili9341fb.o
 obj-$(CONFIG_FB_ITDB28)          += itdb28fb.o
 
-# Testing module
-obj-$(CONFIG_FB_TFT_SPIDEVICES)  += spidevices.o
-
+# Device module
+obj-$(CONFIG_FB_TFT_FBTFT_DEVICE) += fbtft_device.o

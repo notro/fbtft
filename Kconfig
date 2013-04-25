@@ -56,8 +56,6 @@ config FB_ITDB28
 	help
 	  Framebuffer support for the ITDB02-2.8 LCD display in 8-bit parallel mode.
 
-config FB_TFT_SPIDEVICES
-	tristate "Module to for adding SPI devices"
+config FB_TFT_FBTFT_DEVICE
+	tristate "Module to for adding FBTFT devices"
 	depends on FB_TFT
-	help
-	  Adds SPI devices using hardcoded values. Used for testing fbtft drivers.

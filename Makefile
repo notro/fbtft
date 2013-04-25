@@ -14,3 +14,6 @@ obj-$(CONFIG_FB_ITDB28)          += itdb28fb.o
 
 # Device module
 obj-$(CONFIG_FB_TFT_FBTFT_DEVICE) += fbtft_device.o
+
+# Test
+obj-$(CONFIG_TOUCHSCREEN_ADS7846_TEST) += ads7846_test.o

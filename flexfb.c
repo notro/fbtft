@@ -216,7 +216,7 @@ static int __devinit flexfb_probe_common(struct spi_device *sdev, struct platfor
 
 	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, dev, "%s(%s)\n", __func__, sdev ? "'SPI device'" : "'Platform device'");
 
-	if (width == 0 && height == 0) {
+	if (width == 0 || height == 0) {
 		dev_err(dev, "argument(s) missing: width and height has to be set.\n");
 		return -EINVAL;
 	}

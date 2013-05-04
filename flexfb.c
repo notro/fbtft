@@ -149,12 +149,12 @@ static void flexfb_set_addr_win_1(struct fbtft_par *par, int xs, int ys, int xe,
 		write_reg(par, 0x0021, height - 1 - ys);
 		break;
 	case 1:
-		write_reg(par, 0x0020, width - 1 - ys);
+		write_reg(par, 0x0020, height - 1 - ys);
 		write_reg(par, 0x0021, xs);
 		break;
 	case 3:
 		write_reg(par, 0x0020, ys);
-		write_reg(par, 0x0021, height - 1 - xs);
+		write_reg(par, 0x0021, width - 1 - xs);
 		break;
 	}
 	write_reg(par, 0x0022); /* Write Data to GRAM */

@@ -64,7 +64,7 @@ MODULE_PARM_DESC(nobacklight, "Turn off backlight functionality.");
 
 static unsigned rotate = 0;
 module_param(rotate, uint, 0);
-//MODULE_PARM_DESC(rotate, "Rotate display (0=normal, 1=clockwise, 2=upside down, 3=counterclockwise)");
+MODULE_PARM_DESC(rotate, "Rotate display (0=normal, 1=clockwise, 2=upside down, 3=counterclockwise)");
 
 
 static int flexfb_init_display(struct fbtft_par *par)

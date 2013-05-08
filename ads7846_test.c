@@ -36,7 +36,7 @@
 #include <linux/module.h>
 #include <asm/irq.h>
 
-
+#include "legacy.h"
 
 
 #define DRVNAME "ads7846_test"

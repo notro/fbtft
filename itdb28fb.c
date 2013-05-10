@@ -43,6 +43,10 @@ static unsigned rotate = 0;
 module_param(rotate, uint, 0);
 MODULE_PARM_DESC(rotate, "Rotate display (0=normal, 1=clockwise, 2=upside down, 3=counterclockwise)");
 
+/* Module Parameter: gamma */
+static unsigned gamma = 0;
+module_param(gamma, uint, 0);
+MODULE_PARM_DESC(gamma, "Gamma profile (0=off, 1=default, 2..X=alternatives)");
 
 /* Power supply configuration */
 #define ILI9325_BT  6        /* VGL=Vci*4 , VGH=Vci*4 */
@@ -51,7 +55,7 @@ MODULE_PARM_DESC(rotate, "Rotate display (0=normal, 1=clockwise, 2=upside down, 
 #define ILI9325_VDV 0b10010  /* VCOMH amplitude=VREG1OUT*0.98 */
 #define ILI9325_VCM 0b001010 /* VCOMH=VREG1OUT*0.735 */
 
-/* 
+/*
 Verify that this configuration is within the Voltage limits
 
 Display module configuration: Vcc = IOVcc = Vci = 3.3V
@@ -89,8 +93,19 @@ VCOM driver output voltage
 VCOMH - VCOML < 6.0   =>  4.79 < 6.0
 */
 
+static const u16 gamma_profiles[][10] = {
+  {0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000}, // Off
+  {0x0000,0x0506,0x0104,0x0207,0x000F,0x0306,0x0102,0x0707,0x0702,0x1604}, // Default
+  {0x0000,0x0203,0x0001,0x0205,0x030C,0x0607,0x0405,0x0707,0x0502,0x1008}, // http://spritesmods.com/rpi_arcade/ili9325_gpio_driver_rpi.diff
+  {0x0107,0x0306,0x0207,0x0206,0x0408,0x0106,0x0102,0x0207,0x0504,0x0503}, // http://pastebin.com/HDsQ2G35
+  {0x0006,0x0101,0x0003,0x0106,0x0b02,0x0302,0x0707,0x0007,0x0600,0x020b}, // http://andybrown.me.uk/wk/2012/01/01/stm32plus-ili9325-tft-driver/
+  {0x0000,0x0000,0x0000,0x0206,0x0808,0x0007,0x0201,0x0000,0x0000,0x0000}  // http://mbed.org/forum/mbed/topic/3655/?page=1
+};
+
 static int itdb28fb_init_display(struct fbtft_par *par)
 {
+    int i;
+
 	fbtft_dev_dbg(DEBUG_INIT_DISPLAY, par->info->device, "%s()\n", __func__);
 
 	par->fbtftops.reset(par);
@@ -148,16 +163,9 @@ static int itdb28fb_init_display(struct fbtft_par *par)
 	write_reg(par, 0x0021, 0x0000); /* GRAM Vertical Address */
 
 	/* ----------- Adjust the Gamma Curve ---------- */
-	write_reg(par, 0x0030, 0x0000);
-	write_reg(par, 0x0031, 0x0506);
-	write_reg(par, 0x0032, 0x0104);
-	write_reg(par, 0x0035, 0x0207);
-	write_reg(par, 0x0036, 0x000F);
-	write_reg(par, 0x0037, 0x0306);
-	write_reg(par, 0x0038, 0x0102);
-	write_reg(par, 0x0039, 0x0707);
-	write_reg(par, 0x003C, 0x0702);
-	write_reg(par, 0x003D, 0x1604);
+    for (i=0; i<10; i++) {
+	    write_reg(par, 0x0030 + i, gamma_profiles[gamma][i]);
+    }
 
 	/*------------------ Set GRAM area --------------- */
 	write_reg(par, 0x0050, 0x0000); /* Horizontal GRAM Start Address */
@@ -248,8 +256,14 @@ static int __devinit itdb28fb_probe(struct platform_device *pdev)
 	struct fb_info *info;
 	struct fbtft_par *par;
 	int ret;
+    int num_profiles = sizeof(gamma_profiles)/sizeof(gamma_profiles[0]);
 
 	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &pdev->dev, "%s()\n", __func__);
+
+	if (gamma >= num_profiles) {
+		dev_warn(&pdev->dev, "module parameter 'gamma' illegal value: %d. Can only be 0-%d. Setting it to 0.\n", gamma, num_profiles-1);
+		gamma = 0;
+	}
 
 	if (rotate > 3) {
 		dev_warn(&pdev->dev, "module parameter 'rotate' illegal value: %d. Can only be 0,1,2,3. Setting it to 0.\n", rotate);
@@ -338,4 +352,5 @@ module_exit(itdb28fb_exit);
 
 MODULE_DESCRIPTION("FB driver for the ITDB02-2.8 LCD display");
 MODULE_AUTHOR("Noralf Tronnes");
+MODULE_AUTHOR("Richard Hull");
 MODULE_LICENSE("GPL");

@@ -3,7 +3,13 @@
  * This file is subject to the terms and conditions of the GNU General Public
  * License. See the file COPYING in the main directory of this archive for
  * more details.
+ *
+ * NOTE: CONFIG_HOTPLUG is going away as an option so __devinit, etc is no longer
+ * needed. These macros will build the module under 3.2.x, 3.6.x and 3.8.x
+ * kernels without causing errors.
  */
+
+#ifndef __devinit
 
 /* Used for HOTPLUG */
 #define __devinit        __section(.devinit.text) __cold notrace
@@ -28,3 +34,5 @@
 #else
 #define __devexit_p(x) NULL
 #endif
+
+#endif // __devinit

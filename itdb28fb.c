@@ -44,7 +44,7 @@ module_param(rotate, uint, 0);
 MODULE_PARM_DESC(rotate, "Rotate display (0=normal, 1=clockwise, 2=upside down, 3=counterclockwise)");
 
 /* Module Parameter: gamma */
-static unsigned gamma = 0;
+static unsigned gamma = 1;
 module_param(gamma, uint, 0);
 MODULE_PARM_DESC(gamma, "Gamma profile (0=off, 1=default, 2..X=alternatives)");
 
@@ -93,13 +93,20 @@ VCOM driver output voltage
 VCOMH - VCOML < 6.0   =>  4.79 < 6.0
 */
 
+static const u16 gamma_registers[] = {
+   0x0030,0x0031,0x0032,0x0035,0x0036,0x0037,0x0038,0x0039,0x003C,0x003D
+};
+
 static const u16 gamma_profiles[][10] = {
-  {0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000,0x0000}, // Off
+// KP1/0  KP3/2  KP5/4  RP1/0  VRP1/0 KN1/0  KN3/2  KN5/4  RN1/0  VRN1/0
+  {}, // Off
   {0x0000,0x0506,0x0104,0x0207,0x000F,0x0306,0x0102,0x0707,0x0702,0x1604}, // Default
   {0x0000,0x0203,0x0001,0x0205,0x030C,0x0607,0x0405,0x0707,0x0502,0x1008}, // http://spritesmods.com/rpi_arcade/ili9325_gpio_driver_rpi.diff
   {0x0107,0x0306,0x0207,0x0206,0x0408,0x0106,0x0102,0x0207,0x0504,0x0503}, // http://pastebin.com/HDsQ2G35
   {0x0006,0x0101,0x0003,0x0106,0x0b02,0x0302,0x0707,0x0007,0x0600,0x020b}, // http://andybrown.me.uk/wk/2012/01/01/stm32plus-ili9325-tft-driver/
-  {0x0000,0x0000,0x0000,0x0206,0x0808,0x0007,0x0201,0x0000,0x0000,0x0000}  // http://mbed.org/forum/mbed/topic/3655/?page=1
+  {0x0000,0x0000,0x0000,0x0206,0x0808,0x0007,0x0201,0x0000,0x0000,0x0000}, // http://mbed.org/forum/mbed/topic/3655/?page=1
+  {0x0007,0x0302,0x0105,0x0206,0x0808,0x0206,0x0504,0x0007,0x0105,0x0808}, // https://bitbucket.org/plumbum/ttgui/src/eb58fe3a9401/firmware/gui/lcd_hw_ili9325.c?at=master
+  {0x0000,0x0107,0x0000,0x0203,0x0402,0x0000,0x0207,0x0000,0x0203,0x0403},
 };
 
 static int itdb28fb_init_display(struct fbtft_par *par)
@@ -163,8 +170,10 @@ static int itdb28fb_init_display(struct fbtft_par *par)
 	write_reg(par, 0x0021, 0x0000); /* GRAM Vertical Address */
 
 	/* ----------- Adjust the Gamma Curve ---------- */
-    for (i=0; i<10; i++) {
-	    write_reg(par, 0x0030 + i, gamma_profiles[gamma][i]);
+    if (gamma > 0) {
+        for (i=0; i<10; i++) {
+            write_reg(par, gamma_registers[i], gamma_profiles[gamma][i]);
+        }
     }
 
 	/*------------------ Set GRAM area --------------- */
@@ -246,6 +255,57 @@ static int itdb28fb_verify_gpios(struct fbtft_par *par)
 	return 0;
 }
 
+static ssize_t itdb28fb_register_show(struct device *dev,
+				     struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "Not supported\n");
+}
+
+static ssize_t itdb28fb_register_store(struct device *dev,
+				     struct device_attribute *attr,
+				     const char *buf, size_t count)
+{
+    struct fbtft_par *par = dev_get_drvdata(dev);
+    char *reg_name, *val;
+    uint reg, i;
+    int ret;
+
+    val = buf;
+    reg_name = strsep(&val, "=");
+    if (reg_name == NULL || val == NULL) {
+        pr_err(DRVNAME": unable to parse register attribute store: %s\n", buf);
+        return -EINVAL;
+    }
+    ret = kstrtouint(reg_name, 0, &reg);
+    if (ret) {
+        pr_err(DRVNAME": invalid register: %s\n", reg_name);
+        return ret;
+    }
+
+    ret = kstrtouint(val, 0, &i);
+    if (ret) {
+        pr_err(DRVNAME": invalid value: %s\n", val);
+        return ret;
+    }
+
+    pr_info(DRVNAME": writing 0x%04X into register 0x%04X.\n", i, reg);
+    write_reg(par, reg, i);
+
+    return count;
+}
+
+static DEVICE_ATTR(register, 0220, itdb28fb_register_show, itdb28fb_register_store);
+
+static struct attribute *itdb28fb_attributes[] = {
+	&dev_attr_register.attr,
+	NULL,
+};
+
+static struct attribute_group itdb28fb_attr_group = {
+	.attrs = itdb28fb_attributes,
+};
+
+
 struct fbtft_display itdb28fb_display = {
 	.bpp = BPP,
 	.fps = FPS,
@@ -261,8 +321,8 @@ static int __devinit itdb28fb_probe(struct platform_device *pdev)
 	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &pdev->dev, "%s()\n", __func__);
 
 	if (gamma >= num_profiles) {
-		dev_warn(&pdev->dev, "module parameter 'gamma' illegal value: %d. Can only be 0-%d. Setting it to 0.\n", gamma, num_profiles-1);
-		gamma = 0;
+		dev_warn(&pdev->dev, "module parameter 'gamma' illegal value: %d. Can only be 0-%d. Setting it to 1.\n", gamma, num_profiles-1);
+		gamma = 1;
 	}
 
 	if (rotate > 3) {
@@ -301,11 +361,15 @@ static int __devinit itdb28fb_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto out_release;
 
+    ret = sysfs_create_group(&pdev->dev.kobj, &itdb28fb_attr_group);
+    if (ret)
+		goto out_release;
+
+	dev_set_drvdata(&pdev->dev, par);
 	return 0;
 
 out_release:
 	fbtft_framebuffer_release(info);
-
 	return ret;
 }
 
@@ -319,6 +383,8 @@ static int __devexit itdb28fb_remove(struct platform_device *pdev)
 		fbtft_unregister_framebuffer(info);
 		fbtft_framebuffer_release(info);
 	}
+
+	sysfs_remove_group(&pdev->dev.kobj, &itdb28fb_attr_group);
 
 	return 0;
 }

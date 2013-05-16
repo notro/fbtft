@@ -768,6 +768,8 @@ int fbtft_register_framebuffer(struct fb_info *fb_info)
 	return 0;
 
 reg_fail:
+	if (par->fbtftops.unregister_backlight)
+		par->fbtftops.unregister_backlight(par);
 	if (spi)
 		spi_set_drvdata(spi, NULL);
 	if (par->pdev)

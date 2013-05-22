@@ -160,6 +160,36 @@ static void flexfb_set_addr_win_1(struct fbtft_par *par, int xs, int ys, int xe,
 	write_reg(par, 0x0022); /* Write Data to GRAM */
 }
 
+/* ssd1289 */
+static void flexfb_set_addr_win_2(struct fbtft_par *par, int xs, int ys, int xe, int ye)
+{
+	fbtft_dev_dbg(DEBUG_SET_ADDR_WIN, par->info->device, "%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
+
+	switch (rotate) {
+	/* R4Eh - Set GDDRAM X address counter */
+	/* R4Fh - Set GDDRAM Y address counter */
+	case 0:
+		write_reg(par, 0x4e, xs);
+		write_reg(par, 0x4f, ys);
+		break;
+	case 2:
+		write_reg(par, 0x4e, par->info->var.xres - 1 - xs);
+		write_reg(par, 0x4f, par->info->var.yres - 1 - ys);
+		break;
+	case 1:
+		write_reg(par, 0x4e, par->info->var.yres - 1 - ys);
+		write_reg(par, 0x4f, xs);
+		break;
+	case 3:
+		write_reg(par, 0x4e, ys);
+		write_reg(par, 0x4f, par->info->var.xres - 1 - xs);
+		break;
+	}
+
+	/* R22h - RAM data write */
+	write_reg(par, 0x22, 0);
+}
+
 static int flexfb_verify_gpios_dc(struct fbtft_par *par)
 {
 	fbtft_dev_dbg(DEBUG_VERIFY_GPIOS, par->info->device, "%s()\n", __func__);
@@ -298,6 +328,9 @@ static int __devinit flexfb_probe_common(struct spi_device *sdev, struct platfor
 		break;
 	case 1:
 		par->fbtftops.set_addr_win = flexfb_set_addr_win_1;
+		break;
+	case 2:
+		par->fbtftops.set_addr_win = flexfb_set_addr_win_2;
 		break;
 	default:
 		dev_err(dev, "argument 'setaddrwin': unknown value %d.\n", setaddrwin);

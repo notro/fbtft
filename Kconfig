@@ -44,6 +44,10 @@ config FB_SAINSMART18
 	help
 	  Framebuffer support for the Sainsmart 1.8\" LCD display in 8-bit SPI mode.
 
+config FB_SAINSMART32
+	tristate "FB driver for the Sainsmart 3.2\" LCD display"
+	depends on FB_TFT
+
 config FB_NOKIA3310
 	tristate "FB driver for the Nokia 5110/3310 LCD display"
 	depends on FB_TFT

@@ -21,7 +21,6 @@
 
 #include <linux/fb.h>
 
-#include "legacy.h"
 
 
 #define FBTFT_NOP		0x00

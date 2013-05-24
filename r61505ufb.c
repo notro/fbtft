@@ -253,7 +253,7 @@ struct fbtft_display r61505ufb_display = {
 	.height = HEIGHT,
 };
 
-static int __devinit r61505ufb_probe(struct spi_device *spi)
+static int r61505ufb_probe(struct spi_device *spi)
 {
 	struct fb_info *info;
 	struct fbtft_par *par;
@@ -287,7 +287,7 @@ out_release:
 	return ret;
 }
 
-static int __devexit r61505ufb_remove(struct spi_device *spi)
+static int r61505ufb_remove(struct spi_device *spi)
 {
 	struct fb_info *info = spi_get_drvdata(spi);
 
@@ -307,7 +307,7 @@ static struct spi_driver r61505ufb_driver = {
 		.owner  = THIS_MODULE,
 	},
 	.probe  = r61505ufb_probe,
-	.remove = __devexit_p(r61505ufb_remove),
+	.remove = r61505ufb_remove,
 };
 
 static int __init r61505ufb_init(void)

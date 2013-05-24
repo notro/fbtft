@@ -232,7 +232,7 @@ static int flexfb_verify_gpios_db8(struct fbtft_par *par)
 
 static struct fbtft_display flex_display = { };
 
-static int __devinit flexfb_probe_common(struct spi_device *sdev, struct platform_device *pdev)
+static int flexfb_probe_common(struct spi_device *sdev, struct platform_device *pdev)
 {
 	struct device *dev;
 	struct fb_info *info;
@@ -352,7 +352,7 @@ out_release:
 	return ret;
 }
 
-static int __devexit flexfb_remove_common(struct device *dev, struct fb_info *info)
+static int flexfb_remove_common(struct device *dev, struct fb_info *info)
 {
 	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, dev, "%s()\n", __func__);
 
@@ -364,24 +364,24 @@ static int __devexit flexfb_remove_common(struct device *dev, struct fb_info *in
 	return 0;
 }
 
-static int __devinit flexfb_probe_spi(struct spi_device *spi)
+static int flexfb_probe_spi(struct spi_device *spi)
 {
 	return flexfb_probe_common(spi, NULL);
 }
 
-static int __devexit flexfb_remove_spi(struct spi_device *spi)
+static int flexfb_remove_spi(struct spi_device *spi)
 {
 	struct fb_info *info = spi_get_drvdata(spi);
 
 	return flexfb_remove_common(&spi->dev, info);
 }
 
-static int __devinit flexfb_probe_pdev(struct platform_device *pdev)
+static int flexfb_probe_pdev(struct platform_device *pdev)
 {
 	return flexfb_probe_common(NULL, pdev);
 }
 
-static int __devexit flexfb_remove_pdev(struct platform_device *pdev)
+static int flexfb_remove_pdev(struct platform_device *pdev)
 {
 	struct fb_info *info = platform_get_drvdata(pdev);
 
@@ -394,7 +394,7 @@ static struct spi_driver flexfb_spi_driver = {
 		.owner  = THIS_MODULE,
 	},
 	.probe  = flexfb_probe_spi,
-	.remove = __devexit_p(flexfb_remove_spi),
+	.remove = flexfb_remove_spi,
 };
 
 static const struct platform_device_id flexfb_platform_ids[] = {
@@ -409,7 +409,7 @@ static struct platform_driver flexfb_platform_driver = {
 	},
 	.id_table = flexfb_platform_ids,
 	.probe  = flexfb_probe_pdev,
-	.remove = __devexit_p(flexfb_remove_pdev),
+	.remove = flexfb_remove_pdev,
 };
 
 static int __init flexfb_init(void)

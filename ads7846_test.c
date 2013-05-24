@@ -1044,7 +1044,7 @@ static int ads7846_resume(struct device *dev)
 
 static SIMPLE_DEV_PM_OPS(ads7846_pm, ads7846_suspend, ads7846_resume);
 
-static int __devinit ads7846_setup_pendown(struct spi_device *spi, struct ads7846 *ts)
+static int ads7846_setup_pendown(struct spi_device *spi, struct ads7846 *ts)
 {
 	struct ads7846_platform_data *pdata = spi->dev.platform_data;
 	int err;
@@ -1082,7 +1082,7 @@ static int __devinit ads7846_setup_pendown(struct spi_device *spi, struct ads784
  * Set up the transfers to read touchscreen state; this assumes we
  * use formula #2 for pressure, not #3.
  */
-static void __devinit ads7846_setup_spi_msg(struct ads7846 *ts,
+static void ads7846_setup_spi_msg(struct ads7846 *ts,
 				const struct ads7846_platform_data *pdata)
 {
 	struct spi_message *m = &ts->msg[0];
@@ -1281,7 +1281,7 @@ static void __devinit ads7846_setup_spi_msg(struct ads7846 *ts,
 	spi_message_add_tail(x, m);
 }
 
-static int __devinit ads7846_probe(struct spi_device *spi)
+static int ads7846_probe(struct spi_device *spi)
 {
 	struct ads7846 *ts;
 	struct ads7846_packet *packet;
@@ -1475,7 +1475,7 @@ static int __devinit ads7846_probe(struct spi_device *spi)
 	return err;
 }
 
-static int __devexit ads7846_remove(struct spi_device *spi)
+static int ads7846_remove(struct spi_device *spi)
 {
 	struct ads7846 *ts = dev_get_drvdata(&spi->dev);
 
@@ -1519,7 +1519,7 @@ static struct spi_driver ads7846_driver = {
 		.pm	= &ads7846_pm,
 	},
 	.probe		= ads7846_probe,
-	.remove		= __devexit_p(ads7846_remove),
+	.remove		= ads7846_remove,
 };
 
 

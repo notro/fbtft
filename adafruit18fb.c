@@ -227,7 +227,7 @@ struct fbtft_display adafruit18fb_display = {
 	.height = HEIGHT,
 };
 
-static int __devinit adafruit18fb_probe(struct spi_device *spi)
+static int adafruit18fb_probe(struct spi_device *spi)
 {
 	struct fb_info *info;
 	struct fbtft_par *par;
@@ -261,7 +261,7 @@ out_release:
 	return ret;
 }
 
-static int __devexit adafruit18fb_remove(struct spi_device *spi)
+static int adafruit18fb_remove(struct spi_device *spi)
 {
 	struct fb_info *info = spi_get_drvdata(spi);
 
@@ -290,7 +290,7 @@ static struct spi_driver adafruit18fb_driver = {
 	},
 	.id_table = adafruit18fb_ids,
 	.probe  = adafruit18fb_probe,
-	.remove = __devexit_p(adafruit18fb_remove),
+	.remove = adafruit18fb_remove,
 };
 
 static int __init adafruit18fb_init(void)

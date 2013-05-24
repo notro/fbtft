@@ -151,7 +151,7 @@ static int sainsmart18fb_verify_gpios(struct fbtft_par *par)
 
 struct fbtft_display sainsmart18_display = { };
 
-static int __devinit sainsmart18fb_probe(struct spi_device *spi)
+static int sainsmart18fb_probe(struct spi_device *spi)
 {
 	struct fb_info *info;
 	struct fbtft_par *par;
@@ -199,7 +199,7 @@ out_release:
 	return ret;
 }
 
-static int __devexit sainsmart18fb_remove(struct spi_device *spi)
+static int sainsmart18fb_remove(struct spi_device *spi)
 {
 	struct fb_info *info = spi_get_drvdata(spi);
 
@@ -219,7 +219,7 @@ static struct spi_driver sainsmart18fb_driver = {
 		.owner  = THIS_MODULE,
 	},
 	.probe  = sainsmart18fb_probe,
-	.remove = __devexit_p(sainsmart18fb_remove),
+	.remove = sainsmart18fb_remove,
 };
 
 static int __init sainsmart18fb_init(void)

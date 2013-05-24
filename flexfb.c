@@ -160,6 +160,36 @@ static void flexfb_set_addr_win_1(struct fbtft_par *par, int xs, int ys, int xe,
 	write_reg(par, 0x0022); /* Write Data to GRAM */
 }
 
+/* ssd1289 */
+static void flexfb_set_addr_win_2(struct fbtft_par *par, int xs, int ys, int xe, int ye)
+{
+	fbtft_dev_dbg(DEBUG_SET_ADDR_WIN, par->info->device, "%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
+
+	switch (rotate) {
+	/* R4Eh - Set GDDRAM X address counter */
+	/* R4Fh - Set GDDRAM Y address counter */
+	case 0:
+		write_reg(par, 0x4e, xs);
+		write_reg(par, 0x4f, ys);
+		break;
+	case 2:
+		write_reg(par, 0x4e, par->info->var.xres - 1 - xs);
+		write_reg(par, 0x4f, par->info->var.yres - 1 - ys);
+		break;
+	case 1:
+		write_reg(par, 0x4e, par->info->var.yres - 1 - ys);
+		write_reg(par, 0x4f, xs);
+		break;
+	case 3:
+		write_reg(par, 0x4e, ys);
+		write_reg(par, 0x4f, par->info->var.xres - 1 - xs);
+		break;
+	}
+
+	/* R22h - RAM data write */
+	write_reg(par, 0x22, 0);
+}
+
 static int flexfb_verify_gpios_dc(struct fbtft_par *par)
 {
 	fbtft_dev_dbg(DEBUG_VERIFY_GPIOS, par->info->device, "%s()\n", __func__);
@@ -202,7 +232,7 @@ static int flexfb_verify_gpios_db8(struct fbtft_par *par)
 
 static struct fbtft_display flex_display = { };
 
-static int __devinit flexfb_probe_common(struct spi_device *sdev, struct platform_device *pdev)
+static int flexfb_probe_common(struct spi_device *sdev, struct platform_device *pdev)
 {
 	struct device *dev;
 	struct fb_info *info;
@@ -299,6 +329,9 @@ static int __devinit flexfb_probe_common(struct spi_device *sdev, struct platfor
 	case 1:
 		par->fbtftops.set_addr_win = flexfb_set_addr_win_1;
 		break;
+	case 2:
+		par->fbtftops.set_addr_win = flexfb_set_addr_win_2;
+		break;
 	default:
 		dev_err(dev, "argument 'setaddrwin': unknown value %d.\n", setaddrwin);
 		return -EINVAL;
@@ -319,7 +352,7 @@ out_release:
 	return ret;
 }
 
-static int __devexit flexfb_remove_common(struct device *dev, struct fb_info *info)
+static int flexfb_remove_common(struct device *dev, struct fb_info *info)
 {
 	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, dev, "%s()\n", __func__);
 
@@ -331,24 +364,24 @@ static int __devexit flexfb_remove_common(struct device *dev, struct fb_info *in
 	return 0;
 }
 
-static int __devinit flexfb_probe_spi(struct spi_device *spi)
+static int flexfb_probe_spi(struct spi_device *spi)
 {
 	return flexfb_probe_common(spi, NULL);
 }
 
-static int __devexit flexfb_remove_spi(struct spi_device *spi)
+static int flexfb_remove_spi(struct spi_device *spi)
 {
 	struct fb_info *info = spi_get_drvdata(spi);
 
 	return flexfb_remove_common(&spi->dev, info);
 }
 
-static int __devinit flexfb_probe_pdev(struct platform_device *pdev)
+static int flexfb_probe_pdev(struct platform_device *pdev)
 {
 	return flexfb_probe_common(NULL, pdev);
 }
 
-static int __devexit flexfb_remove_pdev(struct platform_device *pdev)
+static int flexfb_remove_pdev(struct platform_device *pdev)
 {
 	struct fb_info *info = platform_get_drvdata(pdev);
 
@@ -361,7 +394,7 @@ static struct spi_driver flexfb_spi_driver = {
 		.owner  = THIS_MODULE,
 	},
 	.probe  = flexfb_probe_spi,
-	.remove = __devexit_p(flexfb_remove_spi),
+	.remove = flexfb_remove_spi,
 };
 
 static const struct platform_device_id flexfb_platform_ids[] = {
@@ -376,7 +409,7 @@ static struct platform_driver flexfb_platform_driver = {
 	},
 	.id_table = flexfb_platform_ids,
 	.probe  = flexfb_probe_pdev,
-	.remove = __devexit_p(flexfb_remove_pdev),
+	.remove = flexfb_remove_pdev,
 };
 
 static int __init flexfb_init(void)

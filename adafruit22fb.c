@@ -276,7 +276,7 @@ struct fbtft_display adafruit22_display = {
 	.txbuflen = TXBUFLEN,
 };
 
-static int __devinit adafruit22fb_probe(struct spi_device *spi)
+static int adafruit22fb_probe(struct spi_device *spi)
 {
 	struct fb_info *info;
 	struct fbtft_par *par;
@@ -347,7 +347,7 @@ fbreg_fail:
 	return ret;
 }
 
-static int __devexit adafruit22fb_remove(struct spi_device *spi)
+static int adafruit22fb_remove(struct spi_device *spi)
 {
 	struct fb_info *info = spi_get_drvdata(spi);
 	struct fbtft_par *par;
@@ -371,7 +371,7 @@ static struct spi_driver adafruit22fb_driver = {
 		.owner  = THIS_MODULE,
 	},
 	.probe  = adafruit22fb_probe,
-	.remove = __devexit_p(adafruit22fb_remove),
+	.remove = adafruit22fb_remove,
 };
 
 static int __init adafruit22fb_init(void)

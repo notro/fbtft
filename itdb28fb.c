@@ -394,7 +394,7 @@ static int itdb28fb_remove_common(struct device *dev, struct fb_info *info)
 		fbtft_framebuffer_release(info);
 	}
 
-	sysfs_remove_group(&pdev->dev.kobj, &itdb28fb_attr_group);
+	sysfs_remove_group(&dev->kobj, &itdb28fb_attr_group);
 
 	return 0;
 }

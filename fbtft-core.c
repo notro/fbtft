@@ -528,9 +528,13 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 	u8 *vmem = NULL;
 	void *txbuf = NULL;
 	void *buf = NULL;
+	unsigned width;
+	unsigned height;
 	int txbuflen = display->txbuflen;
 	unsigned bpp = display->bpp;
 	unsigned fps = display->fps;
+	unsigned rotate = 0;
+	bool bgr = false;
 	int vmem_size;
 
 	/* defaults */
@@ -547,6 +551,19 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 			fps = pdata->fps;
 		if (pdata->txbuflen)
 			txbuflen = pdata->txbuflen;
+		rotate = pdata->rotate & 3;
+		bgr = pdata->bgr;
+	}
+
+	switch (rotate) {
+	case 1:
+	case 3:
+		width =  display->height;
+		height = display->width;
+		break;
+	default:
+		width =  display->width;
+		height = display->height;
 	}
 
 	vmem = vzalloc(vmem_size);
@@ -592,14 +609,15 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 	info->fix.xpanstep =	   0;
 	info->fix.ypanstep =	   0;
 	info->fix.ywrapstep =	   0;
-	info->fix.line_length =    display->width*bpp/8;
+	info->fix.line_length =    width*bpp/8;
 	info->fix.accel =          FB_ACCEL_NONE;
 	info->fix.smem_len =       vmem_size;
 
-	info->var.xres =           display->width;
-	info->var.yres =           display->height;
-	info->var.xres_virtual =   display->width;
-	info->var.yres_virtual =   display->height;
+	info->var.rotate =         rotate;
+	info->var.xres =           width;
+	info->var.yres =           height;
+	info->var.xres_virtual =   info->var.xres;
+	info->var.yres_virtual =   info->var.yres;
 	info->var.bits_per_pixel = bpp;
 	info->var.nonstd =         1;
 
@@ -623,6 +641,7 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 	// Set display line markers as dirty for all. Ensures first update to update all of the display.
 	par->dirty_lines_start = 0;
 	par->dirty_lines_end = par->info->var.yres - 1;
+	par->bgr = bgr;
 
     info->pseudo_palette = par->pseudo_palette;
 
@@ -751,13 +770,12 @@ int fbtft_register_framebuffer(struct fb_info *fb_info)
 	if (ret < 0)
 		goto reg_fail;
 
-	// [Tue Jan  8 19:36:41 2013] graphics fb1: hx8340fb frame buffer, 75 KiB video memory, 151 KiB buffer memory, spi0.0 at 32 MHz
 	if (par->txbuf.buf)
 		sprintf(text1, ", %d KiB buffer memory", par->txbuf.len >> 10);
 	if (spi)
 		sprintf(text2, ", spi%d.%d at %d MHz", spi->master->bus_num, spi->chip_select, spi->max_speed_hz/1000000);
-	dev_info(fb_info->dev, "%s frame buffer, %d KiB video memory%s, fps=%lu%s\n",
-		fb_info->fix.id, fb_info->fix.smem_len >> 10, text1, HZ/fb_info->fbdefio->delay, text2);
+	dev_info(fb_info->dev, "%s frame buffer, %dx%d, %d KiB video memory%s, fps=%lu%s\n",
+		fb_info->fix.id, fb_info->var.xres, fb_info->var.yres, fb_info->fix.smem_len >> 10, text1, HZ/fb_info->fbdefio->delay, text2);
 
 	/* Turn on backlight if available */
 	if (fb_info->bl_dev) {

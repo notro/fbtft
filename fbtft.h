@@ -42,6 +42,8 @@ struct fbtft_gpio {
 
 struct fbtft_platform_data {
 	const struct fbtft_gpio *gpios;
+	unsigned rotate;
+	bool bgr;          /* BlueGreenRed color format */
 	unsigned fps;
 	int txbuflen;
 	void *extra;
@@ -109,6 +111,7 @@ struct fbtft_par {
 	unsigned long *debug;
 	unsigned long current_debug;
 	bool first_update_done;
+	bool bgr;
 	void *extra;
 };
 

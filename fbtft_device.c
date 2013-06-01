@@ -31,35 +31,50 @@
 struct spi_device *spi_device = NULL;
 struct platform_device *p_device = NULL;
 
-static unsigned busnum = 0;
-static unsigned cs = 0;
-static unsigned speed = 0;
-static int mode = -1;
 static char *name = NULL;
-static char *gpios[MAX_GPIOS] = { NULL, };
-static int gpios_num = 0;
-static unsigned fps = 0;
-static int txbuflen = 0;
-static unsigned verbose = 3;
-
 module_param(name, charp, 0);
-MODULE_PARM_DESC(name, "Devicename (required). name=list lists supported devices.");
+MODULE_PARM_DESC(name, "Devicename (required). name=list => list all supported devices.");
+
+static unsigned rotate = 0;
+module_param(rotate, uint, 0);
+MODULE_PARM_DESC(rotate, "Rotate display 0=normal, 1=clockwise, 2=upside down, 3=counterclockwise (not supported by all drivers)");
+
+static unsigned busnum = 0;
 module_param(busnum, uint, 0);
 MODULE_PARM_DESC(busnum, "SPI bus number (default=0)");
+
+static unsigned cs = 0;
 module_param(cs, uint, 0);
 MODULE_PARM_DESC(cs, "SPI chip select (default=0)");
+
+static unsigned speed = 0;
 module_param(speed, uint, 0);
-MODULE_PARM_DESC(speed, "SPI speed (used to override default)");
+MODULE_PARM_DESC(speed, "SPI speed (override device default)");
+
+static int mode = -1;
 module_param(mode, int, 0);
-MODULE_PARM_DESC(mode, "SPI mode (used to override default)");
+MODULE_PARM_DESC(mode, "SPI mode (override device default)");
+
+static char *gpios[MAX_GPIOS] = { NULL, };
+static int gpios_num = 0;
 module_param_array(gpios, charp, &gpios_num, 0);
-MODULE_PARM_DESC(gpios, "List of gpios. Comma seperated with the form: reset:23,dc:24 (used to override default)");
+MODULE_PARM_DESC(gpios, "List of gpios. Comma separated with the form: reset:23,dc:24 (when overriding the default, all gpios must be specified)");
+
+static unsigned fps = 0;
 module_param(fps, uint, 0);
-MODULE_PARM_DESC(fps, "Frames per second (used to override default)");
+MODULE_PARM_DESC(fps, "Frames per second (override driver default)");
+
+static int txbuflen = 0;
 module_param(txbuflen, int, 0);
-MODULE_PARM_DESC(txbuflen, "txbuflen (used to override default)");
+MODULE_PARM_DESC(txbuflen, "txbuflen (override driver default)");
+
+static bool bgr = false;
+module_param(bgr, bool, 0);
+MODULE_PARM_DESC(bgr, "Use if Red and Blue color is swapped (supported by some drivers).");
+
+static unsigned verbose = 3;
 module_param(verbose, uint, 0);
-MODULE_PARM_DESC(verbose, "0=silent, 0< show gpios, 1< show devices, 2< show devices before (default)");
+MODULE_PARM_DESC(verbose, "0=silent, 0< show gpios, 1< show devices, 2< show devices before (default=3)");
 
 
 /* supported SPI displays */
@@ -363,6 +378,11 @@ static int __init fbtft_device_init(void)
 
 	pr_debug(DRVNAME":  name='%s', busnum=%d, cs=%d\n", name, busnum, cs);
 
+	if (rotate > 3) {
+		pr_warning("argument 'rotate' illegal value: %d (0-3). Setting it to 0.\n", rotate);
+		rotate = 0;
+	}
+
 	/* name=list lists all supported drivers */
 	if (strncmp(name, "list", 32) == 0) {
 		pr_info(DRVNAME":  Supported drivers:\n");
@@ -394,6 +414,8 @@ static int __init fbtft_device_init(void)
 			if (pdata)
 				display->platform_data = pdata;
 			pdata = display->platform_data;
+			((struct fbtft_platform_data *)pdata)->rotate = rotate;
+			((struct fbtft_platform_data *)pdata)->bgr = bgr;
 			if (fps)
 				((struct fbtft_platform_data *)pdata)->fps = fps;
 			if (txbuflen)
@@ -422,6 +444,8 @@ static int __init fbtft_device_init(void)
 				if (pdata)
 					p_device->dev.platform_data = (void *)pdata;
 				pdata = p_device->dev.platform_data;
+				((struct fbtft_platform_data *)pdata)->rotate = rotate;
+				((struct fbtft_platform_data *)pdata)->bgr = bgr;
 				if (fps)
 					((struct fbtft_platform_data *)pdata)->fps = fps;
 				if (txbuflen)

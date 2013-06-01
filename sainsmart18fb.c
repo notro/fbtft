@@ -1,10 +1,6 @@
 /*
  * FB driver for the Sainsmart 1.8" LCD display
  *
- * This display module want the color as BGR565
- * Some programs writes RGB565 regardless of what is said in info->var.[color].{offset,length}.
- * So conversion from RGB565 to BGR565 has to be done.
- *
  * Copyright (C) 2013 Noralf Tronnes
  *
  * This program is free software; you can redistribute it and/or modify
@@ -34,11 +30,19 @@
 #define DRVNAME	    "sainsmart18fb"
 #define WIDTH       128
 #define HEIGHT      160
-#define TXBUFLEN	4*PAGE_SIZE
 
 
 /* Module Parameter: debug  (also available through sysfs) */
 MODULE_PARM_DEBUG;
+
+static bool bgr = false;
+module_param(bgr, bool, 0);
+MODULE_PARM_DESC(bgr, "Use if Red and Blue is swapped (set MADCTL RGB bit).");
+
+static unsigned rotate = 0;
+module_param(rotate, uint, 0);
+MODULE_PARM_DESC(rotate, "Rotate display (0=normal, 1=clockwise, 2=upside down, 3=counterclockwise)");
+
 
 // ftp://imall.iteadstudio.com/IM120419001_ITDB02_1.8SP/DS_ST7735.pdf
 // https://github.com/johnmccombs/arduino-libraries/blob/master/ST7735/ST7735.cpp
@@ -91,7 +95,25 @@ static int sainsmart18fb_init_display(struct fbtft_par *par)
 	write_reg(par, 0x20);
 
 	/* MADCTL - Memory data access control */
-	write_reg(par, 0x36, 0xC8);	/* row address/col address, bottom to top refresh */
+	/*   Mode selection pin SRGB: RGB direction select H/W pin for color filter setting: 0=RGB, 1=BGR   */
+	/*   MADCTL RGB bit: RGB-BGR ORDER: 0=RGB color filter panel, 1=BGR color filter panel              */
+	#define MY (1 << 7)
+	#define MX (1 << 6)
+	#define MV (1 << 5)
+	switch (rotate) {
+	case 0:
+		write_reg(par, 0x36, MX | MY | (bgr << 3));
+		break;
+	case 1:
+		write_reg(par, 0x36, MY | MV | (bgr << 3));
+		break;
+	case 2:
+		write_reg(par, 0x36, (bgr << 3));
+		break;
+	case 3:
+		write_reg(par, 0x36, MX | MV | (bgr << 3));
+		break;
+	}
 
 	/* COLMOD - Interface pixel format */
 	write_reg(par, 0x3A, 0x05);
@@ -115,62 +137,6 @@ static int sainsmart18fb_init_display(struct fbtft_par *par)
 	return 0;
 }
 
-static int sainsmart18fb_write_vmem(struct fbtft_par *par)
-{
-	u16 *vmem16;
-	u16 *txbuf16 = NULL;
-    size_t remain;
-	size_t to_copy;
-	int i;
-	int ret = 0;
-	u16 val;
-	unsigned red, green, blue;
-	size_t offset, len;
-
-	offset = par->dirty_lines_start * par->info->fix.line_length;
-	len = (par->dirty_lines_end - par->dirty_lines_start + 1) * par->info->fix.line_length;
-	remain = len;
-	vmem16 = (u16 *)(par->info->screen_base + offset);
-
-	fbtft_fbtft_dev_dbg(DEBUG_WRITE_VMEM, par, par->info->device, "%s: offset=%d, len=%d\n", __func__, offset, len);
-
-	if (par->gpio.dc != -1)
-		gpio_set_value(par->gpio.dc, 1);
-
-	// sanity check
-	if (!par->txbuf.buf) {
-		dev_err(par->info->device, "sainsmart18fb_write_vmem: txbuf.buf is needed to do conversion\n");
-		return -1;
-	}
-
-	while (remain) {
-		to_copy = remain > par->txbuf.len ? par->txbuf.len : remain;
-		txbuf16 = (u16 *)par->txbuf.buf;
-		dev_dbg(par->info->device, "    to_copy=%d, remain=%d\n", to_copy, remain - to_copy);
-		for (i=0;i<to_copy;i+=2) {
-			val = *vmem16++;
-
-			// Convert to BGR565
-			red   = (val >> par->info->var.red.offset)   & ((1<<par->info->var.red.length) - 1);
-			green = (val >> par->info->var.green.offset) & ((1<<par->info->var.green.length) - 1);
-			blue  = (val >> par->info->var.blue.offset)  & ((1<<par->info->var.blue.length) - 1);
-			val  = (blue <<11) | (green <<5) | red;
-
-#ifdef __LITTLE_ENDIAN
-				*txbuf16++ = swab16(val);
-#else
-				*txbuf16++ = val;
-#endif
-		}
-		ret = par->fbtftops.write(par, par->txbuf.buf, to_copy);
-		if (ret < 0)
-			return ret;
-		remain -= to_copy;
-	}
-
-	return ret;
-}
-
 static int sainsmart18fb_verify_gpios(struct fbtft_par *par)
 {
 	fbtft_dev_dbg(DEBUG_VERIFY_GPIOS, par->info->device, "%s()\n", __func__);
@@ -183,13 +149,9 @@ static int sainsmart18fb_verify_gpios(struct fbtft_par *par)
 	return 0;
 }
 
-struct fbtft_display sainsmart18_display = {
-	.width = WIDTH,
-	.height = HEIGHT,
-	.txbuflen = TXBUFLEN,
-};
+struct fbtft_display sainsmart18_display = { };
 
-static int __devinit sainsmart18fb_probe(struct spi_device *spi)
+static int sainsmart18fb_probe(struct spi_device *spi)
 {
 	struct fb_info *info;
 	struct fbtft_par *par;
@@ -197,15 +159,32 @@ static int __devinit sainsmart18fb_probe(struct spi_device *spi)
 
 	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &spi->dev, "%s()\n", __func__);
 
+	if (rotate > 3) {
+		dev_warn(&spi->dev, "argument 'rotate' illegal value: %d (0-3). Setting it to 0.\n", rotate);
+		rotate = 0;
+	}
+	switch (rotate) {
+	case 0:
+	case 2:
+		sainsmart18_display.width = WIDTH;
+		sainsmart18_display.height = HEIGHT;
+		break;
+	case 1:
+	case 3:
+		sainsmart18_display.width = HEIGHT;
+		sainsmart18_display.height = WIDTH;
+		break;
+	}
+
 	info = fbtft_framebuffer_alloc(&sainsmart18_display, &spi->dev);
 	if (!info)
 		return -ENOMEM;
 
+	info->var.rotate = rotate;
 	par = info->par;
 	par->spi = spi;
 	fbtft_debug_init(par);
 	par->fbtftops.init_display = sainsmart18fb_init_display;
-	par->fbtftops.write_vmem = sainsmart18fb_write_vmem;
 	par->fbtftops.verify_gpios = sainsmart18fb_verify_gpios;
 
 	ret = fbtft_register_framebuffer(info);
@@ -220,7 +199,7 @@ out_release:
 	return ret;
 }
 
-static int __devexit sainsmart18fb_remove(struct spi_device *spi)
+static int sainsmart18fb_remove(struct spi_device *spi)
 {
 	struct fb_info *info = spi_get_drvdata(spi);
 
@@ -240,7 +219,7 @@ static struct spi_driver sainsmart18fb_driver = {
 		.owner  = THIS_MODULE,
 	},
 	.probe  = sainsmart18fb_probe,
-	.remove = __devexit_p(sainsmart18fb_remove),
+	.remove = sainsmart18fb_remove,
 };
 
 static int __init sainsmart18fb_init(void)

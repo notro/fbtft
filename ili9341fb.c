@@ -279,7 +279,7 @@ struct fbtft_display adafruit22_display = {
     .txbuflen = TXBUFLEN,
 };
 
-static int __devinit ili9341fb_probe(struct spi_device *spi)
+static int ili9341fb_probe(struct spi_device *spi)
 {
     struct fb_info *info;
     struct fbtft_par *par;
@@ -334,7 +334,7 @@ fbreg_fail:
     return ret;
 }
 
-static int __devexit ili9341fb_remove(struct spi_device *spi)
+static int ili9341fb_remove(struct spi_device *spi)
 {
     struct fb_info *info = spi_get_drvdata(spi);
     struct fbtft_par *par;
@@ -358,7 +358,7 @@ static struct spi_driver ili9341fb_driver = {
         .owner  = THIS_MODULE,
     },
     .probe  = ili9341fb_probe,
-    .remove = __devexit_p(ili9341fb_remove),
+    .remove = ili9341fb_remove,
 };
 
 static int __init ili9341fb_init(void)

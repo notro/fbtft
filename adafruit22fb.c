@@ -40,6 +40,14 @@
 /* Module Parameter: debug  (also available through sysfs) */
 MODULE_PARM_DEBUG;
 
+static bool bgr = false;
+module_param(bgr, bool, 0);
+MODULE_PARM_DESC(bgr, "Use if Red and Blue is swapped");
+
+static unsigned rotate = 0;
+module_param(rotate, uint, 0);
+MODULE_PARM_DESC(rotate, "Rotate display (0=normal, 1=clockwise, 2=upside down, 3=counterclockwise)");
+
 /* write_cmd and write_data transfers need to be buffered so we can, if needed, do 9-bit emulation */
 #undef write_cmd
 #undef write_data
@@ -169,6 +177,28 @@ static int adafruit22fb_init_display(struct fbtft_par *par)
 	write_flush(par);
 	mdelay(10);
 
+	/* MADCTL - Memory data access control */
+	/*   Mode select pin SRGB: RGB direction select H/W pin for Color filter default setting: 0=BGR, 1=RGB   */
+	/*   MADCTL RGB bit: RGB-BGR ORDER: 0=RGB color filter panel, 1=BGR color filter panel              */
+	#define MY (1 << 7)
+	#define MX (1 << 6)
+	#define MV (1 << 5)
+	write_cmd(par, 0x36);
+	switch (rotate) {
+	case 0:
+		write_data(par, (!bgr << 3));
+		break;
+	case 1:
+		write_data(par, MX | MV | (!bgr << 3));
+		break;
+	case 2:
+		write_data(par, MX | MY | (!bgr << 3));
+		break;
+	case 3:
+		write_data(par, MY | MV | (!bgr << 3));
+		break;
+	}
+
 	/*	Interface Pixel Format (3Ah)
 		This command is used to define the format of RGB picture data, 
 		which is to be transfer via the system and RGB interface.		*/
@@ -246,13 +276,30 @@ struct fbtft_display adafruit22_display = {
 	.txbuflen = TXBUFLEN,
 };
 
-static int __devinit adafruit22fb_probe(struct spi_device *spi)
+static int adafruit22fb_probe(struct spi_device *spi)
 {
 	struct fb_info *info;
 	struct fbtft_par *par;
 	int ret;
 
 	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &spi->dev, "%s()\n", __func__);
+
+	if (rotate > 3) {
+		dev_warn(&spi->dev, "argument 'rotate' illegal value: %d (0-3). Setting it to 0.\n", rotate);
+		rotate = 0;
+	}
+	switch (rotate) {
+	case 0:
+	case 2:
+		adafruit22_display.width = WIDTH;
+		adafruit22_display.height = HEIGHT;
+		break;
+	case 1:
+	case 3:
+		adafruit22_display.width = HEIGHT;
+		adafruit22_display.height = WIDTH;
+		break;
+	}
 
 	info = fbtft_framebuffer_alloc(&adafruit22_display, &spi->dev);
 	if (!info)
@@ -300,7 +347,7 @@ fbreg_fail:
 	return ret;
 }
 
-static int __devexit adafruit22fb_remove(struct spi_device *spi)
+static int adafruit22fb_remove(struct spi_device *spi)
 {
 	struct fb_info *info = spi_get_drvdata(spi);
 	struct fbtft_par *par;
@@ -324,7 +371,7 @@ static struct spi_driver adafruit22fb_driver = {
 		.owner  = THIS_MODULE,
 	},
 	.probe  = adafruit22fb_probe,
-	.remove = __devexit_p(adafruit22fb_remove),
+	.remove = adafruit22fb_remove,
 };
 
 static int __init adafruit22fb_init(void)

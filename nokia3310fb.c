@@ -162,7 +162,7 @@ struct fbtft_display nokia3310fb_display = {
 	.txbuflen = -1,
 };
 
-static int __devinit nokia3310fb_probe(struct spi_device *spi)
+static int nokia3310fb_probe(struct spi_device *spi)
 {
 	struct fb_info *info;
 	struct fbtft_par *par;
@@ -211,7 +211,7 @@ out_release:
 	return ret;
 }
 
-static int __devexit nokia3310fb_remove(struct spi_device *spi)
+static int nokia3310fb_remove(struct spi_device *spi)
 {
 	struct fb_info *info = spi_get_drvdata(spi);
 
@@ -236,7 +236,7 @@ static struct spi_driver nokia3310fb_driver = {
 		.owner  = THIS_MODULE,
 	},
 	.probe  = nokia3310fb_probe,
-	.remove = __devexit_p(nokia3310fb_remove),
+	.remove = nokia3310fb_remove,
 };
 
 static int __init nokia3310fb_init(void)

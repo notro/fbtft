@@ -8,6 +8,12 @@ menuconfig FB_TFT
 	select FB_DEFERRED_IO
 	select FB_BACKLIGHT
 
+config FB_FLEX
+	tristate "Generic FB driver for TFT LCD displays"
+	depends on FB_TFT
+	help
+	  Generic Framebuffer support for TFT LCD displays.
+
 config FB_ADAFRUIT22
 	tristate "FB driver for the Adafruit 2.2\" LCD display"
 	depends on FB_TFT
@@ -38,6 +44,10 @@ config FB_SAINSMART18
 	help
 	  Framebuffer support for the Sainsmart 1.8\" LCD display in 8-bit SPI mode.
 
+config FB_SAINSMART32
+	tristate "FB driver for the Sainsmart 3.2\" LCD display"
+	depends on FB_TFT
+
 config FB_NOKIA3310
 	tristate "FB driver for the Nokia 5110/3310 LCD display"
 	depends on FB_TFT
@@ -50,8 +60,15 @@ config FB_ITDB28
 	help
 	  Framebuffer support for the ITDB02-2.8 LCD display in 8-bit parallel mode.
 
-config FB_TFT_SPIDEVICES
-	tristate "Module to for adding SPI devices"
+config FB_TFT_FBTFT_DEVICE
+	tristate "Module to for adding FBTFT devices"
 	depends on FB_TFT
+
+config TOUCHSCREEN_ADS7846_TEST
+	tristate "ADS7846/TSC2046/AD7873 and AD(S)7843 based touchscreens, MODIFIED for testing"
+	depends on SPI_MASTER
+	depends on HWMON = n || HWMON
 	help
-	  Adds SPI devices using hardcoded values. Used for testing fbtft drivers.
+	  This is a modified version of ads7846.c that can be used for testing.
+	  It registers the needed SPI device with the help of module arguments,
+	  and config can be set with module arguments.

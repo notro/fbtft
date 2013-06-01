@@ -2,9 +2,19 @@
  *
  * Copyright (C) 2013, Noralf Tronnes
  *
- * This file is subject to the terms and conditions of the GNU General Public
- * License. See the file COPYING in the main directory of this archive for
- * more details.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
 #include <linux/module.h>
@@ -14,7 +24,7 @@
 
 #include "fbtft.h"
 
-#define DRVNAME "spidevices"
+#define DRVNAME "fbtft_device"
 
 #define MAX_GPIOS 32
 
@@ -53,7 +63,7 @@ MODULE_PARM_DESC(verbose, "0=silent, 0< show gpios, 1< show devices, 2< show dev
 
 
 /* supported SPI displays */
-static struct spi_board_info spidevices_spi_displays[] = {
+static struct spi_board_info fbtft_device_spi_displays[] = {
 	{
 		.modalias = "ili9341fb",
 		.max_speed_hz = 32000000,
@@ -85,6 +95,17 @@ static struct spi_board_info spidevices_spi_displays[] = {
 		.mode = SPI_MODE_0,
 		.platform_data = &(struct fbtft_platform_data) {  /* this is so the module won't break */
 			.gpios = (const struct fbtft_gpio []) {
+				{},
+			},
+		}
+	}, {
+		.modalias = "flexfb",
+		.max_speed_hz = 32000000,
+		.mode = SPI_MODE_0,
+		.platform_data = &(struct fbtft_platform_data) {
+			.gpios = (const struct fbtft_gpio []) {
+				{ "reset", 25 },
+				{ "dc", 24 },
 				{},
 			},
 		}
@@ -158,6 +179,17 @@ static struct spi_board_info spidevices_spi_displays[] = {
 			},
 		}
 	}, {
+		.modalias = "sainsmart32spifb",
+		.max_speed_hz = 16000000,
+		.mode = SPI_MODE_0,
+		.platform_data = &(struct fbtft_platform_data) {
+			.gpios = (const struct fbtft_gpio []) {
+				{ "reset", 25 },
+				{ "dc", 24 },
+				{},
+			},
+		}
+	}, {
 		.modalias = "nokia3310fb",
 		.max_speed_hz = 4000000,
 		.mode = SPI_MODE_0,
@@ -169,17 +201,52 @@ static struct spi_board_info spidevices_spi_displays[] = {
 				{},
 			},
 		}
+	}, {
+		.modalias = "itdb28spifb",
+		.max_speed_hz = 32000000,
+		.mode = SPI_MODE_0,
+		.platform_data = &(struct fbtft_platform_data) {
+			.gpios = (const struct fbtft_gpio []) {
+				{ "reset", 25 },
+				{ "dc", 24 },
+				{},
+			},
+		}
 	}
 };
 
-static void spidevices_pdev_release(struct device *dev);
+static void fbtft_device_pdev_release(struct device *dev);
 
-static struct platform_device spidevices_pdev_displays[] = {
+static struct platform_device fbtft_device_pdev_displays[] = {
 	{
 		.name = "itdb28fb",
 		.id = 0,
 		.dev = {
-					.release = spidevices_pdev_release,
+					.release = fbtft_device_pdev_release,
+					.platform_data = &(struct fbtft_platform_data) {
+						.gpios = (const struct fbtft_gpio []) {
+							{ "reset", 17 },
+							{ "dc", 1 },
+							{ "wr", 0 },
+							{ "cs", 21 },
+							{ "db00", 9 },
+							{ "db01", 11 },
+							{ "db02", 18 },
+							{ "db03", 23 },
+							{ "db04", 24 },
+							{ "db05", 25 },
+							{ "db06", 8 },
+							{ "db07", 7 },
+							{ "led", 4 },
+							{},
+						},
+					},
+				},
+	}, {
+		.name = "flexpfb",
+		.id = 0,
+		.dev = {
+					.release = fbtft_device_pdev_release,
 					.platform_data = &(struct fbtft_platform_data) {
 						.gpios = (const struct fbtft_gpio []) {
 							{ "reset", 17 },
@@ -203,13 +270,13 @@ static struct platform_device spidevices_pdev_displays[] = {
 };
 
 /* used if gpios parameter is present */
-static struct fbtft_gpio spidevices_param_gpios[MAX_GPIOS+1] = { };
-static struct fbtft_platform_data spidevices_param_pdata = {
-	.gpios = spidevices_param_gpios,
+static struct fbtft_gpio fbtft_device_param_gpios[MAX_GPIOS+1] = { };
+static struct fbtft_platform_data fbtft_device_param_pdata = {
+	.gpios = fbtft_device_param_gpios,
 };
 
 
-static void spidevices_pdev_release(struct device *dev)
+static void fbtft_device_pdev_release(struct device *dev)
 {
  /* Used to silence this message:  Device 'xxx' does not have a release() function, it is broken and must be fixed. */
 }
@@ -248,7 +315,7 @@ static void pr_p_devices(void)
 }
 
 
-static void spidevices_delete(struct spi_master *master, unsigned cs)
+static void fbtft_device_delete(struct spi_master *master, unsigned cs)
 {
 	struct device *dev;
 	char str[32];
@@ -263,7 +330,7 @@ static void spidevices_delete(struct spi_master *master, unsigned cs)
 }
 
 
-static int __init spidevices_init(void)
+static int __init fbtft_device_init(void)
 {
 	struct spi_master *master = NULL;
 	struct spi_board_info *display = NULL;
@@ -299,9 +366,9 @@ static int __init spidevices_init(void)
 				pr_err(DRVNAME":  could not parse number in gpios parameter: %s:%s\n", p_name, p_num);
 				return -EINVAL;
 			}
-			strcpy(spidevices_param_gpios[i].name, p_name);
-			spidevices_param_gpios[i].gpio = (int) val;
-			pdata = &spidevices_param_pdata;
+			strcpy(fbtft_device_param_gpios[i].name, p_name);
+			fbtft_device_param_gpios[i].gpio = (int) val;
+			pdata = &fbtft_device_param_pdata;
 		}
 	}
 
@@ -313,7 +380,7 @@ static int __init spidevices_init(void)
 
 	if (name == NULL) {
 		pr_err(DRVNAME":  missing module parameter: 'name'\n");
-		pr_err(DRVNAME":  Use 'modinfo -p spidevices' to get all parameters\n");
+		pr_err(DRVNAME":  Use 'modinfo -p "DRVNAME"' to get all parameters\n");
 		return -EINVAL;
 	}
 
@@ -322,25 +389,25 @@ static int __init spidevices_init(void)
 	/* name=list lists all supported drivers */
 	if (strncmp(name, "list", 32) == 0) {
 		pr_info(DRVNAME":  Supported drivers:\n");
-		for (i=0; i < ARRAY_SIZE(spidevices_spi_displays); i++) {
-			pr_info(DRVNAME":      %s\n", spidevices_spi_displays[i].modalias);
+		for (i=0; i < ARRAY_SIZE(fbtft_device_spi_displays); i++) {
+			pr_info(DRVNAME":      %s\n", fbtft_device_spi_displays[i].modalias);
 		}
-		for (i=0; i < ARRAY_SIZE(spidevices_pdev_displays); i++) {
-			pr_info(DRVNAME":      %s\n", spidevices_pdev_displays[i].name);
+		for (i=0; i < ARRAY_SIZE(fbtft_device_pdev_displays); i++) {
+			pr_info(DRVNAME":      %s\n", fbtft_device_pdev_displays[i].name);
 		}
 		return -ECANCELED;
 	}
 
 	/* see if it is a SPI device */
-	for (i=0; i < ARRAY_SIZE(spidevices_spi_displays); i++) {
-		if (strncmp(name, spidevices_spi_displays[i].modalias, 32) == 0) {
+	for (i=0; i < ARRAY_SIZE(fbtft_device_spi_displays); i++) {
+		if (strncmp(name, fbtft_device_spi_displays[i].modalias, 32) == 0) {
 			master = spi_busnum_to_master(busnum);
 			if (!master) {
 				pr_err(DRVNAME":  spi_busnum_to_master(%d) returned NULL\n", busnum);
 				return -EINVAL;
 			}
-			spidevices_delete(master, cs);      /* make sure it's available */
-			display = &spidevices_spi_displays[i];
+			fbtft_device_delete(master, cs);      /* make sure it's available */
+			display = &fbtft_device_spi_displays[i];
 			display->chip_select = cs;
 			display->bus_num = busnum;
 			if (speed)
@@ -367,9 +434,9 @@ static int __init spidevices_init(void)
 
 	if (!found) {
 		/* see if it is a platform_device */
-		for (i=0; i < ARRAY_SIZE(spidevices_pdev_displays); i++) {
-			if (strncmp(name, spidevices_pdev_displays[i].name, 32) == 0) {
-				p_device = &spidevices_pdev_displays[i];
+		for (i=0; i < ARRAY_SIZE(fbtft_device_pdev_displays); i++) {
+			if (strncmp(name, fbtft_device_pdev_displays[i].name, 32) == 0) {
+				p_device = &fbtft_device_pdev_displays[i];
 				ret = platform_device_register(p_device);
 				if (ret < 0) {
 					pr_err(DRVNAME":    platform_device_register() returned %d\n", ret);
@@ -413,7 +480,7 @@ static int __init spidevices_init(void)
 	return 0;
 }
 
-static void __exit spidevices_exit(void)
+static void __exit fbtft_device_exit(void)
 {
 	pr_debug(DRVNAME" - exit\n");
 
@@ -428,9 +495,9 @@ static void __exit spidevices_exit(void)
 }
 
 
-module_init(spidevices_init);
-module_exit(spidevices_exit);
+module_init(fbtft_device_init);
+module_exit(fbtft_device_exit);
 
-MODULE_DESCRIPTION("Add FBTFT SPI device. Used during testing.");
+MODULE_DESCRIPTION("Add a FBTFT device.");
 MODULE_AUTHOR("Noralf Tronnes");
 MODULE_LICENSE("GPL");

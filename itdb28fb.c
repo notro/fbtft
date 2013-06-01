@@ -24,6 +24,7 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/gpio.h>
+#include <linux/spi/spi.h>
 #include <linux/delay.h>
 
 #include "fbtft.h"
@@ -95,8 +96,8 @@ static int itdb28fb_init_display(struct fbtft_par *par)
 
 	par->fbtftops.reset(par);
 
-	/* Activate chip */
-	gpio_set_value(par->gpio.cs, 0);
+	if (par->gpio.cs != -1)
+		gpio_set_value(par->gpio.cs, 0);  /* Activate chip */
 
 	/* Initialization sequence from ILI9325 Application Notes */
 
@@ -216,22 +217,20 @@ static int itdb28fb_verify_gpios(struct fbtft_par *par)
 
 	fbtft_dev_dbg(DEBUG_VERIFY_GPIOS, par->info->device, "%s()\n", __func__);
 
-	if (par->gpio.cs < 0) {
-		dev_err(par->info->device, "Missing info about 'cs' gpio. Aborting.\n");
-		return -EINVAL;
-	}
 	if (par->gpio.dc < 0) {
 		dev_err(par->info->device, "Missing info about 'dc' gpio. Aborting.\n");
 		return -EINVAL;
 	}
-	if (par->gpio.wr < 0) {
-		dev_err(par->info->device, "Missing info about 'wr' gpio. Aborting.\n");
-		return -EINVAL;
-	}
-	for (i=0;i < 8;i++) {
-		if (par->gpio.db[i] < 0) {
-			dev_err(par->info->device, "Missing info about 'db%02d' gpio. Aborting.\n", i);
+	if (par->pdev) {
+		if (par->gpio.wr < 0) {
+			dev_err(par->info->device, "Missing info about 'wr' gpio. Aborting.\n");
 			return -EINVAL;
+		}
+		for (i=0;i < 8;i++) {
+			if (par->gpio.db[i] < 0) {
+				dev_err(par->info->device, "Missing info about 'db%02d' gpio. Aborting.\n", i);
+				return -EINVAL;
+			}
 		}
 	}
 
@@ -243,16 +242,22 @@ struct fbtft_display itdb28fb_display = {
 	.fps = FPS,
 };
 
-static int __devinit itdb28fb_probe(struct platform_device *pdev)
+static int itdb28fb_probe_common(struct spi_device *sdev, struct platform_device *pdev)
 {
+	struct device *dev;
 	struct fb_info *info;
 	struct fbtft_par *par;
 	int ret;
 
-	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &pdev->dev, "%s()\n", __func__);
+	if (sdev)
+		dev = &sdev->dev;
+	else
+		dev = &pdev->dev;
+
+	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, dev, "%s()\n", __func__);
 
 	if (rotate > 3) {
-		dev_warn(&pdev->dev, "module parameter 'rotate' illegal value: %d. Can only be 0,1,2,3. Setting it to 0.\n", rotate);
+		dev_warn(dev, "module parameter 'rotate' illegal value: %d. Can only be 0,1,2,3. Setting it to 0.\n", rotate);
 		rotate = 0;
 	}
 	switch (rotate) {
@@ -268,20 +273,25 @@ static int __devinit itdb28fb_probe(struct platform_device *pdev)
 		break;
 	}
 
-	info = fbtft_framebuffer_alloc(&itdb28fb_display, &pdev->dev);
+	info = fbtft_framebuffer_alloc(&itdb28fb_display, dev);
 	if (!info)
 		return -ENOMEM;
 
 	info->var.rotate = rotate;
 	par = info->par;
-	par->pdev = pdev;
+	if (sdev)
+		par->spi = sdev;
+	else
+		par->pdev = pdev;
+
 	fbtft_debug_init(par);
 	par->fbtftops.init_display = itdb28fb_init_display;
 	par->fbtftops.register_backlight = fbtft_register_backlight;
-	par->fbtftops.write = fbtft_write_gpio8_wr;
 	par->fbtftops.write_reg = fbtft_write_reg16_bus8;
 	par->fbtftops.set_addr_win = itdb28fb_set_addr_win;
 	par->fbtftops.verify_gpios = itdb28fb_verify_gpios;
+	if (pdev)
+		par->fbtftops.write = fbtft_write_gpio8_wr;
 
 	ret = fbtft_register_framebuffer(info);
 	if (ret < 0)
@@ -295,11 +305,9 @@ out_release:
 	return ret;
 }
 
-static int __devexit itdb28fb_remove(struct platform_device *pdev)
+static int itdb28fb_remove_common(struct device *dev, struct fb_info *info)
 {
-	struct fb_info *info = platform_get_drvdata(pdev);
-
-	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &pdev->dev, "%s()\n", __func__);
+	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, dev, "%s()\n", __func__);
 
 	if (info) {
 		fbtft_unregister_framebuffer(info);
@@ -309,26 +317,74 @@ static int __devexit itdb28fb_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static struct platform_driver itdb28fb_driver = {
+static int itdb28fb_probe_spi(struct spi_device *spi)
+{
+	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &spi->dev, "%s()\n", __func__);
+	return itdb28fb_probe_common(spi, NULL);
+}
+
+static int itdb28fb_remove_spi(struct spi_device *spi)
+{
+	struct fb_info *info = spi_get_drvdata(spi);
+
+	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &spi->dev, "%s()\n", __func__);
+	return itdb28fb_remove_common(&spi->dev, info);
+}
+
+static int itdb28fb_probe_pdev(struct platform_device *pdev)
+{
+	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &pdev->dev, "%s()\n", __func__);
+	return itdb28fb_probe_common(NULL, pdev);
+}
+
+static int itdb28fb_remove_pdev(struct platform_device *pdev)
+{
+	struct fb_info *info = platform_get_drvdata(pdev);
+
+	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &pdev->dev, "%s()\n", __func__);
+	return itdb28fb_remove_common(&pdev->dev, info);
+}
+
+static const struct spi_device_id itdb28fb_platform_ids[] = {
+	{ "itdb28spifb", 0 },
+	{ },
+};
+
+static struct spi_driver itdb28fb_spi_driver = {
 	.driver = {
 		.name   = DRVNAME,
 		.owner  = THIS_MODULE,
 	},
-	.probe  = itdb28fb_probe,
-	.remove = __devexit_p(itdb28fb_remove),
+	.id_table = itdb28fb_platform_ids,
+	.probe  = itdb28fb_probe_spi,
+	.remove = itdb28fb_remove_spi,
+};
+
+static struct platform_driver itdb28fb_platform_driver = {
+	.driver = {
+		.name   = DRVNAME,
+		.owner  = THIS_MODULE,
+	},
+	.probe  = itdb28fb_probe_pdev,
+	.remove = itdb28fb_remove_pdev,
 };
 
 static int __init itdb28fb_init(void)
 {
-	fbtft_pr_debug("\n\n"DRVNAME" - %s()\n", __func__);
+	int ret;
 
-	return platform_driver_register(&itdb28fb_driver);
+	fbtft_pr_debug("\n\n"DRVNAME": %s()\n", __func__);
+	ret = spi_register_driver(&itdb28fb_spi_driver);
+	if (ret < 0)
+		return ret;
+	return platform_driver_register(&itdb28fb_platform_driver);
 }
 
 static void __exit itdb28fb_exit(void)
 {
-	fbtft_pr_debug(DRVNAME" - %s()\n", __func__);
-	platform_driver_unregister(&itdb28fb_driver);
+	fbtft_pr_debug(DRVNAME": %s()\n", __func__);
+	spi_unregister_driver(&itdb28fb_spi_driver);
+	platform_driver_unregister(&itdb28fb_platform_driver);
 }
 
 /* ------------------------------------------------------------------------- */

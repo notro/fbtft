@@ -34,8 +34,8 @@
 #include "fbtft.h"
 
 #define DRVNAME        "ili9341fb"
-#define WIDTH       320
-#define HEIGHT      240
+#define WIDTH       240
+#define HEIGHT      320
 #define TXBUFLEN    4*PAGE_SIZE
 
 
@@ -184,8 +184,20 @@ static int ili9341fb_init_display(struct fbtft_par *par)
 
     // orientation
     write_cmd(par, LCD_CMD_MEMACCESS_CTRL);
-    //write_data(par, (1<<MEM_BGR) | (1<<MEM_X) | (1<<MEM_Y) | (1<<MEM_V)); // 0 degree
-    write_data(par, (1<<MEM_BGR) | (1<<MEM_L) | (1<<MEM_V)); // 180 degree
+    switch (par->info->var.rotate) {
+    case 0:
+        write_data(par, (1<<MEM_X) | (!par->bgr << MEM_BGR));
+        break;
+    case 1:
+        write_data(par, (1<<MEM_V) | (1<<MEM_L) | (!par->bgr << MEM_BGR));
+        break;
+    case 2:
+        write_data(par, (1<<MEM_Y) | (!par->bgr << MEM_BGR));
+        break;
+    case 3:
+        write_data(par, (1<<MEM_Y) | (1<<MEM_X)| (1<<MEM_V) | (!par->bgr << MEM_BGR));
+        break;
+    }
 
     write_cmd(par, LCD_CMD_SLEEPOUT);
     write_flush(par);
@@ -273,7 +285,7 @@ static unsigned long ili9341fb_request_gpios_match(struct fbtft_par *par, const 
     return FBTFT_GPIO_NO_MATCH;
 }
 
-struct fbtft_display adafruit22_display = {
+struct fbtft_display ili9341fb_display = {
     .width = WIDTH,
     .height = HEIGHT,
     .txbuflen = TXBUFLEN,
@@ -287,7 +299,7 @@ static int ili9341fb_probe(struct spi_device *spi)
 
     fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &spi->dev, "%s()\n", __func__);
 
-    info = fbtft_framebuffer_alloc(&adafruit22_display, &spi->dev);
+    info = fbtft_framebuffer_alloc(&ili9341fb_display, &spi->dev);
     if (!info)
         return -ENOMEM;
 

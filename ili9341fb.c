@@ -198,41 +198,6 @@ static int ili9341fb_init_display(struct fbtft_par *par)
     return 0;
 }
 
-void ili9341fb_set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
-{
-    uint8_t xsl, xsh, xel, xeh, ysl, ysh, yel, yeh;
-    u16 *p = (u16 *)par->buf;
-    int i = 0;
-
-    fbtft_dev_dbg(DEBUG_SET_ADDR_WIN, par->info->device, "%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
-
-    xsl = (uint8_t)(xs & 0xff);
-    xsh = (uint8_t)((xs >> 8) & 0xff);
-    xel = (uint8_t)(xe & 0xff);
-    xeh = (uint8_t)((xe >> 8) & 0xff);
-
-    ysl = (uint8_t)(ys & 0xff);
-    ysh = (uint8_t)((ys >> 8) & 0xff);
-    yel = (uint8_t)(ye & 0xff);
-    yeh = (uint8_t)((ye >> 8) & 0xff);
-
-    write_cmd(par, FBTFT_CASET);
-    write_data(par, xsh);
-    write_data(par, xsl);
-    write_data(par, xeh);
-    write_data(par, xel);
-
-    write_cmd(par, FBTFT_RASET);
-    write_data(par, ysh);
-    write_data(par, ysl);
-    write_data(par, yeh);
-    write_data(par, yel);
-
-    write_cmd(par, FBTFT_RAMWR);
-
-    write_flush(par);
-}
-
 static int ili9341fb_write_emulate_9bit(struct fbtft_par *par, void *buf, size_t len)
 {
     u16 *src = buf;
@@ -299,7 +264,6 @@ static int ili9341fb_probe(struct spi_device *spi)
     par->fbtftops.request_gpios_match = ili9341fb_request_gpios_match;
     par->fbtftops.write_data_command = fbtft_write_data_command8_bus9;
     par->fbtftops.write_vmem = fbtft_write_vmem16_bus9;
-    par->fbtftops.set_addr_win = ili9341fb_set_addr_win;
 
     spi->bits_per_word=9;
     ret = spi->master->setup(spi);

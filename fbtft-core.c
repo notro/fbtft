@@ -258,19 +258,29 @@ void fbtft_set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 {
 	fbtft_fbtft_dev_dbg(DEBUG_SET_ADDR_WIN, par, par->info->device, "%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
 
-	write_cmd(par, FBTFT_CASET);
-	write_data(par, 0x00);
-	write_data(par, xs);
-	write_data(par, 0x00);
-	write_data(par, xe);
+        uint8_t xsl = (uint8_t)(xs & 0xff);
+        uint8_t xsh = (uint8_t)((xs >> 8) & 0xff);
+        uint8_t xel = (uint8_t)(xe & 0xff);
+        uint8_t xeh = (uint8_t)((xe >> 8) & 0xff);
 
-	write_cmd(par, FBTFT_RASET);
-	write_data(par, 0x00);
-	write_data(par, ys);
-	write_data(par, 0x00);
-	write_data(par, ye);
+        uint8_t ysl = (uint8_t)(ys & 0xff);
+        uint8_t ysh = (uint8_t)((ys >> 8) & 0xff);
+        uint8_t yel = (uint8_t)(ye & 0xff);
+        uint8_t yeh = (uint8_t)((ye >> 8) & 0xff);
 
-	write_cmd(par, FBTFT_RAMWR);
+        write_cmd(par, FBTFT_CASET);
+        write_data(par, xsh);
+        write_data(par, xsl);
+        write_data(par, xeh);
+        write_data(par, xel);
+
+        write_cmd(par, FBTFT_RASET);
+        write_data(par, ysh);
+        write_data(par, ysl);
+        write_data(par, yeh);
+        write_data(par, yel);
+
+        write_cmd(par, FBTFT_RAMWR);
 }
 
 

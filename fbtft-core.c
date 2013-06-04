@@ -258,19 +258,22 @@ void fbtft_set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 {
 	fbtft_fbtft_dev_dbg(DEBUG_SET_ADDR_WIN, par, par->info->device, "%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
 
-	write_cmd(par, FBTFT_CASET);
-	write_data(par, 0x00);
-	write_data(par, xs);
-	write_data(par, 0x00);
-	write_data(par, xe);
+	/* Column address set */
+	write_cmd(par, 0x2A);
+	write_data(par, (xs >> 8) & 0xFF);
+	write_data(par, xs & 0xFF);
+	write_data(par, (xe >> 8) & 0xFF);
+	write_data(par, xe & 0xFF);
 
-	write_cmd(par, FBTFT_RASET);
-	write_data(par, 0x00);
-	write_data(par, ys);
-	write_data(par, 0x00);
-	write_data(par, ye);
+	/* Row adress set */
+	write_cmd(par, 0x2B);
+	write_data(par, (ys >> 8) & 0xFF);
+	write_data(par, ys & 0xFF);
+	write_data(par, (ye >> 8) & 0xFF);
+	write_data(par, ye & 0xFF);
 
-	write_cmd(par, FBTFT_RAMWR);
+	/* Memory write */
+	write_cmd(par, 0x2C);
 }
 
 

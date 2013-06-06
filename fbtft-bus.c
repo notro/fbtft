@@ -60,6 +60,7 @@ EXPORT_SYMBOL(func);
 
 define_fbtft_write_reg(fbtft_write_reg8_bus8, u8, )
 define_fbtft_write_reg(fbtft_write_reg16_bus8, u16, cpu_to_be16)
+define_fbtft_write_reg(fbtft_write_reg16_bus16, u16, )
 
 
 
@@ -249,8 +250,48 @@ int fbtft_write_vmem8_bus8(struct fbtft_par *par)
 	return -1;
 }
 
+/* 16 bit pixel over 16-bit databus */
 int fbtft_write_vmem16_bus16(struct fbtft_par *par)
 {
-	dev_err(par->info->device, "%s: function not implemented\n", __func__);
-	return -1;
+	u16 *vmem16;
+	u16 *txbuf16 = par->txbuf.buf;
+	size_t remain16;
+	size_t to_copy;
+	size_t tx_array_size16;
+	int i;
+	int ret = 0;
+	size_t offset, len;
+
+	offset = par->dirty_lines_start * par->info->fix.line_length;
+	len = (par->dirty_lines_end - par->dirty_lines_start + 1) * par->info->fix.line_length;
+	remain16 = len / 2;
+	vmem16 = (u16 *)(par->info->screen_base + offset);
+
+	fbtft_fbtft_dev_dbg(DEBUG_WRITE_VMEM, par, par->info->device, "%s: offset=%d, len=%d\n", __func__, offset, len);
+
+	if (par->gpio.dc != -1)
+		gpio_set_value(par->gpio.dc, 1);
+
+	// non buffered write
+	if (!par->txbuf.buf)
+		return par->fbtftops.write(par, vmem16, len);
+
+	// buffered write
+	tx_array_size16 = par->txbuf.len / 2;
+
+	while (remain16) {
+		to_copy = remain16 > tx_array_size16 ? tx_array_size16 : remain16;
+		dev_dbg(par->info->device, "    to_copy=%d, remain=%d\n", to_copy, remain16 - to_copy);
+
+		for (i=0;i<to_copy;i++)
+			txbuf16[i] = vmem16[i];
+
+		vmem16 = vmem16 + to_copy;
+		ret = par->fbtftops.write(par, par->txbuf.buf, to_copy * 2);
+		if (ret < 0)
+			return ret;
+		remain16 -= to_copy;
+	}
+
+	return ret;
 }

@@ -202,16 +202,12 @@ static int flexfb_verify_gpios_dc(struct fbtft_par *par)
 	return 0;
 }
 
-static int flexfb_verify_gpios_db8(struct fbtft_par *par)
+static int flexfb_verify_gpios_db(struct fbtft_par *par)
 {
 	int i;
 
 	fbtft_dev_dbg(DEBUG_VERIFY_GPIOS, par->info->device, "%s()\n", __func__);
 
-	if (par->gpio.cs < 0) {
-		dev_err(par->info->device, "Missing info about 'cs' gpio. Aborting.\n");
-		return -EINVAL;
-	}
 	if (par->gpio.dc < 0) {
 		dev_err(par->info->device, "Missing info about 'dc' gpio. Aborting.\n");
 		return -EINVAL;
@@ -220,7 +216,7 @@ static int flexfb_verify_gpios_db8(struct fbtft_par *par)
 		dev_err(par->info->device, "Missing info about 'wr' gpio. Aborting.\n");
 		return -EINVAL;
 	}
-	for (i=0;i < 8;i++) {
+	for (i=0;i < buswidth;i++) {
 		if (par->gpio.db[i] < 0) {
 			dev_err(par->info->device, "Missing info about 'db%02d' gpio. Aborting.\n", i);
 			return -EINVAL;
@@ -309,11 +305,17 @@ static int flexfb_probe_common(struct spi_device *sdev, struct platform_device *
 		}
 		par->fbtftops.write = fbtft_write_spi;
 	} else {
+		par->fbtftops.verify_gpios = flexfb_verify_gpios_db;
 		switch (buswidth) {
 		case 8:
 			par->fbtftops.write = fbtft_write_gpio8_wr;
 			par->fbtftops.write_vmem = fbtft_write_vmem16_bus8;
-			par->fbtftops.verify_gpios = flexfb_verify_gpios_db8;
+			break;
+		case 16:
+			par->fbtftops.write_reg = fbtft_write_reg16_bus16;
+			par->fbtftops.write_data_command = fbtft_write_data_command16_bus16;
+			par->fbtftops.write = fbtft_write_gpio16_wr;
+			par->fbtftops.write_vmem = fbtft_write_vmem16_bus16;
 			break;
 		default:
 			dev_err(dev, "argument 'buswidth': %d is not supported with parallel.\n", buswidth);

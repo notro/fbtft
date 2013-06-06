@@ -657,13 +657,13 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 		txbuflen = PAGE_SIZE; /* need buffer for byteswapping */
 #endif
 
-	if (txbuflen) {
+	if (txbuflen > 0) {
 		txbuf = vzalloc(txbuflen);
 		if (!txbuf)
 			goto alloc_fail;
 		par->txbuf.buf = txbuf;
+		par->txbuf.len = txbuflen;
 	}
-	par->txbuf.len = txbuflen;
 
 	// default fbtft operations
 	par->fbtftops.write = fbtft_write_spi;

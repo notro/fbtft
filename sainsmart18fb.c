@@ -186,6 +186,7 @@ static int sainsmart18fb_probe(struct spi_device *spi)
 	fbtft_debug_init(par);
 	par->fbtftops.init_display = sainsmart18fb_init_display;
 	par->fbtftops.verify_gpios = sainsmart18fb_verify_gpios;
+	par->fbtftops.register_backlight = fbtft_register_backlight;
 
 	ret = fbtft_register_framebuffer(info);
 	if (ret < 0)

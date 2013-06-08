@@ -87,6 +87,7 @@ void fbtft_write_data_command8_bus8(struct fbtft_par *par, unsigned dc, u32 val)
 	if (ret < 0)
 		dev_err(par->info->device, "%s: dc=%d, val=0x%X, failed with status %d\n", __func__, dc, val, ret);
 }
+EXPORT_SYMBOL(fbtft_write_data_command8_bus8);
 
 /* 8-bit register/data over 9-bit SPI: dc + 8-bit */
 void fbtft_write_data_command8_bus9(struct fbtft_par *par, unsigned dc, u32 val)
@@ -101,6 +102,7 @@ void fbtft_write_data_command8_bus9(struct fbtft_par *par, unsigned dc, u32 val)
 	if (ret < 0)
 		dev_err(par->info->device, "%s: dc=%d, val=0x%X, failed with status %d\n", __func__, dc, val, ret);
 }
+EXPORT_SYMBOL(fbtft_write_data_command8_bus9);
 
 void fbtft_write_data_command16_bus16(struct fbtft_par *par, unsigned dc, u32 val)
 {
@@ -117,6 +119,7 @@ void fbtft_write_data_command16_bus16(struct fbtft_par *par, unsigned dc, u32 va
 	if (ret < 0)
 		dev_err(par->info->device, "%s: dc=%d, val=0x%X, failed with status %d\n", __func__, dc, val, ret);
 }
+EXPORT_SYMBOL(fbtft_write_data_command16_bus16);
 
 void fbtft_write_data_command16_bus8(struct fbtft_par *par, unsigned dc, u32 val)
 {
@@ -133,6 +136,7 @@ void fbtft_write_data_command16_bus8(struct fbtft_par *par, unsigned dc, u32 val
 	if (ret < 0)
 		dev_err(par->info->device, "%s: dc=%d, val=0x%X, failed with status %d\n", __func__, dc, val, ret);
 }
+EXPORT_SYMBOL(fbtft_write_data_command16_bus8);
 
 
 
@@ -194,6 +198,7 @@ int fbtft_write_vmem16_bus8(struct fbtft_par *par)
 
 	return ret;
 }
+EXPORT_SYMBOL(fbtft_write_vmem16_bus8);
 
 /* 16 bit pixel over 9-bit SPI bus: dc + high byte, dc + low byte */
 int fbtft_write_vmem16_bus9(struct fbtft_par *par)
@@ -243,12 +248,14 @@ int fbtft_write_vmem16_bus9(struct fbtft_par *par)
 
 	return ret;
 }
+EXPORT_SYMBOL(fbtft_write_vmem16_bus9);
 
 int fbtft_write_vmem8_bus8(struct fbtft_par *par)
 {
 	dev_err(par->info->device, "%s: function not implemented\n", __func__);
 	return -1;
 }
+EXPORT_SYMBOL(fbtft_write_vmem8_bus8);
 
 /* 16 bit pixel over 16-bit databus */
 int fbtft_write_vmem16_bus16(struct fbtft_par *par)
@@ -295,3 +302,4 @@ int fbtft_write_vmem16_bus16(struct fbtft_par *par)
 
 	return ret;
 }
+EXPORT_SYMBOL(fbtft_write_vmem16_bus16);

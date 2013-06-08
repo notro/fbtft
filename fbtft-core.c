@@ -828,20 +828,5 @@ int fbtft_unregister_framebuffer(struct fb_info *fb_info)
 }
 EXPORT_SYMBOL(fbtft_unregister_framebuffer);
 
-/* fbtft-io.c */
-EXPORT_SYMBOL(fbtft_write_spi);
-EXPORT_SYMBOL(fbtft_write_gpio8_wr);
-EXPORT_SYMBOL(fbtft_write_gpio16_wr);
-
-/* fbtft-bus.c */
-EXPORT_SYMBOL(fbtft_write_vmem8_bus8);
-EXPORT_SYMBOL(fbtft_write_vmem16_bus16);
-EXPORT_SYMBOL(fbtft_write_vmem16_bus8);
-EXPORT_SYMBOL(fbtft_write_vmem16_bus9);
-EXPORT_SYMBOL(fbtft_write_data_command8_bus8);
-EXPORT_SYMBOL(fbtft_write_data_command8_bus9);
-EXPORT_SYMBOL(fbtft_write_data_command16_bus16);
-EXPORT_SYMBOL(fbtft_write_data_command16_bus8);
-
 
 MODULE_LICENSE("GPL");

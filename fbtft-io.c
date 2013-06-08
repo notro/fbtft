@@ -13,6 +13,7 @@ int fbtft_write_spi(struct fbtft_par *par, void *buf, size_t len)
 	}
 	return spi_write(par->spi, buf, len);
 }
+EXPORT_SYMBOL(fbtft_write_spi);
 
 
 #ifdef CONFIG_ARCH_BCM2708
@@ -164,3 +165,6 @@ int fbtft_write_gpio16_wr(struct fbtft_par *par, void *buf, size_t len)
 }
 
 #endif /* CONFIG_ARCH_BCM2708 */
+
+EXPORT_SYMBOL(fbtft_write_gpio8_wr);
+EXPORT_SYMBOL(fbtft_write_gpio16_wr);

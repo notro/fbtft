@@ -18,13 +18,6 @@ The register bytes is swapped though.
 
 I haven't been able to make rotation work either.
 
-Load driver with debug=3 and watch for this line:
-  hy28afb spi0.0: Device code: 0xC990
-
-According to the ILI9320 datasheet, this should be 0x9320
-
-See forum post: http://www.raspberrypi.org/phpBB3/viewtopic.php?p=366101#p366101
-
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
@@ -95,6 +88,7 @@ static int read_spi(struct fbtft_par *par, void *txbuf, void *rxbuf, size_t len)
 {
 	int ret;
 	struct spi_transfer	t = {
+			.speed_hz = 2000000,
 			.tx_buf		= txbuf,
 			.rx_buf		= rxbuf,
 			.len		= len,

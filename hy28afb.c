@@ -10,13 +10,10 @@
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-The driver doesn't work correctly. Red and Blue color is swapped.
-I have tried to set/clear bit 12 BGR in register Entry Mode (R03h), without luck.
+Code needs clean up.
 
-And I can't swap the pixel bytes before transfer, like I do with all other SPI displays.
+I can't swap the pixel bytes before transfer, like I do with all other SPI displays.
 The register bytes is swapped though.
-
-I haven't been able to make rotation work either.
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -81,9 +78,6 @@ void _fbtft_dev_dbg_hex(const struct device *dev, int groupsize, void *buf, size
 		dev_info(dev, "%s\n", text);
 }
 
-
-
-
 static int read_spi(struct fbtft_par *par, void *txbuf, void *rxbuf, size_t len)
 {
 	int ret;
@@ -111,6 +105,7 @@ static int read_spi(struct fbtft_par *par, void *txbuf, void *rxbuf, size_t len)
 	spi_message_add_tail(&t, &m);
 	ret = spi_sync(par->spi, &m);
 	fbtft_dev_dbg_hex(DEBUG_READ, par, par->info->device, u8, rxbuf, len, "%s(len=%d) rxbuf <= ", __func__, len);
+
 	return ret;
 }
 
@@ -125,25 +120,8 @@ static unsigned read_devicecode(struct fbtft_par *par)
 
 	ret = read_spi(par, txbuf, rxbuf, 4);
 
-//	printk("Device code: 0x%02X, 0x%02X, 0x%02X, 0x%02X,  ret=%d\n", rxbuf[0], rxbuf[1], rxbuf[2], rxbuf[3], ret);
-
 	return (rxbuf[2] << 8) | rxbuf[3];
 }
-
-
-
-/*
- ILI9320 Datasheet
--------------------
-
-7.3. Serial Peripheral Interface (SPI)
-
-
-8.2.3. Start Oscillation (R00h) 
-The device code “9320”h is read out when read this register
-
-*/
-
 
 static int hy28afb_init_display(struct fbtft_par *par)
 {
@@ -159,26 +137,21 @@ static int hy28afb_init_display(struct fbtft_par *par)
     write_reg(par, 0x01,0x0100); /* Driver Output Contral */
     write_reg(par, 0x02,0x0700); /* LCD Driver Waveform Contral */
 
-	write_reg(par, 0x36, 0x1030);
-//	write_reg(par, 0x36, 0x1008);
-
 	/* Entry mode R03h */
-/*
     switch (par->info->var.rotate) {
 	case 0:
-		write_reg(par, 0x36, (!par->bgr << 12) | 0x30);
+		write_reg(par, 0x3, (!par->bgr << 12) | 0x30);
 		break;
 	case 1:
-		write_reg(par, 0x36, (!par->bgr << 12) | 0x08);
+		write_reg(par, 0x3, (!par->bgr << 12) | 0x28);
 		break;
 	case 2:
-		write_reg(par, 0x36, (!par->bgr << 12) | 0x00);
+		write_reg(par, 0x3, (!par->bgr << 12) | 0x00);
 		break;
 	case 3:
-		write_reg(par, 0x36, (!par->bgr << 12) | 0x18);
+		write_reg(par, 0x3, (!par->bgr << 12) | 0x18);
 		break;
 	}
-*/
 
     write_reg(par, 0x04,0x0000); /* Scalling Contral */
     write_reg(par, 0x08,0x0202); /* Display Contral 2 */
@@ -331,10 +304,26 @@ static void hy28afb_set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, 
 {
 	fbtft_dev_dbg(DEBUG_SET_ADDR_WIN, par->info->device, "%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
 
+    switch (par->info->var.rotate) {
 	/* R20h = Horizontal GRAM Start Address */
 	/* R21h = Vertical GRAM Start Address */
-	write_reg(par, 0x0020, xs);
-	write_reg(par, 0x0021, ys);
+	case 0:
+		write_reg(par, 0x0020, xs);
+		write_reg(par, 0x0021, ys);
+		break;
+	case 2:
+		write_reg(par, 0x0020, WIDTH - 1 - xs);
+		write_reg(par, 0x0021, HEIGHT - 1 - ys);
+		break;
+	case 1:
+		write_reg(par, 0x0020, WIDTH - 1 - ys);
+		write_reg(par, 0x0021, xs);
+		break;
+	case 3:
+		write_reg(par, 0x0020, ys);
+		write_reg(par, 0x0021, HEIGHT - 1 - xs);
+		break;
+	}
 	write_reg(par, 0x0022); /* Write Data to GRAM */
 }
 
@@ -342,8 +331,6 @@ static void hy28afb_set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, 
 struct fbtft_display hy28afb_display = {
 	.width = WIDTH,
 	.height = HEIGHT,
-//	.width = HEIGHT,
-//	.height = WIDTH,
 };
 
 static int hy28afb_probe(struct spi_device *spi)

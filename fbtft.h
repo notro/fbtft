@@ -45,6 +45,7 @@ struct fbtft_platform_data {
 	bool bgr;          /* BlueGreenRed color format */
 	unsigned fps;
 	int txbuflen;
+	u8 startbyte;
 	void *extra;
 };
 
@@ -93,6 +94,7 @@ struct fbtft_par {
 		size_t len;
 	} txbuf;
 	u8 *buf;  /* small buffer used when writing init data over SPI */
+	u8 startbyte; /* used by some controllers when in SPI mode */
 	struct fbtft_ops fbtftops;
 	unsigned dirty_lines_start;
 	unsigned dirty_lines_end;

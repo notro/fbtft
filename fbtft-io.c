@@ -140,6 +140,60 @@ int fbtft_write_gpio16_wr(struct fbtft_par *par, void *buf, size_t len)
 	return 0;
 }
 
+int fbtft_write_gpio16_wr_latched(struct fbtft_par *par, void *buf, size_t len)
+{
+	unsigned int set=0;
+	unsigned int reset=0;
+	u16 data;
+
+	fbtft_dev_dbg_hex(DEBUG_WRITE, par, par->info->device, u8, buf, len, "%s(len=%d): ", __func__, len);
+
+	while (len) {
+		len -= 2;
+		data = *(u16 *) buf;
+		buf +=2;
+
+		/* Low byte */
+		GPIOSET(par->gpio.db[0],  (data&0x0001));
+		GPIOSET(par->gpio.db[1],  (data&0x0002));
+		GPIOSET(par->gpio.db[2],  (data&0x0004));
+		GPIOSET(par->gpio.db[3],  (data&0x0008));
+		GPIOSET(par->gpio.db[4],  (data&0x0010));
+		GPIOSET(par->gpio.db[5],  (data&0x0020));
+		GPIOSET(par->gpio.db[6],  (data&0x0040));
+		GPIOSET(par->gpio.db[7],  (data&0x0080));
+		writel(set, __io_address(GPIO_BASE+0x1C));
+		writel(reset, __io_address(GPIO_BASE+0x28));
+
+		//Pulse 'latch' high
+		writel((1<<par->gpio.latch),  __io_address(GPIO_BASE+0x1C));
+		writel(0,  __io_address(GPIO_BASE+0x28)); //used as a delay
+		writel((1<<par->gpio.latch),  __io_address(GPIO_BASE+0x28));
+
+		/* High byte */
+		GPIOSET(par->gpio.db[0], (data&0x0100));
+		GPIOSET(par->gpio.db[1], (data&0x0200));
+		GPIOSET(par->gpio.db[2], (data&0x0400));
+		GPIOSET(par->gpio.db[3], (data&0x0800));
+		GPIOSET(par->gpio.db[4], (data&0x1000));
+		GPIOSET(par->gpio.db[5], (data&0x2000));
+		GPIOSET(par->gpio.db[6], (data&0x4000));
+		GPIOSET(par->gpio.db[7], (data&0x8000));
+		writel(set, __io_address(GPIO_BASE+0x1C));
+		writel(reset, __io_address(GPIO_BASE+0x28));
+
+		//Pulse /WR low
+		writel((1<<par->gpio.wr),  __io_address(GPIO_BASE+0x28));
+		writel(0,  __io_address(GPIO_BASE+0x28)); //used as a delay
+		writel((1<<par->gpio.wr),  __io_address(GPIO_BASE+0x1C));
+
+		set = 0;
+		reset = 0;
+	}
+
+	return 0;
+}
+
 #undef GPIOSET
 
 #else
@@ -199,7 +253,14 @@ int fbtft_write_gpio16_wr(struct fbtft_par *par, void *buf, size_t len)
 	return -1;
 }
 
+int fbtft_write_gpio16_wr_latched(struct fbtft_par *par, void *buf, size_t len)
+{
+	dev_err(par->info->device, "%s: function not implemented\n", __func__);
+	return -1;
+}
+
 #endif /* CONFIG_ARCH_BCM2708 */
 
 EXPORT_SYMBOL(fbtft_write_gpio8_wr);
 EXPORT_SYMBOL(fbtft_write_gpio16_wr);
+EXPORT_SYMBOL(fbtft_write_gpio16_wr_latched);

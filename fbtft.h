@@ -102,9 +102,9 @@ struct fbtft_par {
 	struct {
 		int reset;
 		int dc;
-		/* the following is not used or requested by core */
 		int rd;
 		int wr;
+		int latch;
 		int cs;
 		int db[16];
 		int led[16];
@@ -135,6 +135,7 @@ extern int fbtft_write_spi(struct fbtft_par *par, void *buf, size_t len);
 extern int fbtft_read_spi(struct fbtft_par *par, void *buf, size_t len);
 extern int fbtft_write_gpio8_wr(struct fbtft_par *par, void *buf, size_t len);
 extern int fbtft_write_gpio16_wr(struct fbtft_par *par, void *buf, size_t len);
+extern int fbtft_write_gpio16_wr_latched(struct fbtft_par *par, void *buf, size_t len);
 
 /* fbtft-bus.c */
 extern int fbtft_write_vmem8_bus8(struct fbtft_par *par);

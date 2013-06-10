@@ -92,6 +92,10 @@ unsigned long fbtft_request_gpios_match(struct fbtft_par *par, const struct fbtf
 		par->gpio.rd = gpio->gpio;
 		return GPIOF_OUT_INIT_HIGH;
 	}
+	else if (strcasecmp(gpio->name, "latch") == 0) {
+		par->gpio.latch = gpio->gpio;
+		return GPIOF_OUT_INIT_LOW;
+	}
 	else if (gpio->name[0] == 'd' && gpio->name[1] == 'b') {
 		ret = kstrtol(&gpio->name[2], 10, &val);
 		if (ret == 0 && val < 16) {
@@ -121,6 +125,7 @@ int fbtft_request_gpios(struct fbtft_par *par)
 	par->gpio.rd = -1;
 	par->gpio.wr = -1;
 	par->gpio.cs = -1;
+	par->gpio.latch = -1;
 	for (i=0;i<16;i++) {
 		par->gpio.db[i] = -1;
 		par->gpio.led[i] = -1;

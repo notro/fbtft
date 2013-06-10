@@ -94,7 +94,7 @@ struct fbtft_par {
 		size_t len;
 	} txbuf;
 	u8 *buf;  /* small buffer used when writing init data over SPI */
-	u8 startbyte; /* used by some controllers when in SPI mode */
+	u8 startbyte; /* used by some controllers when in SPI mode. Format: 6 bit Device id + RS bit + RW bit */
 	struct fbtft_ops fbtftops;
 	unsigned dirty_lines_start;
 	unsigned dirty_lines_end;

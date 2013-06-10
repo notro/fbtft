@@ -3,22 +3,6 @@
  *
  * Copyright (C) 2013 Noralf Tronnes
  *
- * Based on: https://github.com/topogigio/HY28A-LCDB-Drivers
- *
-
-
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-Code needs clean up.
-
-I can't swap the pixel bytes before transfer, like I do with all other SPI displays.
-The register bytes is swapped though.
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-
-
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 2 of the License, or
@@ -48,82 +32,120 @@ The register bytes is swapped though.
 #define HEIGHT      320
 
 
-#define SPI_START (0x70)   /* Start byte for SPI transfer */
-#define SPI_RD (0x01)      /* WR bit 1 within start */
-#define SPI_WR (0x00)      /* WR bit 0 within start */
-#define SPI_DATA (0x02)    /* RS bit 1 within start byte */
-#define SPI_INDEX (0x00)   /* RS bit 0 within start byte */
-
-
 /* Module Parameter: debug  (also available through sysfs) */
 MODULE_PARM_DEBUG;
-
-
-void _fbtft_dev_dbg_hex(const struct device *dev, int groupsize, void *buf, size_t len, const char *fmt, ...)
-{
-	va_list args;
-	static char textbuf[512];
-	char *text = textbuf;
-	size_t text_len;
-
-	va_start(args, fmt);
-	text_len = vscnprintf(text, sizeof(textbuf), fmt, args);
-	va_end(args);
-
-	hex_dump_to_buffer(buf, len, 32, groupsize, text + text_len, 512 - text_len, false);
-
-	if (len > 32)
-		dev_info(dev, "%s ...\n", text);
-	else
-		dev_info(dev, "%s\n", text);
-}
-
-static int read_spi(struct fbtft_par *par, void *txbuf, void *rxbuf, size_t len)
-{
-	int ret;
-	struct spi_transfer	t = {
-			.speed_hz = 2000000,
-			.tx_buf		= txbuf,
-			.rx_buf		= rxbuf,
-			.len		= len,
-		};
-	struct spi_message	m;
-
-	if (!par->spi) {
-		dev_err(par->info->device, "%s: par->spi is unexpectedly NULL\n", __func__);
-		return -1;
-	}
-	if (!rxbuf) {
-		dev_err(par->info->device, "%s: rxbuf can't be NULL\n", __func__);
-		return -1;
-	}
-
-	if (txbuf)
-		fbtft_dev_dbg_hex(DEBUG_READ, par, par->info->device, u8, txbuf, len, "%s(len=%d) txbuf => ", __func__, len);
-
-	spi_message_init(&m);
-	spi_message_add_tail(&t, &m);
-	ret = spi_sync(par->spi, &m);
-	fbtft_dev_dbg_hex(DEBUG_READ, par, par->info->device, u8, rxbuf, len, "%s(len=%d) rxbuf <= ", __func__, len);
-
-	return ret;
-}
 
 
 static unsigned read_devicecode(struct fbtft_par *par)
 {
 	int ret;
-	u8 txbuf[8] = { SPI_START | SPI_RD | SPI_DATA, 0, 0, 0, };
 	u8 rxbuf[8] = {0, };
 
 	write_reg(par, 0x0000);
-
-	ret = read_spi(par, txbuf, rxbuf, 4);
-
+	ret = par->fbtftops.read(par, rxbuf, 4);
 	return (rxbuf[2] << 8) | rxbuf[3];
 }
 
 static int hy28afb_init_display(struct fbtft_par *par)
+{
+	unsigned devcode;
+	fbtft_dev_dbg(DEBUG_INIT_DISPLAY, par->info->device, "%s()\n", __func__);
+
+	par->fbtftops.reset(par);
+
+	devcode = read_devicecode(par);
+	fbtft_dev_dbg(DEBUG_INIT_DISPLAY, par->info->device, "Device code: 0x%04X\n", devcode);
+	if ((devcode != 0x0000) && (devcode != 0x9320))
+		dev_warn(par->info->device, "Unrecognized Device code: 0x%04X (expected 0x9320)\n", devcode);
+
+	/* Initialization sequence from ILI9320 Application Notes */
+
+	/* *********** Start Initial Sequence ********* */ 
+	write_reg(par, 0x00E5, 0x8000); // Set the Vcore voltage and this setting is must. 
+	write_reg(par, 0x0000, 0x0001); // Start internal OSC. 
+	write_reg(par, 0x0001, 0x0100); // set SS and SM bit 
+	write_reg(par, 0x0002, 0x0700); // set 1 line inversion 
+    switch (par->info->var.rotate) {  // set GRAM write direction and BGR.
+	case 0:
+		write_reg(par, 0x3, (!par->bgr << 12) | 0x30);
+		break;
+	case 1:
+		write_reg(par, 0x3, (!par->bgr << 12) | 0x28);
+		break;
+	case 2:
+		write_reg(par, 0x3, (!par->bgr << 12) | 0x00);
+		break;
+	case 3:
+		write_reg(par, 0x3, (!par->bgr << 12) | 0x18);
+		break;
+	}
+	write_reg(par, 0x0004, 0x0000); // Resize register 
+	write_reg(par, 0x0008, 0x0202); // set the back porch and front porch 
+	write_reg(par, 0x0009, 0x0000); // set non-display area refresh cycle ISC[3:0] 
+	write_reg(par, 0x000A, 0x0000); // FMARK function 
+	write_reg(par, 0x000C, 0x0000); // RGB interface setting 
+	write_reg(par, 0x000D, 0x0000); // Frame marker Position 
+	write_reg(par, 0x000F, 0x0000); // RGB interface polarity 
+	
+	/* ***********Power On sequence *************** */
+	write_reg(par, 0x0010, 0x0000); // SAP, BT[3:0], AP, DSTB, SLP, STB 
+	write_reg(par, 0x0011, 0x0007); // DC1[2:0], DC0[2:0], VC[2:0] 
+	write_reg(par, 0x0012, 0x0000); // VREG1OUT voltage 
+	write_reg(par, 0x0013, 0x0000); // VDV[4:0] for VCOM amplitude 
+	mdelay(200); // Dis-charge capacitor power voltage 
+	write_reg(par, 0x0010, 0x17B0); // SAP, BT[3:0], AP, DSTB, SLP, STB 
+	write_reg(par, 0x0011, 0x0031); // R11h=0x0031 at VCI=3.3V DC1[2:0], DC0[2:0], VC[2:0] 
+	mdelay(50); // Delay 50ms 
+	write_reg(par, 0x0012, 0x0138); // R12h=0x0138 at VCI=3.3V VREG1OUT voltage 
+	mdelay(50); // Delay 50ms 
+	write_reg(par, 0x0013, 0x1800); // R13h=0x1800 at VCI=3.3V VDV[4:0] for VCOM amplitude 
+	write_reg(par, 0x0029, 0x0008); // R29h=0x0008 at VCI=3.3V VCM[4:0] for VCOMH 
+	mdelay(50); 
+	write_reg(par, 0x0020, 0x0000); // GRAM horizontal Address 
+	write_reg(par, 0x0021, 0x0000); // GRAM Vertical Address 
+	
+	/* ----------- Adjust the Gamma Curve ---------- */
+	write_reg(par, 0x0030, 0x0000); 
+	write_reg(par, 0x0031, 0x0505); 
+	write_reg(par, 0x0032, 0x0004); 
+	write_reg(par, 0x0035, 0x0006); 
+	write_reg(par, 0x0036, 0x0707); 
+	write_reg(par, 0x0037, 0x0105); 
+	write_reg(par, 0x0038, 0x0002); 
+	write_reg(par, 0x0039, 0x0707); 
+	write_reg(par, 0x003C, 0x0704); 
+	write_reg(par, 0x003D, 0x0807); 
+	
+	/* ------------------ Set GRAM area --------------- */
+	write_reg(par, 0x0050, 0x0000); // Horizontal GRAM Start Address 
+	write_reg(par, 0x0051, 0x00EF); // Horizontal GRAM End Address 
+	write_reg(par, 0x0052, 0x0000); // Vertical GRAM Start Address 
+	write_reg(par, 0x0053, 0x013F); // Vertical GRAM Start Address 
+	write_reg(par, 0x0060, 0x2700); // Gate Scan Line 
+	write_reg(par, 0x0061, 0x0001); // NDL,VLE, REV 
+	write_reg(par, 0x006A, 0x0000); // set scrolling line 
+	
+	/* -------------- Partial Display Control --------- */
+	write_reg(par, 0x0080, 0x0000); 
+	write_reg(par, 0x0081, 0x0000); 
+	write_reg(par, 0x0082, 0x0000); 
+	write_reg(par, 0x0083, 0x0000); 
+	write_reg(par, 0x0084, 0x0000); 
+	write_reg(par, 0x0085, 0x0000); 
+	
+	/* -------------- Panel Control ------------------- */
+	write_reg(par, 0x0090, 0x0010); 
+	write_reg(par, 0x0092, 0x0000); 
+	write_reg(par, 0x0093, 0x0003); 
+	write_reg(par, 0x0095, 0x0110); 
+	write_reg(par, 0x0097, 0x0000); 
+	write_reg(par, 0x0098, 0x0000); 
+	write_reg(par, 0x0007, 0x0173); // 262K color and display ON 
+
+	return 0;
+}
+
+static int xxhy28afb_init_display(struct fbtft_par *par)
 {
 	unsigned devcode;
 	fbtft_dev_dbg(DEBUG_INIT_DISPLAY, par->info->device, "%s()\n", __func__);
@@ -200,53 +222,6 @@ static int hy28afb_init_display(struct fbtft_par *par)
 	return 0;
 }
 
-static void hy28afb_write_reg_data_command(struct fbtft_par *par, int len, ...)                                               \
-{
-	va_list args;
-	int i;
-	u16 *buf = (u16 *)par->buf;
-
-	if (unlikely(*par->debug & DEBUG_WRITE_DATA_COMMAND)) {
-		va_start(args, len);
-		for (i=0;i<len;i++) {
-			buf[i] = (u16)va_arg(args, unsigned int);
-		}
-		va_end(args);
-		fbtft_dev_dbg_hex(DEBUG_WRITE_DATA_COMMAND, par, par->info->device, u16, buf, len, "%s: ", __func__);
-	}
-
-	va_start(args, len);
-
-	write_cmd(par, (u16)va_arg(args, unsigned int));
-	len--;
-
-	if (len) {
-		i = len;
-		while (i--) {
-			write_data(par, (u16)va_arg(args, unsigned int));
-		}
-	}
-	va_end(args);
-}
-
-void hy28afb_write_data_command16_bus8(struct fbtft_par *par, unsigned dc, u32 val)
-{
-	int ret;
-
-	fbtft_fbtft_dev_dbg(DEBUG_WRITE_DATA_COMMAND, par, par->info->device, "%s: dc=%d, val=0x%X\n", __func__, dc, val);
-
-	if (dc)
-		*(u8 *)par->buf = SPI_START | SPI_WR | SPI_DATA;
-	else
-		*(u8 *)par->buf = SPI_START | SPI_WR | SPI_INDEX;
-
-	*(u16 *)(par->buf + 1) = cpu_to_be16((u16)val);
-
-	ret = par->fbtftops.write(par, par->buf, 3);
-	if (ret < 0)
-		dev_err(par->info->device, "%s: dc=%d, val=0x%X, failed with status %d\n", __func__, dc, val, ret);
-}
-
 int hy28afb_write_vmem16_bus8(struct fbtft_par *par)
 {
 	u8 *vmem8;
@@ -279,7 +254,7 @@ int hy28afb_write_vmem16_bus8(struct fbtft_par *par)
 		dev_dbg(par->info->device, "    to_copy=%d, remain=%d\n", to_copy, remain - to_copy);
 
 		/* Start byte */
-		txbuf8[0] = SPI_START | SPI_WR | SPI_DATA;
+		txbuf8[0] = par->startbyte | 0x2;
 
 //#ifdef __LITTLE_ENDIAN
 //		for (i=1;i<(to_copy+1);i+=2) {
@@ -347,10 +322,12 @@ static int hy28afb_probe(struct spi_device *spi)
 
 	par = info->par;
 	par->spi = spi;
+
+	par->startbyte = 0b01110000;
+
 	fbtft_debug_init(par);
 	par->fbtftops.init_display = hy28afb_init_display;
-	par->fbtftops.write_reg = hy28afb_write_reg_data_command;
-	par->fbtftops.write_data_command = hy28afb_write_data_command16_bus8;
+	par->fbtftops.write_reg = fbtft_write_reg16_bus8;
 	par->fbtftops.write_vmem = hy28afb_write_vmem16_bus8;
 	par->fbtftops.set_addr_win = hy28afb_set_addr_win;
 	par->fbtftops.register_backlight = fbtft_register_backlight;

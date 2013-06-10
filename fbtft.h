@@ -53,6 +53,7 @@ struct fbtft_par;
 
 struct fbtft_ops {
 	int (*write)(struct fbtft_par *par, void *buf, size_t len);
+	int (*read)(struct fbtft_par *par, void *buf, size_t len);
 	int (*write_vmem)(struct fbtft_par *par);
 	void (*write_data_command)(struct fbtft_par *par, unsigned dc, u32 val);
 	void (*write_reg)(struct fbtft_par *par, int len, ...);
@@ -131,6 +132,7 @@ extern void fbtft_unregister_backlight(struct fbtft_par *par);
 
 /* fbtft-io.c */
 extern int fbtft_write_spi(struct fbtft_par *par, void *buf, size_t len);
+extern int fbtft_read_spi(struct fbtft_par *par, void *buf, size_t len);
 extern int fbtft_write_gpio8_wr(struct fbtft_par *par, void *buf, size_t len);
 extern int fbtft_write_gpio16_wr(struct fbtft_par *par, void *buf, size_t len);
 

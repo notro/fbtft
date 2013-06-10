@@ -15,6 +15,41 @@ int fbtft_write_spi(struct fbtft_par *par, void *buf, size_t len)
 }
 EXPORT_SYMBOL(fbtft_write_spi);
 
+int fbtft_read_spi(struct fbtft_par *par, void *buf, size_t len)
+{
+	int ret;
+	u8 txbuf[32] = { 0, };
+	struct spi_transfer	t = {
+			.speed_hz = 2000000,
+			.rx_buf		= buf,
+			.len		= len,
+		};
+	struct spi_message	m;
+
+	if (!par->spi) {
+		dev_err(par->info->device, "%s: par->spi is unexpectedly NULL\n", __func__);
+		return -ENODEV;
+	}
+
+	if (par->startbyte) {
+		if (len > 32) {
+			dev_err(par->info->device, "%s: len=%d can't be larger than 32 when using 'startbyte'\n", __func__, len);
+			return -EINVAL;
+		}
+		txbuf[0] = par->startbyte | 0x3;
+		t.tx_buf = txbuf;
+		fbtft_dev_dbg_hex(DEBUG_READ, par, par->info->device, u8, txbuf, len, "%s(len=%d) txbuf => ", __func__, len);
+	}
+
+	spi_message_init(&m);
+	spi_message_add_tail(&t, &m);
+	ret = spi_sync(par->spi, &m);
+	fbtft_dev_dbg_hex(DEBUG_READ, par, par->info->device, u8, buf, len, "%s(len=%d) buf <= ", __func__, len);
+
+	return ret;
+}
+EXPORT_SYMBOL(fbtft_read_spi);
+
 
 #ifdef CONFIG_ARCH_BCM2708
 

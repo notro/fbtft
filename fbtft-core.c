@@ -543,6 +543,7 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 	unsigned fps = display->fps;
 	unsigned rotate = 0;
 	bool bgr = false;
+	u8 startbyte = 0;
 	int vmem_size;
 
 	/* defaults */
@@ -561,6 +562,7 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 			txbuflen = pdata->txbuflen;
 		rotate = pdata->rotate & 3;
 		bgr = pdata->bgr;
+		startbyte = pdata->startbyte;
 	}
 
 	switch (rotate) {
@@ -650,6 +652,7 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 	par->dirty_lines_start = 0;
 	par->dirty_lines_end = par->info->var.yres - 1;
 	par->bgr = bgr;
+	par->startbyte = startbyte;
 
     info->pseudo_palette = par->pseudo_palette;
 

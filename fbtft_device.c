@@ -72,6 +72,10 @@ static bool bgr = false;
 module_param(bgr, bool, 0);
 MODULE_PARM_DESC(bgr, "Use if Red and Blue color is swapped (supported by some drivers).");
 
+static unsigned startbyte = 0;
+module_param(startbyte, uint, 0);
+MODULE_PARM_DESC(startbyte, "Sets the Start byte used by some SPI displays.");
+
 static unsigned verbose = 3;
 module_param(verbose, uint, 0);
 MODULE_PARM_DESC(verbose, "0=silent, 0< show gpios, 1< show devices, 2< show devices before (default=3)");
@@ -427,6 +431,7 @@ static int __init fbtft_device_init(void)
 			pdata = display->platform_data;
 			((struct fbtft_platform_data *)pdata)->rotate = rotate;
 			((struct fbtft_platform_data *)pdata)->bgr = bgr;
+			((struct fbtft_platform_data *)pdata)->startbyte = startbyte;
 			if (fps)
 				((struct fbtft_platform_data *)pdata)->fps = fps;
 			if (txbuflen)
@@ -457,6 +462,7 @@ static int __init fbtft_device_init(void)
 				pdata = p_device->dev.platform_data;
 				((struct fbtft_platform_data *)pdata)->rotate = rotate;
 				((struct fbtft_platform_data *)pdata)->bgr = bgr;
+				((struct fbtft_platform_data *)pdata)->startbyte = startbyte;
 				if (fps)
 					((struct fbtft_platform_data *)pdata)->fps = fps;
 				if (txbuflen)

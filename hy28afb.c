@@ -269,9 +269,8 @@ static int hy28afb_probe(struct spi_device *spi)
 
 	par = info->par;
 	par->spi = spi;
-
-	par->startbyte = 0b01110000;
-
+	if(!par->startbyte)
+		par->startbyte = 0b01110000;
 	fbtft_debug_init(par);
 	par->fbtftops.init_display = hy28afb_init_display;
 	par->fbtftops.write_reg = fbtft_write_reg16_bus8;

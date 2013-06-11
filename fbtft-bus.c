@@ -168,19 +168,20 @@ EXPORT_SYMBOL(fbtft_write_data_command16_bus8);
 /* 16 bit pixel over 8-bit databus */
 int fbtft_write_vmem16_bus8(struct fbtft_par *par)
 {
-	u8 *vmem8;
-	u8  *txbuf8  = par->txbuf.buf;
-    size_t remain;
+	u16 *vmem16;
+	u16 *txbuf16 = (u16 *)par->txbuf.buf;
+	size_t remain;
 	size_t to_copy;
 	size_t tx_array_size;
 	int i;
 	int ret = 0;
 	size_t offset, len;
+	size_t startbyte_size = 0;
 
 	offset = par->dirty_lines_start * par->info->fix.line_length;
 	len = (par->dirty_lines_end - par->dirty_lines_start + 1) * par->info->fix.line_length;
-	remain = len;
-	vmem8 = par->info->screen_base + offset;
+	remain = len / 2;
+	vmem16 = (u16 *)(par->info->screen_base + offset);
 
 	fbtft_fbtft_dev_dbg(DEBUG_WRITE_VMEM, par, par->info->device, "%s: offset=%d, len=%d\n", __func__, offset, len);
 
@@ -189,26 +190,27 @@ int fbtft_write_vmem16_bus8(struct fbtft_par *par)
 
 	// non buffered write
 	if (!par->txbuf.buf)
-		return par->fbtftops.write(par, vmem8, len);
+		return par->fbtftops.write(par, vmem16, len);
 
 	// buffered write
-	tx_array_size = par->txbuf.len;
+	tx_array_size = par->txbuf.len / 2;
+
+	if (par->startbyte) {
+		txbuf16 = (u16 *)(par->txbuf.buf + 1);
+		tx_array_size -= 2;
+		*(u8 *)(par->txbuf.buf) = par->startbyte | 0x2;
+		startbyte_size = 1;
+	}
 
 	while (remain) {
 		to_copy = remain > tx_array_size ? tx_array_size : remain;
 		dev_dbg(par->info->device, "    to_copy=%d, remain=%d\n", to_copy, remain - to_copy);
 
-#ifdef __LITTLE_ENDIAN
-		for (i=0;i<to_copy;i+=2) {
-			txbuf8[i]    = vmem8[i+1];
-			txbuf8[i+1]  = vmem8[i];
-		}
-#else
 		for (i=0;i<to_copy;i++)
-			txbuf8[i]    = vmem8[i];
-#endif
-		vmem8 = vmem8 + to_copy;
-		ret = par->fbtftops.write(par, par->txbuf.buf, to_copy);
+			txbuf16[i] = cpu_to_be16(vmem16[i]);
+
+		vmem16 = vmem16 + to_copy;
+		ret = par->fbtftops.write(par, par->txbuf.buf, startbyte_size + to_copy*2);
 		if (ret < 0)
 			return ret;
 		remain -= to_copy;

@@ -36,11 +36,6 @@
 /* Module Parameter: debug  (also available through sysfs) */
 MODULE_PARM_DEBUG;
 
-/* Module Parameter: rotate */
-static unsigned rotate = 0;
-module_param(rotate, uint, 0);
-MODULE_PARM_DESC(rotate, "Rotate display (0=normal, 1=clockwise, 2=upside down, 3=counterclockwise)");
-
 
 static int sainsmart32fb_init_display(struct fbtft_par *par)
 {
@@ -57,7 +52,7 @@ static int sainsmart32fb_init_display(struct fbtft_par *par)
 	write_reg(par, 0x01,0x2B3F);
 	write_reg(par, 0x02,0x0600);
 	write_reg(par, 0x10,0x0000);
-	switch (rotate) {
+	switch (par->info->var.rotate) {
 	case 0:
 		write_reg(par, 0x11, 0x6070);
 		break;
@@ -110,7 +105,7 @@ static void sainsmart32fb_set_addr_win(struct fbtft_par *par, int xs, int ys, in
 {
 	fbtft_dev_dbg(DEBUG_SET_ADDR_WIN, par->info->device, "%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
 
-	switch (rotate) {
+	switch (par->info->var.rotate) {
 	/* R4Eh - Set GDDRAM X address counter */
 	/* R4Fh - Set GDDRAM Y address counter */
 	case 0:
@@ -180,28 +175,10 @@ static int sainsmart32fb_probe_common(struct spi_device *sdev, struct platform_d
 
 	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, dev, "%s()\n", __func__);
 
-	if (rotate > 3) {
-		dev_warn(dev, "module parameter 'rotate' illegal value: %d. Can only be 0,1,2,3. Setting it to 0.\n", rotate);
-		rotate = 0;
-	}
-	switch (rotate) {
-	case 0:
-	case 2:
-		sainsmart32fb_display.width = WIDTH;
-		sainsmart32fb_display.height = HEIGHT;
-		break;
-	case 1:
-	case 3:
-		sainsmart32fb_display.width = HEIGHT;
-		sainsmart32fb_display.height = WIDTH;
-		break;
-	}
-
 	info = fbtft_framebuffer_alloc(&sainsmart32fb_display, dev);
 	if (!info)
 		return -ENOMEM;
 
-	info->var.rotate = rotate;
 	par = info->par;
 	if (sdev)
 		par->spi = sdev;

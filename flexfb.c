@@ -294,7 +294,8 @@ static int flexfb_probe_common(struct spi_device *sdev, struct platform_device *
 		switch (buswidth) {
 		case 8:
 			par->fbtftops.write_vmem = fbtft_write_vmem16_bus8;
-			par->fbtftops.verify_gpios = flexfb_verify_gpios_dc;
+			if (!par->startbyte)
+				par->fbtftops.verify_gpios = flexfb_verify_gpios_dc;
 			break;
 		case 9:
 			if (regwidth == 16) {

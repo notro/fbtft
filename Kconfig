@@ -68,11 +68,6 @@ config FB_TFT_FBTFT_DEVICE
 	tristate "Module to for adding FBTFT devices"
 	depends on FB_TFT
 
-config TOUCHSCREEN_ADS7846_TEST
-	tristate "ADS7846/TSC2046/AD7873 and AD(S)7843 based touchscreens, MODIFIED for testing"
-	depends on SPI_MASTER
-	depends on HWMON = n || HWMON
-	help
-	  This is a modified version of ads7846.c that can be used for testing.
-	  It registers the needed SPI device with the help of module arguments,
-	  and config can be set with module arguments.
+config TOUCHSCREEN_ADS7846_DEVICE
+	tristate "Module for adding an ads7846 device"
+	depends on SPI

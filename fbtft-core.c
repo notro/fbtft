@@ -144,7 +144,7 @@ int fbtft_request_gpios(struct fbtft_par *par)
 			if (flags != FBTFT_GPIO_NO_MATCH) {
 				ret = gpio_request_one(gpio->gpio, flags, par->info->device->driver->name);
 				if (ret < 0) {
-					dev_err(par->info->device, "%s: no match for '%s' GPIO%d\n", __func__, gpio->name, gpio->gpio);
+					dev_err(par->info->device, "%s: gpio_request_one('%s'=%d) failed with %d\n", __func__, gpio->name, gpio->gpio, ret);
 					return ret;
 				}
 				fbtft_fbtft_dev_dbg(DEBUG_REQUEST_GPIOS, par, par->info->device, "%s: '%s' = GPIO%d\n", __func__, gpio->name, gpio->gpio);
@@ -171,7 +171,7 @@ void fbtft_free_gpios(struct fbtft_par *par)
 	if (pdata && pdata->gpios) {
 		gpio = pdata->gpios;
 		while (gpio->name[0]) {
-			dev_dbg(par->info->device, "fbtft_free_gpios: freeing '%s'\n", gpio->name);
+			fbtft_fbtft_dev_dbg(DEBUG_FREE_GPIOS, par, par->info->device, "%s(): gpio_free('%s'=%d)\n", __func__, gpio->name, gpio->gpio);
 			gpio_direction_input(gpio->gpio);  /* if the gpio wasn't recognized by request_gpios, WARN() will protest */
 			gpio_free(gpio->gpio);
 			gpio++;

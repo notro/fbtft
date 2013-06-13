@@ -273,6 +273,17 @@ static struct platform_device fbtft_device_pdev_displays[] = {
 						},
 					},
 				},
+	}, {
+		.name = "sainsmart32fb",
+		.id = 0,
+		.dev = {
+					.release = fbtft_device_pdev_release,
+					.platform_data = &(struct fbtft_platform_data) {
+						.gpios = (const struct fbtft_gpio []) {
+							{},
+						},
+					},
+				},
 	}
 };
 

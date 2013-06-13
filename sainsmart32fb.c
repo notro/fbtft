@@ -36,6 +36,10 @@
 /* Module Parameter: debug  (also available through sysfs) */
 MODULE_PARM_DEBUG;
 
+static bool latched = false;
+module_param(latched, bool, 0);
+MODULE_PARM_DESC(latched, "Use with latched 16-bit databus");
+
 
 static int sainsmart32fb_init_display(struct fbtft_par *par)
 {
@@ -133,6 +137,7 @@ static void sainsmart32fb_set_addr_win(struct fbtft_par *par, int xs, int ys, in
 static int sainsmart32fb_verify_gpios(struct fbtft_par *par)
 {
 	int i;
+	int num_db = 16;
 
 	fbtft_dev_dbg(DEBUG_VERIFY_GPIOS, par->info->device, "%s()\n", __func__);
 
@@ -145,7 +150,13 @@ static int sainsmart32fb_verify_gpios(struct fbtft_par *par)
 			dev_err(par->info->device, "Missing info about 'wr' gpio. Aborting.\n");
 			return -EINVAL;
 		}
-		for (i=0;i < 16;i++) {
+		if (latched && (par->gpio.latch < 0)) {
+			dev_err(par->info->device, "Missing info about 'latch' gpio. Aborting.\n");
+			return -EINVAL;
+		}
+		if (latched)
+			num_db = 8;
+		for (i=0;i < num_db;i++) {
 			if (par->gpio.db[i] < 0) {
 				dev_err(par->info->device, "Missing info about 'db%02d' gpio. Aborting.\n", i);
 				return -EINVAL;
@@ -191,10 +202,14 @@ static int sainsmart32fb_probe_common(struct spi_device *sdev, struct platform_d
 	par->fbtftops.write_reg = fbtft_write_reg16_bus8;
 	par->fbtftops.set_addr_win = sainsmart32fb_set_addr_win;
 	par->fbtftops.verify_gpios = sainsmart32fb_verify_gpios;
-/*
-	if (pdev)
-		par->fbtftops.write = fbtft_write_gpio16_wr;
-*/
+
+	if (pdev) {
+		if (latched)
+			par->fbtftops.write = fbtft_write_gpio16_wr_latched;
+		else
+			par->fbtftops.write = fbtft_write_gpio16_wr;
+	}
+
 	ret = fbtft_register_framebuffer(info);
 	if (ret < 0)
 		goto out_release;
@@ -244,10 +259,6 @@ static int sainsmart32fb_remove_pdev(struct platform_device *pdev)
 	struct fb_info *info = platform_get_drvdata(pdev);
 
 	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &pdev->dev, "%s()\n", __func__);
-
-	/* not supported, the RPi doesn't have that many GPIOs, and thus no 16-bit write function */
-	return -1;
-
 	return sainsmart32fb_remove_common(&pdev->dev, info);
 }
 

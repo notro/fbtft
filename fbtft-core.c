@@ -92,6 +92,10 @@ unsigned long fbtft_request_gpios_match(struct fbtft_par *par, const struct fbtf
 		par->gpio.rd = gpio->gpio;
 		return GPIOF_OUT_INIT_HIGH;
 	}
+	else if (strcasecmp(gpio->name, "latch") == 0) {
+		par->gpio.latch = gpio->gpio;
+		return GPIOF_OUT_INIT_LOW;
+	}
 	else if (gpio->name[0] == 'd' && gpio->name[1] == 'b') {
 		ret = kstrtol(&gpio->name[2], 10, &val);
 		if (ret == 0 && val < 16) {
@@ -121,6 +125,7 @@ int fbtft_request_gpios(struct fbtft_par *par)
 	par->gpio.rd = -1;
 	par->gpio.wr = -1;
 	par->gpio.cs = -1;
+	par->gpio.latch = -1;
 	for (i=0;i<16;i++) {
 		par->gpio.db[i] = -1;
 		par->gpio.led[i] = -1;
@@ -139,7 +144,7 @@ int fbtft_request_gpios(struct fbtft_par *par)
 			if (flags != FBTFT_GPIO_NO_MATCH) {
 				ret = gpio_request_one(gpio->gpio, flags, par->info->device->driver->name);
 				if (ret < 0) {
-					dev_err(par->info->device, "%s: no match for '%s' GPIO%d\n", __func__, gpio->name, gpio->gpio);
+					dev_err(par->info->device, "%s: gpio_request_one('%s'=%d) failed with %d\n", __func__, gpio->name, gpio->gpio, ret);
 					return ret;
 				}
 				fbtft_fbtft_dev_dbg(DEBUG_REQUEST_GPIOS, par, par->info->device, "%s: '%s' = GPIO%d\n", __func__, gpio->name, gpio->gpio);
@@ -166,7 +171,7 @@ void fbtft_free_gpios(struct fbtft_par *par)
 	if (pdata && pdata->gpios) {
 		gpio = pdata->gpios;
 		while (gpio->name[0]) {
-			dev_dbg(par->info->device, "fbtft_free_gpios: freeing '%s'\n", gpio->name);
+			fbtft_fbtft_dev_dbg(DEBUG_FREE_GPIOS, par, par->info->device, "%s(): gpio_free('%s'=%d)\n", __func__, gpio->name, gpio->gpio);
 			gpio_direction_input(gpio->gpio);  /* if the gpio wasn't recognized by request_gpios, WARN() will protest */
 			gpio_free(gpio->gpio);
 			gpio++;
@@ -258,19 +263,22 @@ void fbtft_set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 {
 	fbtft_fbtft_dev_dbg(DEBUG_SET_ADDR_WIN, par, par->info->device, "%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
 
-	write_cmd(par, FBTFT_CASET);
-	write_data(par, 0x00);
-	write_data(par, xs);
-	write_data(par, 0x00);
-	write_data(par, xe);
+	/* Column address set */
+	write_cmd(par, 0x2A);
+	write_data(par, (xs >> 8) & 0xFF);
+	write_data(par, xs & 0xFF);
+	write_data(par, (xe >> 8) & 0xFF);
+	write_data(par, xe & 0xFF);
 
-	write_cmd(par, FBTFT_RASET);
-	write_data(par, 0x00);
-	write_data(par, ys);
-	write_data(par, 0x00);
-	write_data(par, ye);
+	/* Row adress set */
+	write_cmd(par, 0x2B);
+	write_data(par, (ys >> 8) & 0xFF);
+	write_data(par, ys & 0xFF);
+	write_data(par, (ye >> 8) & 0xFF);
+	write_data(par, ye & 0xFF);
 
-	write_cmd(par, FBTFT_RAMWR);
+	/* Memory write */
+	write_cmd(par, 0x2C);
 }
 
 
@@ -535,6 +543,7 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 	unsigned fps = display->fps;
 	unsigned rotate = 0;
 	bool bgr = false;
+	u8 startbyte = 0;
 	int vmem_size;
 
 	/* defaults */
@@ -553,6 +562,7 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 			txbuflen = pdata->txbuflen;
 		rotate = pdata->rotate & 3;
 		bgr = pdata->bgr;
+		startbyte = pdata->startbyte;
 	}
 
 	switch (rotate) {
@@ -642,6 +652,7 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 	par->dirty_lines_start = 0;
 	par->dirty_lines_end = par->info->var.yres - 1;
 	par->bgr = bgr;
+	par->startbyte = startbyte;
 
     info->pseudo_palette = par->pseudo_palette;
 
@@ -654,16 +665,17 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 		txbuflen = PAGE_SIZE; /* need buffer for byteswapping */
 #endif
 
-	if (txbuflen) {
+	if (txbuflen > 0) {
 		txbuf = vzalloc(txbuflen);
 		if (!txbuf)
 			goto alloc_fail;
 		par->txbuf.buf = txbuf;
+		par->txbuf.len = txbuflen;
 	}
-	par->txbuf.len = txbuflen;
 
 	// default fbtft operations
 	par->fbtftops.write = fbtft_write_spi;
+	par->fbtftops.read = fbtft_read_spi;
 	par->fbtftops.write_vmem = fbtft_write_vmem16_bus8;
 	par->fbtftops.write_data_command = fbtft_write_data_command8_bus8;
 	par->fbtftops.write_reg = fbtft_write_reg8_bus8;
@@ -824,21 +836,6 @@ int fbtft_unregister_framebuffer(struct fb_info *fb_info)
 	return ret;
 }
 EXPORT_SYMBOL(fbtft_unregister_framebuffer);
-
-/* fbtft-io.c */
-EXPORT_SYMBOL(fbtft_write_spi);
-EXPORT_SYMBOL(fbtft_write_gpio8_wr);
-EXPORT_SYMBOL(fbtft_write_gpio16_wr);
-
-/* fbtft-bus.c */
-EXPORT_SYMBOL(fbtft_write_vmem8_bus8);
-EXPORT_SYMBOL(fbtft_write_vmem16_bus16);
-EXPORT_SYMBOL(fbtft_write_vmem16_bus8);
-EXPORT_SYMBOL(fbtft_write_vmem16_bus9);
-EXPORT_SYMBOL(fbtft_write_data_command8_bus8);
-EXPORT_SYMBOL(fbtft_write_data_command8_bus9);
-EXPORT_SYMBOL(fbtft_write_data_command16_bus16);
-EXPORT_SYMBOL(fbtft_write_data_command16_bus8);
 
 
 MODULE_LICENSE("GPL");

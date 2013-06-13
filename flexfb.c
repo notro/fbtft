@@ -66,6 +66,10 @@ static unsigned rotate = 0;
 module_param(rotate, uint, 0);
 MODULE_PARM_DESC(rotate, "Rotate display (0=normal, 1=clockwise, 2=upside down, 3=counterclockwise)");
 
+static bool latched = false;
+module_param(latched, bool, 0);
+MODULE_PARM_DESC(latched, "Use with latched 16-bit databus");
+
 
 static int flexfb_init_display(struct fbtft_par *par)
 {
@@ -202,16 +206,13 @@ static int flexfb_verify_gpios_dc(struct fbtft_par *par)
 	return 0;
 }
 
-static int flexfb_verify_gpios_db8(struct fbtft_par *par)
+static int flexfb_verify_gpios_db(struct fbtft_par *par)
 {
 	int i;
+	int num_db = buswidth;
 
 	fbtft_dev_dbg(DEBUG_VERIFY_GPIOS, par->info->device, "%s()\n", __func__);
 
-	if (par->gpio.cs < 0) {
-		dev_err(par->info->device, "Missing info about 'cs' gpio. Aborting.\n");
-		return -EINVAL;
-	}
 	if (par->gpio.dc < 0) {
 		dev_err(par->info->device, "Missing info about 'dc' gpio. Aborting.\n");
 		return -EINVAL;
@@ -220,7 +221,13 @@ static int flexfb_verify_gpios_db8(struct fbtft_par *par)
 		dev_err(par->info->device, "Missing info about 'wr' gpio. Aborting.\n");
 		return -EINVAL;
 	}
-	for (i=0;i < 8;i++) {
+	if (latched && (par->gpio.latch < 0)) {
+		dev_err(par->info->device, "Missing info about 'latch' gpio. Aborting.\n");
+		return -EINVAL;
+	}
+	if (latched)
+		num_db=buswidth/2;
+	for (i=0;i < num_db;i++) {
 		if (par->gpio.db[i] < 0) {
 			dev_err(par->info->device, "Missing info about 'db%02d' gpio. Aborting.\n", i);
 			return -EINVAL;
@@ -287,7 +294,8 @@ static int flexfb_probe_common(struct spi_device *sdev, struct platform_device *
 		switch (buswidth) {
 		case 8:
 			par->fbtftops.write_vmem = fbtft_write_vmem16_bus8;
-			par->fbtftops.verify_gpios = flexfb_verify_gpios_dc;
+			if (!par->startbyte)
+				par->fbtftops.verify_gpios = flexfb_verify_gpios_dc;
 			break;
 		case 9:
 			if (regwidth == 16) {
@@ -309,11 +317,20 @@ static int flexfb_probe_common(struct spi_device *sdev, struct platform_device *
 		}
 		par->fbtftops.write = fbtft_write_spi;
 	} else {
+		par->fbtftops.verify_gpios = flexfb_verify_gpios_db;
 		switch (buswidth) {
 		case 8:
 			par->fbtftops.write = fbtft_write_gpio8_wr;
 			par->fbtftops.write_vmem = fbtft_write_vmem16_bus8;
-			par->fbtftops.verify_gpios = flexfb_verify_gpios_db8;
+			break;
+		case 16:
+			par->fbtftops.write_reg = fbtft_write_reg16_bus16;
+			par->fbtftops.write_data_command = fbtft_write_data_command16_bus16;
+			if (latched)
+				par->fbtftops.write = fbtft_write_gpio16_wr_latched;
+			else
+				par->fbtftops.write = fbtft_write_gpio16_wr;
+			par->fbtftops.write_vmem = fbtft_write_vmem16_bus16;
 			break;
 		default:
 			dev_err(dev, "argument 'buswidth': %d is not supported with parallel.\n", buswidth);

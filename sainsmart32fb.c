@@ -36,10 +36,9 @@
 /* Module Parameter: debug  (also available through sysfs) */
 MODULE_PARM_DEBUG;
 
-/* Module Parameter: rotate */
-static unsigned rotate = 0;
-module_param(rotate, uint, 0);
-MODULE_PARM_DESC(rotate, "Rotate display (0=normal, 1=clockwise, 2=upside down, 3=counterclockwise)");
+static bool latched = false;
+module_param(latched, bool, 0);
+MODULE_PARM_DESC(latched, "Use with latched 16-bit databus");
 
 
 static int sainsmart32fb_init_display(struct fbtft_par *par)
@@ -57,7 +56,7 @@ static int sainsmart32fb_init_display(struct fbtft_par *par)
 	write_reg(par, 0x01,0x2B3F);
 	write_reg(par, 0x02,0x0600);
 	write_reg(par, 0x10,0x0000);
-	switch (rotate) {
+	switch (par->info->var.rotate) {
 	case 0:
 		write_reg(par, 0x11, 0x6070);
 		break;
@@ -110,7 +109,7 @@ static void sainsmart32fb_set_addr_win(struct fbtft_par *par, int xs, int ys, in
 {
 	fbtft_dev_dbg(DEBUG_SET_ADDR_WIN, par->info->device, "%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
 
-	switch (rotate) {
+	switch (par->info->var.rotate) {
 	/* R4Eh - Set GDDRAM X address counter */
 	/* R4Fh - Set GDDRAM Y address counter */
 	case 0:
@@ -138,6 +137,7 @@ static void sainsmart32fb_set_addr_win(struct fbtft_par *par, int xs, int ys, in
 static int sainsmart32fb_verify_gpios(struct fbtft_par *par)
 {
 	int i;
+	int num_db = 16;
 
 	fbtft_dev_dbg(DEBUG_VERIFY_GPIOS, par->info->device, "%s()\n", __func__);
 
@@ -150,7 +150,13 @@ static int sainsmart32fb_verify_gpios(struct fbtft_par *par)
 			dev_err(par->info->device, "Missing info about 'wr' gpio. Aborting.\n");
 			return -EINVAL;
 		}
-		for (i=0;i < 16;i++) {
+		if (latched && (par->gpio.latch < 0)) {
+			dev_err(par->info->device, "Missing info about 'latch' gpio. Aborting.\n");
+			return -EINVAL;
+		}
+		if (latched)
+			num_db = 8;
+		for (i=0;i < num_db;i++) {
 			if (par->gpio.db[i] < 0) {
 				dev_err(par->info->device, "Missing info about 'db%02d' gpio. Aborting.\n", i);
 				return -EINVAL;
@@ -180,28 +186,10 @@ static int sainsmart32fb_probe_common(struct spi_device *sdev, struct platform_d
 
 	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, dev, "%s()\n", __func__);
 
-	if (rotate > 3) {
-		dev_warn(dev, "module parameter 'rotate' illegal value: %d. Can only be 0,1,2,3. Setting it to 0.\n", rotate);
-		rotate = 0;
-	}
-	switch (rotate) {
-	case 0:
-	case 2:
-		sainsmart32fb_display.width = WIDTH;
-		sainsmart32fb_display.height = HEIGHT;
-		break;
-	case 1:
-	case 3:
-		sainsmart32fb_display.width = HEIGHT;
-		sainsmart32fb_display.height = WIDTH;
-		break;
-	}
-
 	info = fbtft_framebuffer_alloc(&sainsmart32fb_display, dev);
 	if (!info)
 		return -ENOMEM;
 
-	info->var.rotate = rotate;
 	par = info->par;
 	if (sdev)
 		par->spi = sdev;
@@ -214,10 +202,14 @@ static int sainsmart32fb_probe_common(struct spi_device *sdev, struct platform_d
 	par->fbtftops.write_reg = fbtft_write_reg16_bus8;
 	par->fbtftops.set_addr_win = sainsmart32fb_set_addr_win;
 	par->fbtftops.verify_gpios = sainsmart32fb_verify_gpios;
-/*
-	if (pdev)
-		par->fbtftops.write = fbtft_write_gpio16_wr;
-*/
+
+	if (pdev) {
+		if (latched)
+			par->fbtftops.write = fbtft_write_gpio16_wr_latched;
+		else
+			par->fbtftops.write = fbtft_write_gpio16_wr;
+	}
+
 	ret = fbtft_register_framebuffer(info);
 	if (ret < 0)
 		goto out_release;
@@ -267,10 +259,6 @@ static int sainsmart32fb_remove_pdev(struct platform_device *pdev)
 	struct fb_info *info = platform_get_drvdata(pdev);
 
 	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &pdev->dev, "%s()\n", __func__);
-
-	/* not supported, the RPi doesn't have that many GPIOs, and thus no 16-bit write function */
-	return -1;
-
 	return sainsmart32fb_remove_common(&pdev->dev, info);
 }
 

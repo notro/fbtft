@@ -46,6 +46,7 @@ struct fbtft_platform_data {
 	bool bgr;          /* BlueGreenRed color format */
 	unsigned fps;
 	int txbuflen;
+	u8 startbyte;
 	void *extra;
 };
 
@@ -53,6 +54,7 @@ struct fbtft_par;
 
 struct fbtft_ops {
 	int (*write)(struct fbtft_par *par, void *buf, size_t len);
+	int (*read)(struct fbtft_par *par, void *buf, size_t len);
 	int (*write_vmem)(struct fbtft_par *par);
 	void (*write_data_command)(struct fbtft_par *par, unsigned dc, u32 val);
 	void (*write_reg)(struct fbtft_par *par, int len, ...);
@@ -94,15 +96,16 @@ struct fbtft_par {
 		size_t len;
 	} txbuf;
 	u8 *buf;  /* small buffer used when writing init data over SPI */
+	u8 startbyte; /* used by some controllers when in SPI mode. Format: 6 bit Device id + RS bit + RW bit */
 	struct fbtft_ops fbtftops;
 	unsigned dirty_lines_start;
 	unsigned dirty_lines_end;
 	struct {
 		int reset;
 		int dc;
-		/* the following is not used or requested by core */
 		int rd;
 		int wr;
+		int latch;
 		int cs;
 		int db[16];
 		int led[16];
@@ -130,8 +133,10 @@ extern void fbtft_unregister_backlight(struct fbtft_par *par);
 
 /* fbtft-io.c */
 extern int fbtft_write_spi(struct fbtft_par *par, void *buf, size_t len);
+extern int fbtft_read_spi(struct fbtft_par *par, void *buf, size_t len);
 extern int fbtft_write_gpio8_wr(struct fbtft_par *par, void *buf, size_t len);
 extern int fbtft_write_gpio16_wr(struct fbtft_par *par, void *buf, size_t len);
+extern int fbtft_write_gpio16_wr_latched(struct fbtft_par *par, void *buf, size_t len);
 
 /* fbtft-bus.c */
 extern int fbtft_write_vmem8_bus8(struct fbtft_par *par);
@@ -140,6 +145,7 @@ extern int fbtft_write_vmem16_bus8(struct fbtft_par *par);
 extern int fbtft_write_vmem16_bus9(struct fbtft_par *par);
 extern void fbtft_write_reg8_bus8(struct fbtft_par *par, int len, ...);
 extern void fbtft_write_reg16_bus8(struct fbtft_par *par, int len, ...);
+extern void fbtft_write_reg16_bus16(struct fbtft_par *par, int len, ...);
 extern void fbtft_write_data_command8_bus8(struct fbtft_par *par, unsigned dc, u32 val);
 extern void fbtft_write_data_command8_bus9(struct fbtft_par *par, unsigned dc, u32 val);
 extern void fbtft_write_data_command16_bus16(struct fbtft_par *par, unsigned dc, u32 val);

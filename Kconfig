@@ -64,6 +64,12 @@ config FB_HY28A
 	tristate "FB driver for the HY28A SPI LCD display"
 	depends on FB_TFT
 
+config FB_SSD1351
+	tristate "FB driver for the SSD1351 1.5\" OLED display"
+	depends on FB_TFT
+	help
+	  Framebuffer support for the SSD1351 1.5\" OLED display in 8-bit SPI mode.
+
 config FB_TFT_FBTFT_DEVICE
 	tristate "Module to for adding FBTFT devices"
 	depends on FB_TFT

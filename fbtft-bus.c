@@ -1,5 +1,7 @@
 #include <linux/gpio.h>
 #include <linux/spi/spi.h>
+#include <linux/platform_device.h>
+#include <linux/export.h>
 #include "fbtft.h"
 
 

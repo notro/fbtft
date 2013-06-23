@@ -26,6 +26,7 @@
 #include <linux/gpio.h>
 #include <linux/spi/spi.h>
 #include <linux/delay.h>
+#include <linux/platform_device.h>
 
 #include "fbtft.h"
 
@@ -101,7 +102,7 @@ static int sainsmart32fb_init_display(struct fbtft_par *par)
 	write_reg(par, 0x25,0x8000);
 	write_reg(par, 0x4f,0x0000);
 	write_reg(par, 0x4e,0x0000);
-	write_reg(par, 0x22);   
+	write_reg(par, 0x22);
 	return 0;
 }
 

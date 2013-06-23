@@ -24,6 +24,7 @@
 #include <linux/gpio.h>
 #include <linux/spi/spi.h>
 #include <linux/delay.h>
+#include <linux/platform_device.h>
 
 #include "fbtft.h"
 

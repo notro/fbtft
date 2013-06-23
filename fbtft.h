@@ -22,6 +22,7 @@
 #include <linux/fb.h>
 
 
+
 #define FBTFT_NOP		0x00
 #define FBTFT_SWRESET	0x01
 #define FBTFT_RDDID		0x04

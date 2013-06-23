@@ -1,6 +1,9 @@
 
 #include <linux/gpio.h>
 #include <linux/spi/spi.h>
+#include <linux/platform_device.h>
+#include <linux/export.h>
+#include <mach/hardware.h>
 #include "fbtft.h"
 
 int fbtft_write_spi(struct fbtft_par *par, void *buf, size_t len)

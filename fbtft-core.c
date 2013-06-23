@@ -34,6 +34,7 @@
 #include <linux/delay.h>
 #include <linux/uaccess.h>
 #include <linux/backlight.h>
+#include <linux/platform_device.h>
 
 #include "fbtft.h"
 
@@ -313,14 +314,14 @@ void fbtft_update_display(struct fbtft_par *par)
 	// Sanity checks
 	if (par->dirty_lines_start > par->dirty_lines_end) {
 		fbtft_fbtft_dev_dbg(0xFFFFFFFF, par, par->info->device,
-			"%s: dirty_lines_start=%d is larger than dirty_lines_end=%d. Shouldn't happen, will do full display update\n", 
+			"%s: dirty_lines_start=%d is larger than dirty_lines_end=%d. Shouldn't happen, will do full display update\n",
 			__func__, par->dirty_lines_start, par->dirty_lines_end);
 		par->dirty_lines_start = 0;
 		par->dirty_lines_end = par->info->var.yres - 1;
 	}
 	if (par->dirty_lines_start > par->info->var.yres - 1 || par->dirty_lines_end > par->info->var.yres - 1) {
-		dev_warn(par->info->device, 
-			"%s: dirty_lines_start=%d or dirty_lines_end=%d larger than max=%d. Shouldn't happen, will do full display update\n", 
+		dev_warn(par->info->device,
+			"%s: dirty_lines_start=%d or dirty_lines_end=%d larger than max=%d. Shouldn't happen, will do full display update\n",
 			__func__, par->dirty_lines_start, par->dirty_lines_end, par->info->var.yres - 1);
 		par->dirty_lines_start = 0;
 		par->dirty_lines_end = par->info->var.yres - 1;
@@ -341,7 +342,7 @@ void fbtft_update_display(struct fbtft_par *par)
 		us = (test_of_time.tv_nsec / 1000) % 1000;
 		ms = (test_of_time.tv_sec * 1000) + ((test_of_time.tv_nsec / 1000000) % 1000);
 		ns = test_of_time.tv_nsec % 1000;
-		dev_info(par->info->device, "Elapsed time for display update: %4lu.%.3lu%.3lu ms (fps: %2lu, lines=%u)\n", 
+		dev_info(par->info->device, "Elapsed time for display update: %4lu.%.3lu%.3lu ms (fps: %2lu, lines=%u)\n",
 		                            ms, us, ns, test_of_time.tv_nsec ? 1000000000 / test_of_time.tv_nsec : 0, par->dirty_lines_end - par->dirty_lines_start + 1);
 		par->first_update_done = true;
 	}
@@ -413,7 +414,7 @@ void fbtft_fb_fillrect(struct fb_info *info, const struct fb_fillrect *rect)
 	par->fbtftops.mkdirty(info, rect->dy, rect->height);
 }
 
-void fbtft_fb_copyarea(struct fb_info *info, const struct fb_copyarea *area) 
+void fbtft_fb_copyarea(struct fb_info *info, const struct fb_copyarea *area)
 {
 	struct fbtft_par *par = info->par;
 
@@ -423,7 +424,7 @@ void fbtft_fb_copyarea(struct fb_info *info, const struct fb_copyarea *area)
 	par->fbtftops.mkdirty(info, area->dy, area->height);
 }
 
-void fbtft_fb_imageblit(struct fb_info *info, const struct fb_image *image) 
+void fbtft_fb_imageblit(struct fb_info *info, const struct fb_image *image)
 {
 	struct fbtft_par *par = info->par;
 

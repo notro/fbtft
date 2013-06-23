@@ -1,6 +1,9 @@
 /*
  * FB driver for the Nokia 5110/3310 LCD display
  *
+ * The display is monochrome and the video memory is RGB565.
+ * Any pixel value except 0 turns the pixel on.
+ *
  * Copyright (C) 2013 Noralf Tronnes
  *
  * This program is free software; you can redistribute it and/or modify
@@ -29,25 +32,28 @@
 
 
 #define DRVNAME	    "nokia3310fb"
-#define WIDTH       48
-#define HEIGHT      84
-#define BPP         1
-#define FPS			5
-
+#define WIDTH       84
+#define HEIGHT      48
+#define TXBUFLEN    84*6
 
 /* Module Parameter: debug  (also available through sysfs) */
 MODULE_PARM_DEBUG;
 
-static bool rotate = 0;
-module_param(rotate, bool, 0);
-MODULE_PARM_DESC(rotate, "Rotate display");
+static unsigned contrast = 0x40;
+module_param(contrast, uint, 0);
+MODULE_PARM_DESC(contrast, "Vop[6:0] Contrast: 0 - 0x7F (default: 0x40)");
+
+static unsigned tc = 0;
+module_param(tc, uint, 0);
+MODULE_PARM_DESC(tc, "TC[1:0] Temperature coefficient: 0-3 (default: 0)");
+
+static unsigned bs = 4;
+module_param(bs, uint, 0);
+MODULE_PARM_DESC(bs, "BS[2:0] Bias voltage level: 0-7 (default: 4)");
+
 
 static int nokia3310fb_init_display(struct fbtft_par *par)
 {
-	u8 contrast = 0x40;  /* between 0x00 and 0x7F */
-	u8 tc = 0;           /* Temperature coefficient, between 0 and 3 */
-	u8 bias = 4;         /* Bias, between 0 and 7 */
-
 	fbtft_dev_dbg(DEBUG_INIT_DISPLAY, par->info->device, "%s()\n", __func__);
 
 	par->fbtftops.reset(par);
@@ -60,20 +66,20 @@ static int nokia3310fb_init_display(struct fbtft_par *par)
 						  */
 
 	/* H=1 Set Vop (contrast) */
-	write_reg(par, 0x80 | contrast); /*
+	write_reg(par, 0x80 | (contrast & 0x7F)); /*
 	                         7:1  1
 	                         6-0: Vop[6:0] - Operation voltage
 	                      */
 
 	/* H=1 Temperature control */
-	write_reg(par, 0x04 | tc); /* 
+	write_reg(par, 0x04 | (tc & 0x3)); /* 
 	                         2:1  1
 	                         1:x  TC1 - Temperature Coefficient: 0x10
 							 0:x  TC0
 						  */
 
 	/* H=1 Bias system */
-	write_reg(par, 0x10 | bias); /* 
+	write_reg(par, 0x10 | (bs & 0x7)); /* 
 	                         4:1  1
 	                         3:0  0
 							 2:x  BS2 - Bias System
@@ -99,30 +105,9 @@ static int nokia3310fb_init_display(struct fbtft_par *par)
 	return 0;
 }
 
-void nokia3310fb_update_display(struct fbtft_par *par)
+static void nokia3310fb_set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 {
-	u8 *vmem8 = vmem8 = par->info->screen_base;
-	u8 *buf = par->txbuf.buf;
-	int i;
-	int ret = 0;
-
-	fbtft_dev_dbg(DEBUG_UPDATE_DISPLAY, par->info->device, "%s()\n", __func__);
-
-	if (par->info->var.xres == WIDTH) {
-		/* rearrange */
-		for (i=0; i<84; i++) {
-			buf[i*6+0] = vmem8[i*6+5];
-			buf[i*6+1] = vmem8[i*6+4];
-			buf[i*6+2] = vmem8[i*6+3];
-			buf[i*6+3] = vmem8[i*6+2];
-			buf[i*6+4] = vmem8[i*6+1];
-			buf[i*6+5] = vmem8[i*6+0];
-		}
-	} else {
-		/* rearrange and rotate */
-		dev_err(par->info->device, "%s: rotation not supported yet\n", __func__);
-		return;
-	}
+	fbtft_fbtft_dev_dbg(DEBUG_SET_ADDR_WIN, par, par->info->device, "%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
 
 	/* H=0 Set X address of RAM */
 	write_reg(par, 0x80); /* 7:1  1
@@ -134,12 +119,34 @@ void nokia3310fb_update_display(struct fbtft_par *par)
 	                         6:1  1
 	                         2-0: Y[2:0] - 0x0
 	                      */
+}
+
+static int nokia3310fb_write_vmem(struct fbtft_par *par)
+{
+	u16 *vmem16 = (u16 *)par->info->screen_base;
+	u8 *buf = par->txbuf.buf;
+	int x, y, i;
+	int ret = 0;
+
+	fbtft_fbtft_dev_dbg(DEBUG_WRITE_VMEM, par, par->info->device, "%s()\n", __func__);
+
+	for (x=0;x<84;x++) {
+		for (y=0;y<6;y++) {
+			*buf = 0x00;
+			for (i=0;i<8;i++) {
+				*buf |= (vmem16[(y*8+i)*84+x] ? 1 : 0) << i;
+			}
+			buf++;
+		}
+	}
 
 	/* Write data */
 	gpio_set_value(par->gpio.dc, 1);
-	ret = par->fbtftops.write(par, buf, par->info->fix.smem_len);
+	ret = par->fbtftops.write(par, par->txbuf.buf, 6*84);
 	if (ret < 0)
 		dev_err(par->info->device, "%s: write failed and returned: %d\n", __func__, ret);
+
+	return ret;
 }
 
 static int nokia3310fb_verify_gpios(struct fbtft_par *par)
@@ -154,12 +161,11 @@ static int nokia3310fb_verify_gpios(struct fbtft_par *par)
 	return 0;
 }
 
+
 struct fbtft_display nokia3310fb_display = {
 	.width = WIDTH,
 	.height = HEIGHT,
-	.bpp = BPP,
-	.fps = FPS,
-	.txbuflen = -1,
+	.txbuflen = TXBUFLEN,
 };
 
 static int nokia3310fb_probe(struct spi_device *spi)
@@ -170,34 +176,19 @@ static int nokia3310fb_probe(struct spi_device *spi)
 
 	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &spi->dev, "%s()\n", __func__);
 
-	if (rotate) {
-		nokia3310fb_display.width = HEIGHT;
-		nokia3310fb_display.height = WIDTH;
-	} else {
-		nokia3310fb_display.width = WIDTH;
-		nokia3310fb_display.height = HEIGHT;
-	}
-
 	info = fbtft_framebuffer_alloc(&nokia3310fb_display, &spi->dev);
 	if (!info)
 		return -ENOMEM;
-
-	info->fix.visual = FB_VISUAL_MONO10;
-	info->var.red.offset =     0;
-	info->var.red.length =     0;
-	info->var.green.offset =   0;
-	info->var.green.length =   0;
-	info->var.blue.offset =    0;
-	info->var.blue.length =    0;
 
 	par = info->par;
 	par->spi = spi;
 	fbtft_debug_init(par);
 	par->fbtftops.write_data_command = fbtft_write_data_command8_bus8;
-	par->fbtftops.verify_gpios = nokia3310fb_verify_gpios;
+	par->fbtftops.write_vmem = nokia3310fb_write_vmem;
+	par->fbtftops.set_addr_win = nokia3310fb_set_addr_win;
 	par->fbtftops.init_display = nokia3310fb_init_display;
+	par->fbtftops.verify_gpios = nokia3310fb_verify_gpios;
 	par->fbtftops.register_backlight = fbtft_register_backlight;
-	par->fbtftops.update_display = nokia3310fb_update_display;
 
 	ret = fbtft_register_framebuffer(info);
 	if (ret < 0)

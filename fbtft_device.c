@@ -219,6 +219,17 @@ static struct spi_board_info fbtft_device_spi_displays[] = {
 				{},
 			},
 		}
+	}, {
+		.modalias = "ssd1351fb",
+		.max_speed_hz = 20000000,
+		.mode = SPI_MODE_0,
+		.platform_data = &(struct fbtft_platform_data) {
+			.gpios = (const struct fbtft_gpio []) {
+				{ "reset", 24 },
+				{ "dc", 25 },
+				{},
+			},
+		}
 	}
 };
 

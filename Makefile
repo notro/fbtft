@@ -13,6 +13,7 @@ obj-$(CONFIG_FB_R61505U)         += r61505ufb.o
 obj-$(CONFIG_FB_ILI9341)         += ili9341fb.o
 obj-$(CONFIG_FB_ITDB28)          += itdb28fb.o
 obj-$(CONFIG_FB_HY28A)           += hy28afb.o
+obj-$(CONFIG_FB_SSD1351)         += ssd1351fb.o
 
 # Device modules
 obj-$(CONFIG_FB_TFT_FBTFT_DEVICE) += fbtft_device.o

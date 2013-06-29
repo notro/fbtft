@@ -34,6 +34,10 @@
 #define HEIGHT      320
 #define BPP         16
 #define FPS         20
+#define GAMMA_MASK  "1f 1f 7 7 7 7 7 7 7 7\n" \
+                    "1f 1f 7 7 7 7 7 7 7 7"
+#define GAMMA       "0F 00 7 2 0 0 6 5 4 1\n" \
+                    "04 16 2 7 6 3 2 1 7 7"
 
 
 /* Module Parameter: debug  (also available through sysfs) */
@@ -148,18 +152,6 @@ static int itdb28fb_init_display(struct fbtft_par *par)
 	write_reg(par, 0x0020, 0x0000); /* GRAM horizontal Address */
 	write_reg(par, 0x0021, 0x0000); /* GRAM Vertical Address */
 
-	/* ----------- Adjust the Gamma Curve ---------- */
-	write_reg(par, 0x0030, 0x0000);
-	write_reg(par, 0x0031, 0x0506);
-	write_reg(par, 0x0032, 0x0104);
-	write_reg(par, 0x0035, 0x0207);
-	write_reg(par, 0x0036, 0x000F);
-	write_reg(par, 0x0037, 0x0306);
-	write_reg(par, 0x0038, 0x0102);
-	write_reg(par, 0x0039, 0x0707);
-	write_reg(par, 0x003C, 0x0702);
-	write_reg(par, 0x003D, 0x1604);
-
 	/*------------------ Set GRAM area --------------- */
 	write_reg(par, 0x0050, 0x0000); /* Horizontal GRAM Start Address */
 	write_reg(par, 0x0051, 0x00EF); /* Horizontal GRAM End Address */
@@ -183,6 +175,28 @@ static int itdb28fb_init_display(struct fbtft_par *par)
 	write_reg(par, 0x0007, 0x0133); /* 262K color and display ON */
 
 	return 0;
+}
+
+/*
+  Gamma string format:
+    VRP0 VRP1 RP0 RP1 KP0 KP1 KP2 KP3 KP4 KP5 KP6
+    VRN0 VRN1 RN0 RN1 KN0 KN1 KN2 KN3 KN4 KN5 KN6
+*/
+static void set_gamma(struct fbtft_par *par)
+{
+	fbtft_dev_dbg(DEBUG_INIT_DISPLAY, par->info->device, "%s()\n", __func__);
+
+	write_reg(par, 0x0030, fbtft_gamma_get(par, 0, 5) << 8 | fbtft_gamma_get(par, 0, 4) );
+	write_reg(par, 0x0031, fbtft_gamma_get(par, 0, 7) << 8 | fbtft_gamma_get(par, 0, 6) );
+	write_reg(par, 0x0032, fbtft_gamma_get(par, 0, 9) << 8 | fbtft_gamma_get(par, 0, 8) );
+	write_reg(par, 0x0035, fbtft_gamma_get(par, 0, 3) << 8 | fbtft_gamma_get(par, 0, 2) );
+	write_reg(par, 0x0036, fbtft_gamma_get(par, 0, 1) << 8 | fbtft_gamma_get(par, 0, 0) );
+
+	write_reg(par, 0x0037, fbtft_gamma_get(par, 1, 5) << 8 | fbtft_gamma_get(par, 1, 4) );
+	write_reg(par, 0x0038, fbtft_gamma_get(par, 1, 7) << 8 | fbtft_gamma_get(par, 1, 6) );
+	write_reg(par, 0x0039, fbtft_gamma_get(par, 1, 9) << 8 | fbtft_gamma_get(par, 1, 8) );
+	write_reg(par, 0x003C, fbtft_gamma_get(par, 1, 3) << 8 | fbtft_gamma_get(par, 1, 2) );
+	write_reg(par, 0x003D, fbtft_gamma_get(par, 1, 1) << 8 | fbtft_gamma_get(par, 1, 0) );
 }
 
 static void itdb28fb_set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
@@ -240,6 +254,10 @@ static int itdb28fb_verify_gpios(struct fbtft_par *par)
 struct fbtft_display itdb28fb_display = {
 	.bpp = BPP,
 	.fps = FPS,
+	.gamma_num = 2,
+	.gamma_len = 10,
+	.gamma = GAMMA,
+	.gamma_mask = GAMMA_MASK,
 };
 
 static int itdb28fb_probe_common(struct spi_device *sdev, struct platform_device *pdev)
@@ -286,6 +304,7 @@ static int itdb28fb_probe_common(struct spi_device *sdev, struct platform_device
 
 	fbtft_debug_init(par);
 	par->fbtftops.init_display = itdb28fb_init_display;
+	par->fbtftops.set_gamma = set_gamma;
 	par->fbtftops.register_backlight = fbtft_register_backlight;
 	par->fbtftops.write_reg = fbtft_write_reg16_bus8;
 	par->fbtftops.set_addr_win = itdb28fb_set_addr_win;

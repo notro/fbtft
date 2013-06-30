@@ -479,11 +479,6 @@ static int __init fbtft_device_init(void)
 		for (i=0; i < ARRAY_SIZE(fbtft_device_pdev_displays); i++) {
 			if (strncmp(name, fbtft_device_pdev_displays[i].name, 32) == 0) {
 				p_device = &fbtft_device_pdev_displays[i];
-				ret = platform_device_register(p_device);
-				if (ret < 0) {
-					pr_err(DRVNAME":    platform_device_register() returned %d\n", ret);
-					return ret;
-				}
 				if (pdata)
 					p_device->dev.platform_data = (void *)pdata;
 				pdata = p_device->dev.platform_data;
@@ -495,6 +490,11 @@ static int __init fbtft_device_init(void)
 					pdata->fps = fps;
 				if (txbuflen)
 					pdata->txbuflen = txbuflen;
+				ret = platform_device_register(p_device);
+				if (ret < 0) {
+					pr_err(DRVNAME":    platform_device_register() returned %d\n", ret);
+					return ret;
+				}
 				found = true;
 				break;
 			}

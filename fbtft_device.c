@@ -64,6 +64,10 @@ static unsigned fps = 0;
 module_param(fps, uint, 0);
 MODULE_PARM_DESC(fps, "Frames per second (override driver default)");
 
+static char *gamma = NULL;
+module_param(gamma, charp, 0);
+MODULE_PARM_DESC(gamma, "String representation of Gamma Curve(s). Driver specific.");
+
 static int txbuflen = 0;
 module_param(txbuflen, int, 0);
 MODULE_PARM_DESC(txbuflen, "txbuflen (override driver default)");
@@ -454,6 +458,7 @@ static int __init fbtft_device_init(void)
 			pdata->rotate = rotate;
 			pdata->bgr = bgr;
 			pdata->startbyte = startbyte;
+			pdata->gamma = gamma;
 			if (fps)
 				pdata->fps = fps;
 			if (txbuflen)
@@ -485,6 +490,7 @@ static int __init fbtft_device_init(void)
 				pdata->rotate = rotate;
 				pdata->bgr = bgr;
 				pdata->startbyte = startbyte;
+				pdata->gamma = gamma;
 				if (fps)
 					pdata->fps = fps;
 				if (txbuflen)

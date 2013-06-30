@@ -363,7 +363,7 @@ static int __init fbtft_device_init(void)
 {
 	struct spi_master *master = NULL;
 	struct spi_board_info *display = NULL;
-	const struct fbtft_platform_data *pdata = NULL;
+	struct fbtft_platform_data *pdata = NULL;
 	const struct fbtft_gpio *gpio = NULL;
 	char *p_name, *p_num;
 	bool found = false;
@@ -450,14 +450,14 @@ static int __init fbtft_device_init(void)
 				display->mode = mode;
 			if (pdata)
 				display->platform_data = pdata;
-			pdata = display->platform_data;
-			((struct fbtft_platform_data *)pdata)->rotate = rotate;
-			((struct fbtft_platform_data *)pdata)->bgr = bgr;
-			((struct fbtft_platform_data *)pdata)->startbyte = startbyte;
+			pdata = (void *)display->platform_data;
+			pdata->rotate = rotate;
+			pdata->bgr = bgr;
+			pdata->startbyte = startbyte;
 			if (fps)
-				((struct fbtft_platform_data *)pdata)->fps = fps;
+				pdata->fps = fps;
 			if (txbuflen)
-				((struct fbtft_platform_data *)pdata)->txbuflen = txbuflen;
+				pdata->txbuflen = txbuflen;
 			spi_device = spi_new_device(master, display);
 			put_device(&master->dev);
 			if (!spi_device) {
@@ -482,13 +482,13 @@ static int __init fbtft_device_init(void)
 				if (pdata)
 					p_device->dev.platform_data = (void *)pdata;
 				pdata = p_device->dev.platform_data;
-				((struct fbtft_platform_data *)pdata)->rotate = rotate;
-				((struct fbtft_platform_data *)pdata)->bgr = bgr;
-				((struct fbtft_platform_data *)pdata)->startbyte = startbyte;
+				pdata->rotate = rotate;
+				pdata->bgr = bgr;
+				pdata->startbyte = startbyte;
 				if (fps)
-					((struct fbtft_platform_data *)pdata)->fps = fps;
+					pdata->fps = fps;
 				if (txbuflen)
-					((struct fbtft_platform_data *)pdata)->txbuflen = txbuflen;
+					pdata->txbuflen = txbuflen;
 				found = true;
 				break;
 			}

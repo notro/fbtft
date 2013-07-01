@@ -43,11 +43,6 @@
 /* Module Parameter: debug  (also available through sysfs) */
 MODULE_PARM_DEBUG;
 
-/* Module Parameter: rotate */
-static unsigned rotate = 0;
-module_param(rotate, uint, 0);
-MODULE_PARM_DESC(rotate, "Rotate display (0=normal, 1=clockwise, 2=upside down, 3=counterclockwise)");
-
 
 /* Power supply configuration */
 #define ILI9325_BT  6        /* VGL=Vci*4 , VGH=Vci*4 */
@@ -111,7 +106,7 @@ static int itdb28fb_init_display(struct fbtft_par *par)
 	write_reg(par, 0x00EF, 0x1231); /* Set internal timing */
 	write_reg(par, 0x0001, 0x0100); /* set SS and SM bit */
 	write_reg(par, 0x0002, 0x0700); /* set 1 line inversion */
-	switch (rotate) {
+	switch (par->info->var.rotate) {
 	/* AM: GRAM update direction: horiz/vert. I/D: Inc/Dec address counter */
 	case 0:
 		write_reg(par, 0x03, 0x1030);
@@ -202,7 +197,7 @@ static void set_gamma(struct fbtft_par *par)
 static void itdb28fb_set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 {
 	fbtft_dev_dbg(DEBUG_SET_ADDR_WIN, par->info->device, "%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
-	switch (rotate) {
+	switch (par->info->var.rotate) {
 	/* R20h = Horizontal GRAM Start Address */
 	/* R21h = Vertical GRAM Start Address */
 	case 0:
@@ -252,6 +247,8 @@ static int itdb28fb_verify_gpios(struct fbtft_par *par)
 }
 
 struct fbtft_display itdb28fb_display = {
+	.width = WIDTH,
+	.height = HEIGHT,
 	.bpp = BPP,
 	.fps = FPS,
 	.gamma_num = 2,
@@ -274,28 +271,10 @@ static int itdb28fb_probe_common(struct spi_device *sdev, struct platform_device
 
 	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, dev, "%s()\n", __func__);
 
-	if (rotate > 3) {
-		dev_warn(dev, "module parameter 'rotate' illegal value: %d. Can only be 0,1,2,3. Setting it to 0.\n", rotate);
-		rotate = 0;
-	}
-	switch (rotate) {
-	case 0:
-	case 2:
-		itdb28fb_display.width = WIDTH;
-		itdb28fb_display.height = HEIGHT;
-		break;
-	case 1:
-	case 3:
-		itdb28fb_display.width = HEIGHT;
-		itdb28fb_display.height = WIDTH;
-		break;
-	}
-
 	info = fbtft_framebuffer_alloc(&itdb28fb_display, dev);
 	if (!info)
 		return -ENOMEM;
 
-	info->var.rotate = rotate;
 	par = info->par;
 	if (sdev)
 		par->spi = sdev;

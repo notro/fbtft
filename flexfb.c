@@ -62,10 +62,6 @@ static bool nobacklight = false;
 module_param(nobacklight, bool, 0);
 MODULE_PARM_DESC(nobacklight, "Turn off backlight functionality.");
 
-static unsigned rotate = 0;
-module_param(rotate, uint, 0);
-MODULE_PARM_DESC(rotate, "Rotate display (0=normal, 1=clockwise, 2=upside down, 3=counterclockwise)");
-
 static bool latched = false;
 module_param(latched, bool, 0);
 MODULE_PARM_DESC(latched, "Use with latched 16-bit databus");
@@ -141,7 +137,7 @@ static int flexfb_init_display(struct fbtft_par *par)
 static void flexfb_set_addr_win_1(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 {
 	fbtft_dev_dbg(DEBUG_SET_ADDR_WIN, par->info->device, "%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
-	switch (rotate) {
+	switch (par->info->var.rotate) {
 	/* R20h = Horizontal GRAM Start Address */
 	/* R21h = Vertical GRAM Start Address */
 	case 0:
@@ -153,12 +149,12 @@ static void flexfb_set_addr_win_1(struct fbtft_par *par, int xs, int ys, int xe,
 		write_reg(par, 0x0021, height - 1 - ys);
 		break;
 	case 1:
-		write_reg(par, 0x0020, height - 1 - ys);
+		write_reg(par, 0x0020, width - 1 - ys);
 		write_reg(par, 0x0021, xs);
 		break;
 	case 3:
 		write_reg(par, 0x0020, ys);
-		write_reg(par, 0x0021, width - 1 - xs);
+		write_reg(par, 0x0021, height - 1 - xs);
 		break;
 	}
 	write_reg(par, 0x0022); /* Write Data to GRAM */
@@ -169,7 +165,7 @@ static void flexfb_set_addr_win_2(struct fbtft_par *par, int xs, int ys, int xe,
 {
 	fbtft_dev_dbg(DEBUG_SET_ADDR_WIN, par->info->device, "%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
 
-	switch (rotate) {
+	switch (par->info->var.rotate) {
 	/* R4Eh - Set GDDRAM X address counter */
 	/* R4Fh - Set GDDRAM Y address counter */
 	case 0:
@@ -265,7 +261,6 @@ static int flexfb_probe_common(struct spi_device *sdev, struct platform_device *
 	if (!info)
 		return -ENOMEM;
 
-	info->var.rotate = rotate;
 	par = info->par;
 	if (sdev)
 		par->spi = sdev;

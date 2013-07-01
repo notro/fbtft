@@ -35,15 +35,6 @@
 /* Module Parameter: debug  (also available through sysfs) */
 MODULE_PARM_DEBUG;
 
-static bool bgr = false;
-module_param(bgr, bool, 0);
-MODULE_PARM_DESC(bgr, "Use if Red and Blue is swapped (set MADCTL RGB bit).");
-
-static unsigned rotate = 0;
-module_param(rotate, uint, 0);
-MODULE_PARM_DESC(rotate, "Rotate display (0=normal, 1=clockwise, 2=upside down, 3=counterclockwise)");
-
-
 // ftp://imall.iteadstudio.com/IM120419001_ITDB02_1.8SP/DS_ST7735.pdf
 // https://github.com/johnmccombs/arduino-libraries/blob/master/ST7735/ST7735.cpp
 
@@ -100,18 +91,18 @@ static int sainsmart18fb_init_display(struct fbtft_par *par)
 	#define MY (1 << 7)
 	#define MX (1 << 6)
 	#define MV (1 << 5)
-	switch (rotate) {
+	switch (par->info->var.rotate) {
 	case 0:
-		write_reg(par, 0x36, MX | MY | (bgr << 3));
+		write_reg(par, 0x36, MX | MY | (par->bgr << 3));
 		break;
 	case 1:
-		write_reg(par, 0x36, MY | MV | (bgr << 3));
+		write_reg(par, 0x36, MY | MV | (par->bgr << 3));
 		break;
 	case 2:
-		write_reg(par, 0x36, (bgr << 3));
+		write_reg(par, 0x36, (par->bgr << 3));
 		break;
 	case 3:
-		write_reg(par, 0x36, MX | MV | (bgr << 3));
+		write_reg(par, 0x36, MX | MV | (par->bgr << 3));
 		break;
 	}
 
@@ -149,7 +140,10 @@ static int sainsmart18fb_verify_gpios(struct fbtft_par *par)
 	return 0;
 }
 
-struct fbtft_display sainsmart18_display = { };
+struct fbtft_display sainsmart18_display = {
+	.width = WIDTH,
+	.height = HEIGHT,
+};
 
 static int sainsmart18fb_probe(struct spi_device *spi)
 {
@@ -159,28 +153,10 @@ static int sainsmart18fb_probe(struct spi_device *spi)
 
 	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &spi->dev, "%s()\n", __func__);
 
-	if (rotate > 3) {
-		dev_warn(&spi->dev, "argument 'rotate' illegal value: %d (0-3). Setting it to 0.\n", rotate);
-		rotate = 0;
-	}
-	switch (rotate) {
-	case 0:
-	case 2:
-		sainsmart18_display.width = WIDTH;
-		sainsmart18_display.height = HEIGHT;
-		break;
-	case 1:
-	case 3:
-		sainsmart18_display.width = HEIGHT;
-		sainsmart18_display.height = WIDTH;
-		break;
-	}
-
 	info = fbtft_framebuffer_alloc(&sainsmart18_display, &spi->dev);
 	if (!info)
 		return -ENOMEM;
 
-	info->var.rotate = rotate;
 	par = info->par;
 	par->spi = spi;
 	fbtft_debug_init(par);

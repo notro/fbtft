@@ -40,14 +40,6 @@
 /* Module Parameter: debug  (also available through sysfs) */
 MODULE_PARM_DEBUG;
 
-static bool bgr = false;
-module_param(bgr, bool, 0);
-MODULE_PARM_DESC(bgr, "Use if Red and Blue is swapped");
-
-static unsigned rotate = 0;
-module_param(rotate, uint, 0);
-MODULE_PARM_DESC(rotate, "Rotate display (0=normal, 1=clockwise, 2=upside down, 3=counterclockwise)");
-
 /* write_cmd and write_data transfers need to be buffered so we can, if needed, do 9-bit emulation */
 #undef write_cmd
 #undef write_data
@@ -184,18 +176,18 @@ static int adafruit22fb_init_display(struct fbtft_par *par)
 	#define MX (1 << 6)
 	#define MV (1 << 5)
 	write_cmd(par, 0x36);
-	switch (rotate) {
+	switch (par->info->var.rotate) {
 	case 0:
-		write_data(par, (!bgr << 3));
+		write_data(par, (!par->bgr << 3));
 		break;
 	case 1:
-		write_data(par, MX | MV | (!bgr << 3));
+		write_data(par, MX | MV | (!par->bgr << 3));
 		break;
 	case 2:
-		write_data(par, MX | MY | (!bgr << 3));
+		write_data(par, MX | MY | (!par->bgr << 3));
 		break;
 	case 3:
-		write_data(par, MY | MV | (!bgr << 3));
+		write_data(par, MY | MV | (!par->bgr << 3));
 		break;
 	}
 
@@ -283,23 +275,6 @@ static int adafruit22fb_probe(struct spi_device *spi)
 	int ret;
 
 	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &spi->dev, "%s()\n", __func__);
-
-	if (rotate > 3) {
-		dev_warn(&spi->dev, "argument 'rotate' illegal value: %d (0-3). Setting it to 0.\n", rotate);
-		rotate = 0;
-	}
-	switch (rotate) {
-	case 0:
-	case 2:
-		adafruit22_display.width = WIDTH;
-		adafruit22_display.height = HEIGHT;
-		break;
-	case 1:
-	case 3:
-		adafruit22_display.width = HEIGHT;
-		adafruit22_display.height = WIDTH;
-		break;
-	}
 
 	info = fbtft_framebuffer_alloc(&adafruit22_display, &spi->dev);
 	if (!info)

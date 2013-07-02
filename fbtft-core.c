@@ -496,7 +496,7 @@ int fbtft_fb_blank(int blank, struct fb_info *info)
 	fbtft_fbtft_dev_dbg(DEBUG_FB_BLANK, par, info->dev, "%s(blank=%d)\n", __func__, blank);
 
 	if (!par->fbtftops.blank)
-		return 0;
+		return ret;
 
 	switch (blank) {
 	case FB_BLANK_POWERDOWN:

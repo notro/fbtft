@@ -10,6 +10,15 @@
 #define DRVNAME     "ssd1351fb"
 #define WIDTH       128
 #define HEIGHT      128
+#define GAMMA       "5 1 1 1 1 1 1 1 " \
+                    "1 1 1 1 1 1 1 1 " \
+                    "1 1 2 2 1 1 1 2 " \
+                    "2 2 2 2 3 3 3 3 " \
+                    "3 3 3 3 3 3 3 4 " \
+                    "4 4 4 4 4 4 4 4 " \
+                    "4 4 4 5 5 5 5 5 " \
+                    "5 5 5 5 5 5 5"
+
 
 /* Module Parameter: debug  (also available through sysfs) */
 MODULE_PARM_DEBUG;
@@ -102,72 +111,49 @@ static int ssd1351fb_init_display(struct fbtft_par *par)
 
 	write_cmd(par, 0xa6); // Set Display Mode Reset
 
-	write_cmd(par, 0xb8); // Set CMD Grayscale Lookup
-	write_data(par, 0x05);
-	write_data(par, 0x06);
-	write_data(par, 0x07);
-	write_data(par, 0x08);
-	write_data(par, 0x09);
-	write_data(par, 0x0a);
-	write_data(par, 0x0b);
-	write_data(par, 0x0c);
-	write_data(par, 0x0D);
-	write_data(par, 0x0E);
-	write_data(par, 0x0F);
-	write_data(par, 0x10);
-	write_data(par, 0x11);
-	write_data(par, 0x12);
-	write_data(par, 0x13);
-	write_data(par, 0x14);
-	write_data(par, 0x15);
-	write_data(par, 0x16);
-	write_data(par, 0x18);
-	write_data(par, 0x1a);
-	write_data(par, 0x1b);
-	write_data(par, 0x1C);
-	write_data(par, 0x1D);
-	write_data(par, 0x1F);
-	write_data(par, 0x21);
-	write_data(par, 0x23);
-	write_data(par, 0x25);
-	write_data(par, 0x27);
-	write_data(par, 0x2A);
-	write_data(par, 0x2D);
-	write_data(par, 0x30);
-	write_data(par, 0x33);
-	write_data(par, 0x36);
-	write_data(par, 0x39);
-	write_data(par, 0x3C);
-	write_data(par, 0x3F);
-	write_data(par, 0x42);
-	write_data(par, 0x45);
-	write_data(par, 0x48);
-	write_data(par, 0x4C);
-	write_data(par, 0x50);
-	write_data(par, 0x54);
-	write_data(par, 0x58);
-	write_data(par, 0x5C);
-	write_data(par, 0x60);
-	write_data(par, 0x64);
-	write_data(par, 0x68);
-	write_data(par, 0x6C);
-	write_data(par, 0x70);
-	write_data(par, 0x74);
-	write_data(par, 0x78);
-	write_data(par, 0x7D);
-	write_data(par, 0x82);
-	write_data(par, 0x87);
-	write_data(par, 0x8C);
-	write_data(par, 0x91);
-	write_data(par, 0x96);
-	write_data(par, 0x9B);
-	write_data(par, 0xA0);
-	write_data(par, 0xA5);
-	write_data(par, 0xAA);
-	write_data(par, 0xAF);
-	write_data(par, 0xB4);
-
 	write_cmd(par, 0xaf); // Set Sleep Mode Display On
+
+	return 0;
+}
+
+/*
+	Grayscale Lookup Table
+	GS1 - GS63
+	The "Gamma curve" contains the relative values between the entries in the Lookup table.
+
+	From datasheet:
+	The next 63 data bytes define Gray Scale (GS) Table by 
+	setting the gray scale pulse width in unit of DCLK's 
+	(ranges from 0d ~ 180d) 
+
+	0 = Setting of GS1 < Setting of GS2 < Setting of GS3..... < Setting of GS62 < Setting of GS63
+
+*/
+static int set_gamma(struct fbtft_par *par, unsigned long *curves)
+{
+	int i, acc = 0;
+
+	fbtft_dev_dbg(DEBUG_INIT_DISPLAY, par->info->device, "%s()\n", __func__);
+
+	/* verify lookup table */
+	for (i=0;i<63;i++) {
+		acc += curves[i];
+		if (acc > 180) {
+			dev_err(par->info->device, "Illegal value(s) in Grayscale Lookup Table. At index=%d, the accumulated value has exceeded 180\n", i);
+			return -EINVAL;
+		}
+		if (curves[i] == 0) {
+			dev_err(par->info->device, "Illegal value in Grayscale Lookup Table. Value can't be zero\n");
+			return -EINVAL;
+		}
+	}
+
+	acc = 0;
+	write_cmd(par, 0xB8);
+	for (i=0;i<63;i++) {
+		acc += curves[i];
+		write_data(par, acc);
+	}
 
 	return 0;
 }
@@ -198,6 +184,9 @@ static int ssd1351fb_verify_gpios(struct fbtft_par *par)
 struct fbtft_display ssd1351fb_display = {
 	.width = WIDTH,
 	.height = HEIGHT,
+	.gamma_num = 1,
+	.gamma_len = 63,
+	.gamma = GAMMA,
 };
 
 static int ssd1351fb_probe(struct spi_device *spi)
@@ -221,6 +210,7 @@ static int ssd1351fb_probe(struct spi_device *spi)
 	par->fbtftops.set_addr_win  = ssd1351fb_set_addr_win;
 	par->fbtftops.verify_gpios  = ssd1351fb_verify_gpios;
 	par->fbtftops.blank = blank;
+	par->fbtftops.set_gamma = set_gamma;
 
 	ret = fbtft_register_framebuffer(info);
 

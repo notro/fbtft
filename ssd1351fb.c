@@ -172,6 +172,16 @@ static int ssd1351fb_init_display(struct fbtft_par *par)
 	return 0;
 }
 
+static int blank(struct fbtft_par *par, bool on)
+{
+	fbtft_dev_dbg(DEBUG_BLANK, par->info->device, "%s(blank=%s)\n", __func__, on ? "true" : "false");
+	if (on)
+		write_cmd(par, 0xAE);
+	else
+		write_cmd(par, 0xAF);
+	return 0;
+}
+
 static int ssd1351fb_verify_gpios(struct fbtft_par *par)
 {
 	fbtft_dev_dbg(DEBUG_VERIFY_GPIOS, par->info->device, "%s()\n", __func__);
@@ -210,6 +220,7 @@ static int ssd1351fb_probe(struct spi_device *spi)
 	par->fbtftops.init_display  = ssd1351fb_init_display;
 	par->fbtftops.set_addr_win  = ssd1351fb_set_addr_win;
 	par->fbtftops.verify_gpios  = ssd1351fb_verify_gpios;
+	par->fbtftops.blank = blank;
 
 	ret = fbtft_register_framebuffer(info);
 

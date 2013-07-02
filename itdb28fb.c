@@ -34,8 +34,6 @@
 #define HEIGHT      320
 #define BPP         16
 #define FPS         20
-#define GAMMA_MASK  "1f 1f 7 7 7 7 7 7 7 7\n" \
-                    "1f 1f 7 7 7 7 7 7 7 7"
 #define GAMMA       "0F 00 7 2 0 0 6 5 4 1\n" \
                     "04 16 2 7 6 3 2 1 7 7"
 
@@ -177,22 +175,35 @@ static int itdb28fb_init_display(struct fbtft_par *par)
     VRP0 VRP1 RP0 RP1 KP0 KP1 KP2 KP3 KP4 KP5 KP6
     VRN0 VRN1 RN0 RN1 KN0 KN1 KN2 KN3 KN4 KN5 KN6
 */
-static void set_gamma(struct fbtft_par *par)
+#define CURVE(num, idx)  curves[num*par->gamma.num_values + idx]
+static int set_gamma(struct fbtft_par *par, unsigned long *curves)
 {
+	unsigned long mask[] = { 0b11111, 0b11111, 0b111, 0b111, 0b111, 0b111, 0b111, 0b111, 0b111, 0b111, \
+	                         0b11111, 0b11111, 0b111, 0b111, 0b111, 0b111, 0b111, 0b111, 0b111, 0b111 };
+	int i,j;
+
 	fbtft_dev_dbg(DEBUG_INIT_DISPLAY, par->info->device, "%s()\n", __func__);
 
-	write_reg(par, 0x0030, fbtft_gamma_get(par, 0, 5) << 8 | fbtft_gamma_get(par, 0, 4) );
-	write_reg(par, 0x0031, fbtft_gamma_get(par, 0, 7) << 8 | fbtft_gamma_get(par, 0, 6) );
-	write_reg(par, 0x0032, fbtft_gamma_get(par, 0, 9) << 8 | fbtft_gamma_get(par, 0, 8) );
-	write_reg(par, 0x0035, fbtft_gamma_get(par, 0, 3) << 8 | fbtft_gamma_get(par, 0, 2) );
-	write_reg(par, 0x0036, fbtft_gamma_get(par, 0, 1) << 8 | fbtft_gamma_get(par, 0, 0) );
+	/* apply mask */
+	for (i=0;i<2;i++)
+		for (j=0;j<10;j++)
+			CURVE(i,j) &= mask[i*par->gamma.num_values + j];
 
-	write_reg(par, 0x0037, fbtft_gamma_get(par, 1, 5) << 8 | fbtft_gamma_get(par, 1, 4) );
-	write_reg(par, 0x0038, fbtft_gamma_get(par, 1, 7) << 8 | fbtft_gamma_get(par, 1, 6) );
-	write_reg(par, 0x0039, fbtft_gamma_get(par, 1, 9) << 8 | fbtft_gamma_get(par, 1, 8) );
-	write_reg(par, 0x003C, fbtft_gamma_get(par, 1, 3) << 8 | fbtft_gamma_get(par, 1, 2) );
-	write_reg(par, 0x003D, fbtft_gamma_get(par, 1, 1) << 8 | fbtft_gamma_get(par, 1, 0) );
+	write_reg(par, 0x0030, CURVE(0, 5) << 8 | CURVE(0, 4) );
+	write_reg(par, 0x0031, CURVE(0, 7) << 8 | CURVE(0, 6) );
+	write_reg(par, 0x0032, CURVE(0, 9) << 8 | CURVE(0, 8) );
+	write_reg(par, 0x0035, CURVE(0, 3) << 8 | CURVE(0, 2) );
+	write_reg(par, 0x0036, CURVE(0, 1) << 8 | CURVE(0, 0) );
+
+	write_reg(par, 0x0037, CURVE(1, 5) << 8 | CURVE(1, 4) );
+	write_reg(par, 0x0038, CURVE(1, 7) << 8 | CURVE(1, 6) );
+	write_reg(par, 0x0039, CURVE(1, 9) << 8 | CURVE(1, 8) );
+	write_reg(par, 0x003C, CURVE(1, 3) << 8 | CURVE(1, 2) );
+	write_reg(par, 0x003D, CURVE(1, 1) << 8 | CURVE(1, 0) );
+
+	return 0;
 }
+#undef CURVE
 
 static void itdb28fb_set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 {
@@ -254,7 +265,6 @@ struct fbtft_display itdb28fb_display = {
 	.gamma_num = 2,
 	.gamma_len = 10,
 	.gamma = GAMMA,
-	.gamma_mask = GAMMA_MASK,
 };
 
 static int itdb28fb_probe_common(struct spi_device *sdev, struct platform_device *pdev)

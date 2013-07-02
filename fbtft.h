@@ -75,7 +75,7 @@ struct fbtft_ops {
 	void (*register_backlight)(struct fbtft_par *par);
 	void (*unregister_backlight)(struct fbtft_par *par);
 
-	void (*set_gamma)(struct fbtft_par *par);
+	int (*set_gamma)(struct fbtft_par *par, unsigned long *curves);
 };
 
 struct fbtft_display {
@@ -85,7 +85,6 @@ struct fbtft_display {
 	unsigned fps;
 	int txbuflen;
 	char *gamma;       /* String representation of the default Gamma curve(s) */
-	char *gamma_mask;  /* String representation of the Gamma curve mask */
 	int gamma_num;     /* Number of Gamma curves */
 	int gamma_len;     /* Number of values per Gamma curve */
 };
@@ -121,7 +120,6 @@ struct fbtft_par {
 	struct {
 		struct mutex lock;
 		unsigned long *curves;
-		unsigned long *mask;
 		int num_values;
 		int num_curves;
 	} gamma;
@@ -144,9 +142,6 @@ extern int fbtft_register_framebuffer(struct fb_info *fb_info);
 extern int fbtft_unregister_framebuffer(struct fb_info *fb_info);
 extern void fbtft_register_backlight(struct fbtft_par *par);
 extern void fbtft_unregister_backlight(struct fbtft_par *par);
-
-/* fbtft-sysfs.c */
-extern unsigned long fbtft_gamma_get(struct fbtft_par *par, unsigned curve_index, unsigned value_index);
 
 /* fbtft-io.c */
 extern int fbtft_write_spi(struct fbtft_par *par, void *buf, size_t len);

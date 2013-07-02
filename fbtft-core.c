@@ -40,7 +40,6 @@
 extern void fbtft_sysfs_init(struct fbtft_par *par);
 extern void fbtft_sysfs_exit(struct fbtft_par *par);
 extern int fbtft_gamma_parse_str(struct fbtft_par *par, unsigned long *curves, const char *str, int size);
-extern void fbtft_gamma_apply_mask(struct fbtft_par *par);
 
 // This will be used if the driver doesn't provide debug support
 #ifdef DEBUG
@@ -551,7 +550,6 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 	int vmem_size;
 	char *gamma = display->gamma;
 	unsigned long *gamma_curves = NULL;
-	unsigned long *gamma_mask = NULL;
 
 	/* sanity check */
 	if (display->gamma_num * display->gamma_len > FBTFT_GAMMA_MAX_VALUES_TOTAL) {
@@ -610,9 +608,6 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 	if (display->gamma_num && display->gamma_len) {
 		gamma_curves = kzalloc(display->gamma_num * display->gamma_len * sizeof(gamma_curves[0]), GFP_KERNEL);
 		if (!gamma_curves)
-			goto alloc_fail;
-		gamma_mask = kzalloc(display->gamma_num * display->gamma_len * sizeof(gamma_mask[0]), GFP_KERNEL);
-		if (!gamma_mask)
 			goto alloc_fail;
 	}
 
@@ -678,17 +673,13 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 	par->bgr = bgr;
 	par->startbyte = startbyte;
 	par->gamma.curves = gamma_curves;
-	par->gamma.mask = gamma_mask;
 	par->gamma.num_curves = display->gamma_num;
 	par->gamma.num_values = display->gamma_len;
 	mutex_init(&par->gamma.lock);
 	info->pseudo_palette = par->pseudo_palette;
 
-	if (par->gamma.curves) {
-		fbtft_gamma_parse_str(par, par->gamma.mask, display->gamma_mask, strlen(display->gamma_mask));
+	if (par->gamma.curves && gamma)
 		fbtft_gamma_parse_str(par, par->gamma.curves, gamma, strlen(gamma));
-		fbtft_gamma_apply_mask(par);
-	}
 
 	// Transmit buffer
 	if (txbuflen == -1)
@@ -735,8 +726,6 @@ alloc_fail:
 		kfree(fbdefio);
 	if (gamma_curves)
 		kfree(gamma_curves);
-	if (gamma_mask)
-		kfree(gamma_mask);
 
 	return NULL;
 }
@@ -761,7 +750,6 @@ void fbtft_framebuffer_release(struct fb_info *info)
 	kfree(info->fbdefio);
 	if (par->gamma.curves) {
 		kfree(par->gamma.curves);
-		kfree(par->gamma.mask);
 	}
 	framebuffer_release(info);
 }
@@ -817,8 +805,11 @@ int fbtft_register_framebuffer(struct fb_info *fb_info)
 
 	par->fbtftops.update_display(par);
 
-	if (par->fbtftops.set_gamma && par->gamma.curves)
-		par->fbtftops.set_gamma(par);
+	if (par->fbtftops.set_gamma && par->gamma.curves) {
+		ret = par->fbtftops.set_gamma(par, par->gamma.curves);
+		if (ret)
+			goto reg_fail;
+	}
 
 	if (par->fbtftops.register_backlight)
 		par->fbtftops.register_backlight(par);

@@ -29,13 +29,30 @@ int fbtft_gamma_parse_str(struct fbtft_par *par, unsigned long *curves, const ch
 	int ret = 0;
 	int curve_counter, value_counter;
 
+	if (par->debug)
+		fbtft_fbtft_dev_dbg(DEBUG_SYSFS, par, par->info->device, "%s() str=\n", __func__);
+
 	if (!str || !curves)
 		return -EINVAL;
+
+	if (par->debug && (*par->debug & DEBUG_SYSFS))
+		printk("%s\n", str);
 
 	tmp = kmalloc(size+1, GFP_KERNEL);
 	if (!tmp)
 		return -ENOMEM;
 	memcpy(tmp, str, size+1);
+
+	/* replace optional separators */
+	str_p = tmp;
+	while (*str_p) {
+		if (*str_p == ',')
+			*str_p = ' ';
+		if (*str_p == ';')
+			*str_p = '\n';
+		str_p++;
+	}
+
 	str_p = strim(tmp);
 
 	curve_counter = 0;

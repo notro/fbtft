@@ -33,18 +33,22 @@
 /* Module Parameter: debug  (also available through sysfs) */
 MODULE_PARM_DEBUG;
 
+static char *chip = NULL;
+module_param(chip, charp, 0);
+MODULE_PARM_DESC(chip, "LCD controller");
+
 static unsigned int width = 0;
 module_param(width, uint, 0);
-MODULE_PARM_DESC(width, "Display width (required)");
+MODULE_PARM_DESC(width, "Display width");
 
 static unsigned int height = 0;
 module_param(height, uint, 0);
-MODULE_PARM_DESC(height, "Display height (required)");
+MODULE_PARM_DESC(height, "Display height");
 
 static int init[512];
 static int init_num = 0;
 module_param_array(init, int, &init_num, 0);
-MODULE_PARM_DESC(init, "Init sequence (required)");
+MODULE_PARM_DESC(init, "Init sequence");
 
 static unsigned int setaddrwin = 0;
 module_param(setaddrwin, uint, 0);
@@ -67,6 +71,70 @@ module_param(latched, bool, 0);
 MODULE_PARM_DESC(latched, "Use with latched 16-bit databus");
 
 
+static int *initp = NULL;
+static int initp_num = 0;
+
+/* default init sequences */
+static int st7735r_init[] = { \
+-1,0x01,-2,150,-1,0x11,-2,500,-1,0xB1,0x01,0x2C,0x2D,-1,0xB2,0x01,0x2C,0x2D,-1,0xB3,0x01,0x2C,0x2D,0x01,0x2C,0x2D, \
+-1,0xB4,0x07,-1,0xC0,0xA2,0x02,0x84,-1,0xC1,0xC5,-1,0xC2,0x0A,0x00,-1,0xC3,0x8A,0x2A,-1,0xC4,0x8A,0xEE,-1,0xC5,0x0E, \
+-1,0x20,-1,0x36,0xC0,-1,0x3A,0x05,-1,0xE0,0x0f,0x1a,0x0f,0x18,0x2f,0x28,0x20,0x22,0x1f,0x1b,0x23,0x37,0x00,0x07,0x02,0x10, \
+-1,0xE1,0x0f,0x1b,0x0f,0x17,0x33,0x2c,0x29,0x2e,0x30,0x30,0x39,0x3f,0x00,0x07,0x03,0x10,-1,0x29,-2,100,-1,0x13,-2,10,-3 };
+
+static int ssd1289_init[] = { \
+-1,0x00,0x0001,-1,0x03,0xA8A4,-1,0x0C,0x0000,-1,0x0D,0x080C,-1,0x0E,0x2B00,-1,0x1E,0x00B7,-1,0x01,0x2B3F,-1,0x02,0x0600, \
+-1,0x10,0x0000,-1,0x11,0x6070,-1,0x05,0x0000,-1,0x06,0x0000,-1,0x16,0xEF1C,-1,0x17,0x0003,-1,0x07,0x0233,-1,0x0B,0x0000, \
+-1,0x0F,0x0000,-1,0x41,0x0000,-1,0x42,0x0000,-1,0x48,0x0000,-1,0x49,0x013F,-1,0x4A,0x0000,-1,0x4B,0x0000,-1,0x44,0xEF00, \
+-1,0x45,0x0000,-1,0x46,0x013F,-1,0x30,0x0707,-1,0x31,0x0204,-1,0x32,0x0204,-1,0x33,0x0502,-1,0x34,0x0507,-1,0x35,0x0204, \
+-1,0x36,0x0204,-1,0x37,0x0502,-1,0x3A,0x0302,-1,0x3B,0x0302,-1,0x23,0x0000,-1,0x24,0x0000,-1,0x25,0x8000,-1,0x4f,0x0000, \
+-1,0x4e,0x0000,-1,0x22,-3 };
+
+static int hx8340bn_init[] = { \
+-1,0xC1,0xFF,0x83,0x40,-1,0x11,-2,150,-1,0xCA,0x70,0x00,0xD9,-1,0xB0,0x01,0x11, \
+-1,0xC9,0x90,0x49,0x10,0x28,0x28,0x10,0x00,0x06,-2,20,-1,0xC2,0x60,0x71,0x01,0x0E,0x05,0x02,0x09,0x31,0x0A, \
+-1,0xC3,0x67,0x30,0x61,0x17,0x48,0x07,0x05,0x33,-2,10,-1,0xB5,0x35,0x20,0x45,-1,0xB4,0x33,0x25,0x4C,-2,10, \
+-1,0x3A,0x05,-1,0x29,-2,10,-3 };
+
+static int ili9225_init[] = { \
+-1,0x0001,0x011C,-1,0x0002,0x0100,-1,0x0003,0x1030,-1,0x0008,0x0808,-1,0x000C,0x0000,-1,0x000F,0x0A01,-1,0x0020,0x0000, \
+-1,0x0021,0x0000,-2,50,-1,0x0010,0x0A00,-1,0x0011,0x1038,-2,50,-1,0x0012,0x1121,-1,0x0013,0x004E,-1,0x0014,0x676F, \
+-1,0x0030,0x0000,-1,0x0031,0x00DB,-1,0x0032,0x0000,-1,0x0033,0x0000,-1,0x0034,0x00DB,-1,0x0035,0x0000,-1,0x0036,0x00AF, \
+-1,0x0037,0x0000,-1,0x0038,0x00DB,-1,0x0039,0x0000,-1,0x0050,0x0000,-1,0x0051,0x060A,-1,0x0052,0x0D0A,-1,0x0053,0x0303, \
+-1,0x0054,0x0A0D,-1,0x0055,0x0A06,-1,0x0056,0x0000,-1,0x0057,0x0303,-1,0x0058,0x0000,-1,0x0059,0x0000,-2,50, \
+-1,0x0007,0x1017,-2,50,-3 };
+
+static int ili9320_init[] = { \
+-1,0x00E5,0x8000,-1,0x0000,0x0001,-1,0x0001,0x0100,-1,0x0002,0x0700,-1,0x0003,0x1030,-1,0x0004,0x0000,-1,0x0008,0x0202, \
+-1,0x0009,0x0000,-1,0x000A,0x0000,-1,0x000C,0x0000,-1,0x000D,0x0000,-1,0x000F,0x0000,-1,0x0010,0x0000,-1,0x0011,0x0007, \
+-1,0x0012,0x0000,-1,0x0013,0x0000,-2,200,-1,0x0010,0x17B0,-1,0x0011,0x0031,-2,50,-1,0x0012,0x0138,-2,50,-1,0x0013,0x1800, \
+-1,0x0029,0x0008,-2,50,-1,0x0020,0x0000,-1,0x0021,0x0000,-1,0x0030,0x0000,-1,0x0031,0x0505,-1,0x0032,0x0004, \
+-1,0x0035,0x0006,-1,0x0036,0x0707,-1,0x0037,0x0105,-1,0x0038,0x0002,-1,0x0039,0x0707,-1,0x003C,0x0704,-1,0x003D,0x0807, \
+-1,0x0050,0x0000,-1,0x0051,0x00EF,-1,0x0052,0x0000,-1,0x0053,0x013F,-1,0x0060,0x2700,-1,0x0061,0x0001,-1,0x006A,0x0000, \
+-1,0x0080,0x0000,-1,0x0081,0x0000,-1,0x0082,0x0000,-1,0x0083,0x0000,-1,0x0084,0x0000,-1,0x0085,0x0000,-1,0x0090,0x0010, \
+-1,0x0092,0x0000,-1,0x0093,0x0003,-1,0x0095,0x0110,-1,0x0097,0x0000,-1,0x0098,0x0000,-1,0x0007,0x0173,-3 };
+
+static int ili9325_init[] = { \
+-1,0x00E3,0x3008,-1,0x00E7,0x0012,-1,0x00EF,0x1231,-1,0x0001,0x0100,-1,0x0002,0x0700,-1,0x0003,0x1030,-1,0x0004,0x0000, \
+-1,0x0008,0x0207,-1,0x0009,0x0000,-1,0x000A,0x0000,-1,0x000C,0x0000,-1,0x000D,0x0000,-1,0x000F,0x0000,-1,0x0010,0x0000, \
+-1,0x0011,0x0007,-1,0x0012,0x0000,-1,0x0013,0x0000,-2,200,-1,0x0010,0x1690,-1,0x0011,0x0223,-2,50,-1,0x0012,0x000D,-2,50, \
+-1,0x0013,0x1200,-1,0x0029,0x000A,-1,0x002B,0x000C,-2,50,-1,0x0020,0x0000,-1,0x0021,0x0000,-1,0x0030,0x0000, \
+-1,0x0031,0x0506,-1,0x0032,0x0104,-1,0x0035,0x0207,-1,0x0036,0x000F,-1,0x0037,0x0306,-1,0x0038,0x0102,-1,0x0039,0x0707, \
+-1,0x003C,0x0702,-1,0x003D,0x1604,-1,0x0050,0x0000,-1,0x0051,0x00EF,-1,0x0052,0x0000,-1,0x0053,0x013F,-1,0x0060,0xA700, \
+-1,0x0061,0x0001,-1,0x006A,0x0000,-1,0x0080,0x0000,-1,0x0081,0x0000,-1,0x0082,0x0000,-1,0x0083,0x0000,-1,0x0084,0x0000, \
+-1,0x0085,0x0000,-1,0x0090,0x0010,-1,0x0092,0x0600,-1,0x0007,0x0133,-3 };
+
+static int ili9341_init[] = { \
+-1,0x28,-2,20,-1,0xCF,0x00,0x83,0x30,-1,0xED,0x64,0x03,0x12,0x81,-1,0xE8,0x85,0x01,0x79, \
+-1,0xCB,0x39,0x2c,0x00,0x34,0x02,-1,0xF7,0x20,-1,0xEA,0x00,0x00,-1,0xC0,0x26,-1,0xC1,0x11, \
+-1,0xC5,0x35,0x3E,-1,0xC7,0xBE,-1,0xB1,0x00,0x1B,-1,0xB6,0x0a,0x82,0x27,0x00,-1,0xB7,0x07, \
+-1,0x3A,0x55,-1,0x36,0x48,-1,0x11,-2,120,-1,0x29,-2,20,-3 };
+
+static int ssd1351_init[] = { -1,0xfd,0x12,-1,0xfd,0xb1,-1,0xae,-1,0xb3,0xf1,-1,0xca,0x7f,-1,0xa0,0x74, \
+                              -1,0x15,0x00,0x7f,-1,0x75,0x00,0x7f,-1,0xa1,0x00,-1,0xa2,0x00,-1,0xb5,0x00, \
+                              -1,0xab,0x01,-1,0xb1,0x32,-1,0xb4,0xa0,0xb5,0x55,-1,0xbb,0x17,-1,0xbe,0x05, \
+                              -1,0xc1,0xc8,0x80,0xc8,-1,0xc7,0x0f,-1,0xb6,0x01,-1,0xa6,-1,0xaf,-3 };
+
+
 static int flexfb_init_display(struct fbtft_par *par)
 {
 	char msg[128];
@@ -82,49 +150,49 @@ static int flexfb_init_display(struct fbtft_par *par)
 		gpio_set_value(par->gpio.cs, 0);  /* Activate chip */
 
 	/* make sure stop marker exists */
-	if (init[init_num - 1] != -3) {
+	if (initp[initp_num - 1] != -3) {
 		dev_err(par->info->device, "argument 'init': missing stop marker (-3) at end of init sequence\n");
 		return -1;
 	}
 
-	while (i < init_num) {
-		if (init[i] >= 0) {
+	while (i < initp_num) {
+		if (initp[i] >= 0) {
 			dev_err(par->info->device, "argument 'init': missing delimiter at position %d\n", i);
 			return -1;
 		}
-		if (init[i] == -3) {
+		if (initp[i] == -3) {
 			/* done */
 			return 0;
 		}
-		if ( ((i+1) == init_num) || (init[i+1] < 0) ) {
-			dev_err(par->info->device, "argument 'init': missing value after delimiter %d at position %d\n", init[i], i);
+		if ( ((i+1) == initp_num) || (initp[i+1] < 0) ) {
+			dev_err(par->info->device, "argument 'init': missing value after delimiter %d at position %d\n", initp[i], i);
 			return -1;
 		}
-		switch (init[i]) {
+		switch (initp[i]) {
 		case -1:
 			i++;
 			/* make debug message */
 			strcpy(msg, "");
 			j = i + 1;
-			while (init[j] >= 0) {
-				sprintf(str, "0x%02X ", init[j]);
+			while (initp[j] >= 0) {
+				sprintf(str, "0x%02X ", initp[j]);
 				strcat(msg, str);
 				j++;
 			}
-			fbtft_dev_dbg(DEBUG_INIT_DISPLAY, par->info->device, "init: write(0x%02X) %s\n", init[i], msg);
+			fbtft_dev_dbg(DEBUG_INIT_DISPLAY, par->info->device, "init: write(0x%02X) %s\n", initp[i], msg);
 			/* Write */
-			par->fbtftops.write_data_command(par, 0, init[i++]);
-			while (init[i] >= 0) {
-				par->fbtftops.write_data_command(par, 1, init[i++]);
+			par->fbtftops.write_data_command(par, 0, initp[i++]);
+			while (initp[i] >= 0) {
+				par->fbtftops.write_data_command(par, 1, initp[i++]);
 			}
 			break;
 		case -2:
 			i++;
-			fbtft_dev_dbg(DEBUG_INIT_DISPLAY, par->info->device, "init: mdelay(%d)\n", init[i]);
-			mdelay(init[i++]);
+			fbtft_dev_dbg(DEBUG_INIT_DISPLAY, par->info->device, "init: mdelay(%d)\n", initp[i]);
+			mdelay(initp[i++]);
 			break;
 		default:
-			dev_err(par->info->device, "argument 'init': unknown delimiter %d at position %d\n", init[i], i);
+			dev_err(par->info->device, "argument 'init': unknown delimiter %d at position %d\n", initp[i], i);
 			return -1;
 		}
 	}
@@ -190,6 +258,16 @@ static void flexfb_set_addr_win_2(struct fbtft_par *par, int xs, int ys, int xe,
 	write_reg(par, 0x22, 0);
 }
 
+/* ssd1351 */
+static void set_addr_win_3(struct fbtft_par *par, int xs, int ys, int xe, int ye)
+{
+	fbtft_fbtft_dev_dbg(DEBUG_SET_ADDR_WIN, par, par->info->device, "%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
+
+	write_reg(par, 0x15, xs, xe);
+	write_reg(par, 0x75, ys, ye);
+	write_reg(par, 0x5C);
+}
+
 static int flexfb_verify_gpios_dc(struct fbtft_par *par)
 {
 	fbtft_dev_dbg(DEBUG_VERIFY_GPIOS, par->info->device, "%s()\n", __func__);
@@ -242,6 +320,9 @@ static int flexfb_probe_common(struct spi_device *sdev, struct platform_device *
 	struct fbtft_par *par;
 	int ret;
 
+	initp = init;
+	initp_num = init_num;
+
 	if (sdev)
 		dev = &sdev->dev;
 	else
@@ -249,13 +330,124 @@ static int flexfb_probe_common(struct spi_device *sdev, struct platform_device *
 
 	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, dev, "%s(%s)\n", __func__, sdev ? "'SPI device'" : "'Platform device'");
 
+	if (chip) {
+
+		if (!strcmp(chip, "st7735r")) {
+			if (!width)
+				width = 128;
+			if (!height)
+				height = 160;
+			if (init_num == 0) {
+				initp = st7735r_init;
+				initp_num = ARRAY_SIZE(st7735r_init);
+			}
+
+
+		} else if (!strcmp(chip, "hx8340bn")) {
+			if (!width)
+				width = 176;
+			if (!height)
+				height = 220;
+			setaddrwin = 0;
+			if (init_num == 0) {
+				initp = hx8340bn_init;
+				initp_num = ARRAY_SIZE(hx8340bn_init);
+			}
+
+
+		} else if (!strcmp(chip, "ili9225")) {
+			if (!width)
+				width = 176;
+			if (!height)
+				height = 220;
+			setaddrwin = 0;
+			regwidth = 16;
+			if (init_num == 0) {
+				initp = ili9225_init;
+				initp_num = ARRAY_SIZE(ili9225_init);
+			}
+
+
+
+		} else if (!strcmp(chip, "ili9320")) {
+			if (!width)
+				width = 240;
+			if (!height)
+				height = 320;
+			setaddrwin = 1;
+			regwidth = 16;
+			if (init_num == 0) {
+				initp = ili9320_init;
+				initp_num = ARRAY_SIZE(ili9320_init);
+			}
+
+
+		} else if (!strcmp(chip, "ili9325")) {
+			if (!width)
+				width = 240;
+			if (!height)
+				height = 320;
+			setaddrwin = 1;
+			regwidth = 16;
+			if (init_num == 0) {
+				initp = ili9325_init;
+				initp_num = ARRAY_SIZE(ili9325_init);
+			}
+
+		} else if (!strcmp(chip, "ili9341")) {
+			if (!width)
+				width = 240;
+			if (!height)
+				height = 320;
+			setaddrwin = 0;
+			regwidth = 8;
+			if (init_num == 0) {
+				initp = ili9341_init;
+				initp_num = ARRAY_SIZE(ili9341_init);
+			}
+
+
+		} else if (!strcmp(chip, "ssd1289")) {
+			if (!width)
+				width = 240;
+			if (!height)
+				height = 320;
+			setaddrwin = 2;
+			regwidth = 16;
+			if (init_num == 0) {
+				initp = ssd1289_init;
+				initp_num = ARRAY_SIZE(ssd1289_init);
+			}
+
+
+
+		} else if (!strcmp(chip, "ssd1351")) {
+			if (!width)
+				width = 128;
+			if (!height)
+				height = 128;
+			setaddrwin = 3;
+			if (init_num == 0) {
+				initp = ssd1351_init;
+				initp_num = ARRAY_SIZE(ssd1351_init);
+			}
+		} else {
+			dev_err(dev, "chip=%s is not supported\n", chip);
+			return -EINVAL;
+		}
+	}
+
 	if (width == 0 || height == 0) {
 		dev_err(dev, "argument(s) missing: width and height has to be set.\n");
 		return -EINVAL;
 	}
 	flex_display.width = width;
 	flex_display.height = height;
-	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, dev, "Display size: %dx%d\n", width, height);
+	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, dev, "Display resolution: %dx%d\n", width, height);
+	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, dev, "chip = %s\n", chip ? chip : "not set");
+	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, dev, "setaddrwin = %d\n", setaddrwin);
+	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, dev, "regwidth = %d\n", regwidth);
+	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, dev, "buswidth = %d\n", buswidth);
 
 	info = fbtft_framebuffer_alloc(&flex_display, dev);
 	if (!info)
@@ -343,6 +535,9 @@ static int flexfb_probe_common(struct spi_device *sdev, struct platform_device *
 		break;
 	case 2:
 		par->fbtftops.set_addr_win = flexfb_set_addr_win_2;
+		break;
+	case 3:
+		par->fbtftops.set_addr_win = set_addr_win_3;
 		break;
 	default:
 		dev_err(dev, "argument 'setaddrwin': unknown value %d.\n", setaddrwin);

@@ -40,6 +40,10 @@ static bool latched = false;
 module_param(latched, bool, 0);
 MODULE_PARM_DESC(latched, "Use with latched 16-bit databus");
 
+static unsigned speed = 0;
+module_param(speed, uint, 0);
+MODULE_PARM_DESC(speed, "Parallel speed. 1=slow down");
+
 
 static int sainsmart32fb_init_display(struct fbtft_par *par)
 {
@@ -134,6 +138,54 @@ static void sainsmart32fb_set_addr_win(struct fbtft_par *par, int xs, int ys, in
 	write_reg(par, 0x22);
 }
 
+int write_gpio16_wr_slow(struct fbtft_par *par, void *buf, size_t len)
+{
+	u16 data;
+	int i;
+#ifndef DO_NOT_OPTIMIZE_FBTFT_WRITE_GPIO
+	static u16 prev_data = 0;
+#endif
+
+	fbtft_dev_dbg(DEBUG_WRITE, par->info->device, "%s(len=%d)\n", __func__, len);
+
+	while (len) {
+		data = *(u16 *) buf;
+
+		/* Start writing by pulling down /WR */
+		gpio_set_value(par->gpio.wr, 0);
+
+		/* Set data */
+#ifndef DO_NOT_OPTIMIZE_FBTFT_WRITE_GPIO
+		if (data == prev_data) {
+			gpio_set_value(par->gpio.wr, 0); /* used as delay */
+		} else {
+			for (i=0;i<16;i++) {
+				if ((data & 1) != (prev_data & 1))
+					gpio_set_value(par->gpio.db[i], (data & 1));
+				data >>= 1;
+				prev_data >>= 1;
+			}
+		}
+#else
+		for (i=0;i<16;i++) {
+			gpio_set_value(par->gpio.db[i], (data & 1));
+			data >>= 1;
+		}
+#endif
+
+		/* Pullup /WR */
+		gpio_set_value(par->gpio.wr, 1);
+
+#ifndef DO_NOT_OPTIMIZE_FBTFT_WRITE_GPIO
+		prev_data = *(u16 *) buf;
+#endif
+		buf += 2;
+		len -= 2;
+	}
+
+	return 0;
+}
+
 static int sainsmart32fb_verify_gpios(struct fbtft_par *par)
 {
 	int i;
@@ -179,10 +231,13 @@ static int sainsmart32fb_probe_common(struct spi_device *sdev, struct platform_d
 	struct fbtft_par *par;
 	int ret;
 
-	if (sdev)
+	if (sdev) {
 		dev = &sdev->dev;
-	else
+		sainsmart32fb_display.txbuflen = 0;
+	} else {
 		dev = &pdev->dev;
+		sainsmart32fb_display.txbuflen = -2; /* disable transmit buffer */
+	}
 
 	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, dev, "%s()\n", __func__);
 
@@ -204,10 +259,15 @@ static int sainsmart32fb_probe_common(struct spi_device *sdev, struct platform_d
 	par->fbtftops.verify_gpios = sainsmart32fb_verify_gpios;
 
 	if (pdev) {
+		par->fbtftops.write_reg = fbtft_write_reg16_bus16;
+		par->fbtftops.write_vmem = fbtft_write_vmem16_bus16;
 		if (latched)
 			par->fbtftops.write = fbtft_write_gpio16_wr_latched;
 		else
-			par->fbtftops.write = fbtft_write_gpio16_wr;
+			if (speed)
+				par->fbtftops.write = write_gpio16_wr_slow;
+			else
+				par->fbtftops.write = fbtft_write_gpio16_wr;
 	}
 
 	ret = fbtft_register_framebuffer(info);

@@ -106,6 +106,9 @@ int fbtft_write_gpio16_wr(struct fbtft_par *par, void *buf, size_t len)
 		data = *(u16 *) buf;
 		buf +=2;
 
+		/* Start writing by pulling down /WR */
+		gpio_set_value(par->gpio.wr, 0);
+
 		/* Set data */
 		GPIOSET(par->gpio.db[0],  (data&0x0001));
 		GPIOSET(par->gpio.db[1],  (data&0x0002));
@@ -128,10 +131,8 @@ int fbtft_write_gpio16_wr(struct fbtft_par *par, void *buf, size_t len)
 		writel(set, __io_address(GPIO_BASE+0x1C));
 		writel(reset, __io_address(GPIO_BASE+0x28));
 
-		//Pulse /WR low
-		writel((1<<par->gpio.wr),  __io_address(GPIO_BASE+0x28));
-		writel(0,  __io_address(GPIO_BASE+0x28)); //used as a delay
-		writel((1<<par->gpio.wr),  __io_address(GPIO_BASE+0x1C));
+		/* Pullup /WR */
+		gpio_set_value(par->gpio.wr, 1);
 
 		set = 0;
 		reset = 0;
@@ -153,6 +154,9 @@ int fbtft_write_gpio16_wr_latched(struct fbtft_par *par, void *buf, size_t len)
 		data = *(u16 *) buf;
 		buf +=2;
 
+		/* Start writing by pulling down /WR */
+		gpio_set_value(par->gpio.wr, 0);
+
 		/* Low byte */
 		GPIOSET(par->gpio.db[0],  (data&0x0001));
 		GPIOSET(par->gpio.db[1],  (data&0x0002));
@@ -165,10 +169,9 @@ int fbtft_write_gpio16_wr_latched(struct fbtft_par *par, void *buf, size_t len)
 		writel(set, __io_address(GPIO_BASE+0x1C));
 		writel(reset, __io_address(GPIO_BASE+0x28));
 
-		//Pulse 'latch' high
-		writel((1<<par->gpio.latch),  __io_address(GPIO_BASE+0x1C));
-		writel(0,  __io_address(GPIO_BASE+0x28)); //used as a delay
-		writel((1<<par->gpio.latch),  __io_address(GPIO_BASE+0x28));
+		/* Pulse 'latch' high */
+		gpio_set_value(par->gpio.latch, 1);
+		gpio_set_value(par->gpio.latch, 0);
 
 		/* High byte */
 		GPIOSET(par->gpio.db[0], (data&0x0100));
@@ -182,10 +185,8 @@ int fbtft_write_gpio16_wr_latched(struct fbtft_par *par, void *buf, size_t len)
 		writel(set, __io_address(GPIO_BASE+0x1C));
 		writel(reset, __io_address(GPIO_BASE+0x28));
 
-		//Pulse /WR low
-		writel((1<<par->gpio.wr),  __io_address(GPIO_BASE+0x28));
-		writel(0,  __io_address(GPIO_BASE+0x28)); //used as a delay
-		writel((1<<par->gpio.wr),  __io_address(GPIO_BASE+0x1C));
+		/* Pullup /WR */
+		gpio_set_value(par->gpio.wr, 1);
 
 		set = 0;
 		reset = 0;
@@ -249,8 +250,50 @@ int fbtft_write_gpio8_wr(struct fbtft_par *par, void *buf, size_t len)
 
 int fbtft_write_gpio16_wr(struct fbtft_par *par, void *buf, size_t len)
 {
-	dev_err(par->info->device, "%s: function not implemented\n", __func__);
-	return -1;
+	u16 data;
+	int i;
+#ifndef DO_NOT_OPTIMIZE_FBTFT_WRITE_GPIO
+	static u16 prev_data = 0;
+#endif
+
+	fbtft_fbtft_dev_dbg(DEBUG_WRITE, par, par->info->device, "%s(len=%d)\n", __func__, len);
+
+	while (len) {
+		data = *(u16 *) buf;
+
+		/* Start writing by pulling down /WR */
+		gpio_set_value(par->gpio.wr, 0);
+
+		/* Set data */
+#ifndef DO_NOT_OPTIMIZE_FBTFT_WRITE_GPIO
+		if (data == prev_data) {
+			gpio_set_value(par->gpio.wr, 0); /* used as delay */
+		} else {
+			for (i=0;i<16;i++) {
+				if ((data & 1) != (prev_data & 1))
+					gpio_set_value(par->gpio.db[i], (data & 1));
+				data >>= 1;
+				prev_data >>= 1;
+			}
+		}
+#else
+		for (i=0;i<16;i++) {
+			gpio_set_value(par->gpio.db[i], (data & 1));
+			data >>= 1;
+		}
+#endif
+
+		/* Pullup /WR */
+		gpio_set_value(par->gpio.wr, 1);
+
+#ifndef DO_NOT_OPTIMIZE_FBTFT_WRITE_GPIO
+		prev_data = *(u16 *) buf;
+#endif
+		buf += 2;
+		len -= 2;
+	}
+
+	return 0;
 }
 
 int fbtft_write_gpio16_wr_latched(struct fbtft_par *par, void *buf, size_t len)

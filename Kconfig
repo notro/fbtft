@@ -70,6 +70,10 @@ config FB_SSD1351
 	help
 	  Framebuffer support for the SSD1351 1.5\" OLED display in 8-bit SPI mode.
 
+config FB_RENESASR61505U
+	tristate "FB driver for the RENESAS R61505U SPI LCD display"
+	depends on FB_TFT
+
 config FB_TFT_FBTFT_DEVICE
 	tristate "Module to for adding FBTFT devices"
 	depends on FB_TFT

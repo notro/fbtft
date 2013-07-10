@@ -158,12 +158,12 @@ static void renesasr61505ufb_set_addr_win(struct fbtft_par *par, int xs, int ys,
 		write_reg(par, 0x0021, HEIGHT - 1 - ys);
 		break;
 	case 1:
-		write_reg(par, 0x0020, WIDTH - 1 - ys);
+		write_reg(par, 0x0020, ys);
 		write_reg(par, 0x0021, xs);
 		break;
 	case 3:
-		write_reg(par, 0x0020, ys);
-		write_reg(par, 0x0021, HEIGHT - 1 - xs);
+		write_reg(par, 0x0020, WIDTH - 1 - ys);
+		write_reg(par, 0x0021, xs);
 		break;
 	}
 	write_reg(par, 0x0022); /* Write Data to GRAM */

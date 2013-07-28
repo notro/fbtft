@@ -86,6 +86,11 @@ static unsigned startbyte = 0;
 module_param(startbyte, uint, 0);
 MODULE_PARM_DESC(startbyte, "Sets the Start byte used by some SPI displays.");
 
+static bool custom = false;
+module_param(custom, bool, 0);
+MODULE_PARM_DESC(custom, "Add a custom display device. Use speed= argument " \
+"to make it a SPI device, else platform_device");
+
 static unsigned verbose = 3;
 module_param(verbose, uint, 0);
 MODULE_PARM_DESC(verbose,
@@ -357,6 +362,31 @@ static struct fbtft_device_display displays[] = {
 				},
 			}
 		}
+	}, {
+		/* This should be the last item. Used with the custom argument */
+		.name = "",
+		.spi = &(struct spi_board_info) {
+			.modalias = "",
+			.max_speed_hz = 0,
+			.mode = SPI_MODE_0,
+			.platform_data = &(struct fbtft_platform_data) {
+				.gpios = (const struct fbtft_gpio []) {
+					{},
+				},
+			}
+		},
+		.pdev = &(struct platform_device) {
+			.name = "",
+			.id = 0,
+			.dev = {
+			.release = fbtft_device_pdev_release,
+			.platform_data = &(struct fbtft_platform_data) {
+				.gpios = (const struct fbtft_gpio []) {
+					{},
+				},
+			},
+		},
+		},
 	}
 }; 
 
@@ -501,6 +531,18 @@ static int __init fbtft_device_init(void)
 			pr_info(DRVNAME":      %s\n", displays[i].name);
 		}
 		return -ECANCELED;
+	}
+
+	if (custom) {
+		i = ARRAY_SIZE(displays) - 1;
+		displays[i].name = name;
+		if (speed == 0) {
+			displays[i].pdev->name = name;
+			displays[i].spi = NULL;
+		} else {
+			strncpy(displays[i].spi->modalias, name, SPI_NAME_SIZE);
+			displays[i].pdev = NULL;
+		}
 	}
 
 	for (i=0; i < ARRAY_SIZE(displays); i++) {

@@ -28,28 +28,28 @@
 
 #define MAX_GPIOS 32
 
-struct spi_device *spi_device = NULL;
-struct platform_device *p_device = NULL;
+struct spi_device *spi_device;
+struct platform_device *p_device;
 
-static char *name = NULL;
+static char *name;
 module_param(name, charp, 0);
 MODULE_PARM_DESC(name, "Devicename (required). " \
 "name=list => list all supported devices.");
 
-static unsigned rotate = 0;
+static unsigned rotate;
 module_param(rotate, uint, 0);
 MODULE_PARM_DESC(rotate, "Rotate display 0=normal, 1=clockwise, " \
 "2=upside down, 3=counterclockwise (not supported by all drivers)");
 
-static unsigned busnum = 0;
+static unsigned busnum;
 module_param(busnum, uint, 0);
 MODULE_PARM_DESC(busnum, "SPI bus number (default=0)");
 
-static unsigned cs = 0;
+static unsigned cs;
 module_param(cs, uint, 0);
 MODULE_PARM_DESC(cs, "SPI chip select (default=0)");
 
-static unsigned speed = 0;
+static unsigned speed;
 module_param(speed, uint, 0);
 MODULE_PARM_DESC(speed, "SPI speed (override device default)");
 
@@ -58,35 +58,35 @@ module_param(mode, int, 0);
 MODULE_PARM_DESC(mode, "SPI mode (override device default)");
 
 static char *gpios[MAX_GPIOS] = { NULL, };
-static int gpios_num = 0;
+static int gpios_num;
 module_param_array(gpios, charp, &gpios_num, 0);
 MODULE_PARM_DESC(gpios,
 "List of gpios. Comma separated with the form: reset:23,dc:24 " \
 "(when overriding the default, all gpios must be specified)");
 
-static unsigned fps = 0;
+static unsigned fps;
 module_param(fps, uint, 0);
 MODULE_PARM_DESC(fps, "Frames per second (override driver default)");
 
-static char *gamma = NULL;
+static char *gamma;
 module_param(gamma, charp, 0);
 MODULE_PARM_DESC(gamma,
 "String representation of Gamma Curve(s). Driver specific.");
 
-static int txbuflen = 0;
+static int txbuflen;
 module_param(txbuflen, int, 0);
 MODULE_PARM_DESC(txbuflen, "txbuflen (override driver default)");
 
-static bool bgr = false;
+static bool bgr;
 module_param(bgr, bool, 0);
 MODULE_PARM_DESC(bgr,
 "Use if Red and Blue color is swapped (supported by some drivers).");
 
-static unsigned startbyte = 0;
+static unsigned startbyte;
 module_param(startbyte, uint, 0);
 MODULE_PARM_DESC(startbyte, "Sets the Start byte used by some SPI displays.");
 
-static bool custom = false;
+static bool custom;
 module_param(custom, bool, 0);
 MODULE_PARM_DESC(custom, "Add a custom display device. " \
 "Use speed= argument to make it a SPI device, else platform_device");
@@ -362,7 +362,8 @@ static struct fbtft_device_display displays[] = {
 			}
 		}
 	}, {
-		/* This should be the last item. Used with the custom argument */
+		/* This should be the last item.
+		   Used with the custom argument */
 		.name = "",
 		.spi = &(struct spi_board_info) {
 			.modalias = "",
@@ -387,7 +388,7 @@ static struct fbtft_device_display displays[] = {
 		},
 		},
 	}
-}; 
+};
 
 /* used if gpios parameter is present */
 static struct fbtft_gpio fbtft_device_param_gpios[MAX_GPIOS+1] = { };
@@ -474,7 +475,7 @@ static int __init fbtft_device_init(void)
 		return -EINVAL;
 	}
 	if (gpios_num > 0) {
-		for (i=0;i<gpios_num;i++) {
+		for (i = 0; i < gpios_num; i++) {
 			if (strchr(gpios[i], ':') == NULL) {
 				pr_err(DRVNAME \
 					":  error: missing ':' in gpios parameter: %s\n",
@@ -510,14 +511,13 @@ static int __init fbtft_device_init(void)
 
 	if (name == NULL) {
 		pr_err(DRVNAME":  missing module parameter: 'name'\n");
-		pr_err(DRVNAME":  Use 'modinfo -p "DRVNAME"' to get all parameters\n");
 		return -EINVAL;
 	}
 
 	pr_debug(DRVNAME":  name='%s', busnum=%d, cs=%d\n", name, busnum, cs);
 
 	if (rotate > 3) {
-		pr_warning("argument 'rotate' illegal value: %d (0-3). Setting it to 0.\n",
+		pr_warn("argument 'rotate' illegal value: %d (0-3). Setting it to 0.\n",
 			rotate);
 		rotate = 0;
 	}
@@ -526,9 +526,8 @@ static int __init fbtft_device_init(void)
 	if (strncmp(name, "list", 32) == 0) {
 		pr_info(DRVNAME":  Supported displays:\n");
 
-		for (i=0; i < ARRAY_SIZE(displays); i++) {
+		for (i = 0; i < ARRAY_SIZE(displays); i++)
 			pr_info(DRVNAME":      %s\n", displays[i].name);
-		}
 		return -ECANCELED;
 	}
 
@@ -544,7 +543,7 @@ static int __init fbtft_device_init(void)
 		}
 	}
 
-	for (i=0; i < ARRAY_SIZE(displays); i++) {
+	for (i = 0; i < ARRAY_SIZE(displays); i++) {
 		if (strncmp(name, displays[i].name, 32) == 0) {
 			if (displays[i].spi) {
 				master = spi_busnum_to_master(busnum);
@@ -620,7 +619,7 @@ static int __init fbtft_device_init(void)
 		pr_info(DRVNAME":  GPIOS used by '%s':\n", name);
 		found = false;
 		while (verbose && gpio->name[0]) {
-			pr_info(DRVNAME":    '%s' = GPIO%d\n", 
+			pr_info(DRVNAME":    '%s' = GPIO%d\n",
 				gpio->name, gpio->gpio);
 			gpio++;
 			found = true;

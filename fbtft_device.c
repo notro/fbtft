@@ -88,14 +88,13 @@ MODULE_PARM_DESC(startbyte, "Sets the Start byte used by some SPI displays.");
 
 static bool custom = false;
 module_param(custom, bool, 0);
-MODULE_PARM_DESC(custom, "Add a custom display device. Use speed= argument " \
-"to make it a SPI device, else platform_device");
+MODULE_PARM_DESC(custom, "Add a custom display device. " \
+"Use speed= argument to make it a SPI device, else platform_device");
 
 static unsigned verbose = 3;
 module_param(verbose, uint, 0);
 MODULE_PARM_DESC(verbose,
-"0=silent, 0< show gpios, 1< show devices, " \
-"2< show devices before (default=3)");
+"0=silent, 0< show gpios, 1< show devices, 2< show devices before (default=3)");
 
 
 struct fbtft_device_display {
@@ -477,23 +476,24 @@ static int __init fbtft_device_init(void)
 	if (gpios_num > 0) {
 		for (i=0;i<gpios_num;i++) {
 			if (strchr(gpios[i], ':') == NULL) {
-				pr_err(DRVNAME":  error: missing ':' " \
-					"in gpios parameter: %s\n", gpios[i]);
+				pr_err(DRVNAME \
+					":  error: missing ':' in gpios parameter: %s\n",
+					gpios[i]);
 				return -EINVAL;
 			}
 			p_num = gpios[i];
 			p_name = strsep(&p_num, ":");
 			if (p_name == NULL || p_num == NULL) {
 				pr_err(DRVNAME \
-					":  something bad happened parsing " \
-					"gpios parameter: %s\n", gpios[i]);
+					":  something bad happened parsing gpios parameter: %s\n",
+					gpios[i]);
 				return -EINVAL;
 			}
 			ret = kstrtol(p_num, 10, &val);
 			if (ret) {
 				pr_err(DRVNAME \
-					":  could not parse number in gpios" \
-					" parameter: %s:%s\n", p_name, p_num);
+					":  could not parse number in gpios parameter: %s:%s\n",
+					p_name, p_num);
 				return -EINVAL;
 			}
 			strcpy(fbtft_device_param_gpios[i].name, p_name);
@@ -510,16 +510,15 @@ static int __init fbtft_device_init(void)
 
 	if (name == NULL) {
 		pr_err(DRVNAME":  missing module parameter: 'name'\n");
-		pr_err(DRVNAME":  Use 'modinfo -p "DRVNAME"'" \
-			" to get all parameters\n");
+		pr_err(DRVNAME":  Use 'modinfo -p "DRVNAME"' to get all parameters\n");
 		return -EINVAL;
 	}
 
 	pr_debug(DRVNAME":  name='%s', busnum=%d, cs=%d\n", name, busnum, cs);
 
 	if (rotate > 3) {
-		pr_warning("argument 'rotate' illegal value: %d (0-3). " \
-			"Setting it to 0.\n", rotate);
+		pr_warning("argument 'rotate' illegal value: %d (0-3). Setting it to 0.\n",
+			rotate);
 		rotate = 0;
 	}
 
@@ -551,8 +550,8 @@ static int __init fbtft_device_init(void)
 				master = spi_busnum_to_master(busnum);
 				if (!master) {
 					pr_err(DRVNAME \
-						":  spi_busnum_to_master(%d)" \
-						" returned NULL\n", busnum);
+						":  spi_busnum_to_master(%d) returned NULL\n",
+						busnum);
 					return -EINVAL;
 				}
 				/* make sure bus:cs is available */
@@ -592,8 +591,7 @@ static int __init fbtft_device_init(void)
 				put_device(&master->dev);
 				if (!spi_device) {
 					pr_err(DRVNAME \
-						":    spi_new_device()" \
-						" returned NULL\n");
+						":    spi_new_device() returned NULL\n");
 					return -EPERM;
 				}
 				found = true;
@@ -602,8 +600,7 @@ static int __init fbtft_device_init(void)
 				ret = platform_device_register(p_device);
 				if (ret < 0) {
 					pr_err(DRVNAME \
-						":    platform_device" \
-						"_register() returned %d\n",
+						":    platform_device_register() returned %d\n",
 						ret);
 					return ret;
 				}

@@ -36,6 +36,12 @@
 #define FBTFT_MAX_INIT_SEQUENCE      512
 #define FBTFT_GAMMA_MAX_VALUES_TOTAL 128
 
+/**
+ * struct fbtft_gpio - Structure that holds one pinname to gpio mapping
+ * @name: pinname (reset, dc, etc.)
+ * @gpio: GPIO number
+ *
+ */
 struct fbtft_gpio {
 	char name[FBTFT_GPIO_NAME_SIZE];
 	unsigned gpio;
@@ -43,6 +49,31 @@ struct fbtft_gpio {
 
 struct fbtft_par;
 
+/**
+ * struct fbtft_ops - FBTFT operations structure
+ * @write: Writes to interface bus
+ * @read: Reads from interface bus
+ * @write_vmem: Writes video memory to display
+ * @write_data_command: Writes to controller register
+ * @write_reg: Writes to controller register
+ * @set_addr_win: Set the GRAM update window
+ * @reset: Reset the LCD controller
+ * @mkdirty: Marks display lines for update
+ * @update_display: Updates the display
+ * @init_display: Initializes the display
+ * @blank: Blank the display (optional)
+ * @request_gpios_match: Do pinname to gpio matching
+ * @request_gpios: Request gpios from the kernel
+ * @free_gpios: Free previously requested gpios
+ * @verify_gpios: Verify that necessary gpios is present (optional)
+ * @register_backlight: Used to register backlight device (optional)
+ * @unregister_backlight: Unregister backlight device (optional)
+ * @set_var: Configure LCD with values from variables like @rotate and @bgr (optional)
+ * @set_gamma: Set Gamma curve (optional)
+ *
+ * Most of these operations have default functions assigned to them in
+ *     fbtft_framebuffer_alloc()
+ */
 struct fbtft_ops {
 	int (*write)(struct fbtft_par *par, void *buf, size_t len);
 	int (*read)(struct fbtft_par *par, void *buf, size_t len);
@@ -69,6 +100,25 @@ struct fbtft_ops {
 	int (*set_gamma)(struct fbtft_par *par, unsigned long *curves);
 };
 
+/**
+ * struct fbtft_display - Describes the display properties
+ * @width: Width of display in pixels
+ * @height: Height of display in pixels
+ * @regwidth: LCD Controller Register width in bits
+ * @buswidth: Display interface bus width in bits
+ * @backlight: Backlight type.
+ * @fbtftops: FBTFT operations provided by driver or device (platform_data)
+ * @bpp: Bits per pixel
+ * @fps: Frames per second
+ * @txbuflen: Size of transmit buffer
+ * @init_sequence: Pointer to LCD initialization array
+ * @gamma: String representation of Gamma curve(s)
+ * @gamma_num: Number of Gamma curves
+ * @gamma_len: Number of values per Gamma curve
+ * @debug: Initial debug value
+ *
+ * This structure is not stored by FBTFT except for init_sequence.
+ */
 struct fbtft_display {
 	unsigned width;
 	unsigned height;
@@ -80,12 +130,24 @@ struct fbtft_display {
 	unsigned fps;
 	int txbuflen;
 	int *init_sequence;
-	char *gamma;       /* String representation of the default Gamma curve(s) */
-	int gamma_num;     /* Number of Gamma curves */
-	int gamma_len;     /* Number of values per Gamma curve */
+	char *gamma;
+	int gamma_num;
+	int gamma_len;
 	unsigned long debug;
 };
 
+/**
+ * struct fbtft_platform_data - Passes display specific data to the driver
+ * @display: Display properties
+ * @gpios: Pointer to an array of piname to gpio mappings
+ * @rotate: Display rotation angle
+ * @bgr: LCD Controller BGR bit
+ * @fps: Frames per second (this will go away, use @fps in @fbtft_display)
+ * @txbuflen: Size of transmit buffer
+ * @startbyte: When set, enables use of Startbyte in transfers
+ * @gamma: String representation of Gamma curve(s)
+ * @extra: A way to pass extra info
+ */
 struct fbtft_platform_data {
 	struct fbtft_display display;
 	const struct fbtft_gpio *gpios;
@@ -98,6 +160,48 @@ struct fbtft_platform_data {
 	void *extra;
 };
 
+/**
+ * struct fbtft_par - Main FBTFT data structure
+ *
+ * This structure holds all relevant data to operate the display
+ *
+ * See sourcefile for documentation since nested structs is not
+ * supported by kernel-doc.
+ *
+ */
+/* @spi: Set if it is a SPI device
+ * @pdev: Set if it is a platform device
+ * @info: Pointer to framebuffer fb_info structure
+ * @pdata: Pointer to platform data
+ * @ssbuf: Not used
+ * @pseudo_palette: Used by fb_set_colreg()
+ * @txbuf.buf: Transmit buffer
+ * @txbuf.len: Transmit buffer length
+ * @buf: Small buffer used when writing init data over SPI
+ * @startbyte: Used by some controllers when in SPI mode. Format: 6 bit Device id + RS bit + RW bit
+ * @fbtftops: FBTFT operations provided by driver or device (platform_data)
+ * @dirty_lines_start: Where to begin updating display
+ * @dirty_lines_end: Where to end updating display
+ * @gpio.reset: GPIO used to reset display
+ * @gpio.dc: Data/Command signal, also known as RS
+ * @gpio.rd: Read latching signal
+ * @gpio.wr: Write latching signal
+ * @gpio.latch: Bus latch signal, eg. 16->8 bit bus latch
+ * @gpio.cs: LCD Chip Select with parallel interface bus
+ * @gpio.db[16]: Parallel databus
+ * @gpio.led[16]: Led control signals
+ * @gpio.aux[16]: Auxillary signals, not used by core
+ * @init_sequence: Pointer to LCD initialization array
+ * @gamma.lock: Mutex for Gamma curve locking
+ * @gamma.curves: Pointer to Gamma curve array
+ * @gamma.num_values: Number of values per Gamma curve
+ * @gamma.num_curves: Number of Gamma curves
+ * @debug: Pointer to debug value
+ * @current_debug: 
+ * @first_update_done: Used to only time the first display update
+ * @bgr: BGR mode/\n
+ * @extra: Extra info needed by driver (not used by core)
+ */
 struct fbtft_par {
 	struct spi_device *spi;
 	struct platform_device *pdev;

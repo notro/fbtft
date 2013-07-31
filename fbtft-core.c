@@ -511,6 +511,48 @@ int fbtft_fb_blank(int blank, struct fb_info *info)
 	return ret;
 }
 
+void fbtft_merge_fbtftops(struct fbtft_ops *dst, struct fbtft_ops *src)
+{
+	if (src->write)
+		dst->write = src->write;
+	if (src->read)
+		dst->read = src->read;
+	if (src->write_vmem)
+		dst->write_vmem = src->write_vmem;
+	if (src->write_data_command)
+		dst->write_data_command = src->write_data_command;
+	if (src->write_reg)
+		dst->write_reg = src->write_reg;
+	if (src->set_addr_win)
+		dst->set_addr_win = src->set_addr_win;
+	if (src->reset)
+		dst->reset = src->reset;
+	if (src->mkdirty)
+		dst->mkdirty = src->mkdirty;
+	if (src->update_display)
+		dst->update_display = src->update_display;
+	if (src->init_display)
+		dst->init_display = src->init_display;
+	if (src->blank)
+		dst->blank = src->blank;
+	if (src->request_gpios_match)
+		dst->request_gpios_match = src->request_gpios_match;
+	if (src->request_gpios)
+		dst->request_gpios = src->request_gpios;
+	if (src->free_gpios)
+		dst->free_gpios = src->free_gpios;
+	if (src->verify_gpios)
+		dst->verify_gpios = src->verify_gpios;
+	if (src->register_backlight)
+		dst->register_backlight = src->register_backlight;
+	if (src->unregister_backlight)
+		dst->unregister_backlight = src->unregister_backlight;
+	if (src->set_var)
+		dst->set_var = src->set_var;
+	if (src->set_gamma)
+		dst->set_gamma = src->set_gamma;
+}
+
 /**
  * fbtft_framebuffer_alloc - creates a new frame buffer info structure
  *
@@ -548,6 +590,7 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 	bool bgr = false;
 	u8 startbyte = 0;
 	int vmem_size;
+	int *init_sequence = display->init_sequence;
 	char *gamma = display->gamma;
 	unsigned long *gamma_curves = NULL;
 
@@ -574,6 +617,8 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 		rotate = pdata->rotate & 3;
 		bgr = pdata->bgr;
 		startbyte = pdata->startbyte;
+		if (pdata->display.init_sequence)
+			init_sequence = pdata->display.init_sequence;
 		if (pdata->gamma)
 			gamma = pdata->gamma;
 	}
@@ -664,7 +709,6 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 
 	par = info->par;
 	par->info = info;
-	par->display = display;
 	par->pdata = dev->platform_data;
 	par->buf = buf;
 	// Set display line markers as dirty for all. Ensures first update to update all of the display.
@@ -672,6 +716,7 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 	par->dirty_lines_end = par->info->var.yres - 1;
 	par->bgr = bgr;
 	par->startbyte = startbyte;
+	par->init_sequence = init_sequence;
 	par->gamma.curves = gamma_curves;
 	par->gamma.num_curves = display->gamma_num;
 	par->gamma.num_values = display->gamma_len;
@@ -710,6 +755,9 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 	par->fbtftops.update_display = fbtft_update_display;
 	par->fbtftops.request_gpios = fbtft_request_gpios;
 	par->fbtftops.free_gpios = fbtft_free_gpios;
+
+	/* use driver provided functions */
+	fbtft_merge_fbtftops(&par->fbtftops, &display->fbtftops);
 
 	return info;
 
@@ -802,6 +850,11 @@ int fbtft_register_framebuffer(struct fb_info *fb_info)
 	ret = par->fbtftops.init_display(par);
 	if (ret < 0)
 		goto reg_fail;
+	if (par->fbtftops.set_var) {
+		ret = par->fbtftops.set_var(par);
+		if (ret < 0)
+			goto reg_fail;
+	}
 
 	par->fbtftops.update_display(par);
 

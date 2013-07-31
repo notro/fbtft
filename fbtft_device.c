@@ -91,10 +91,27 @@ module_param(custom, bool, 0);
 MODULE_PARM_DESC(custom, "Add a custom display device. " \
 "Use speed= argument to make it a SPI device, else platform_device");
 
+static unsigned width;
+module_param(width, uint, 0);
+MODULE_PARM_DESC(width, "Display width, used with the custom argument");
+
+static unsigned height;
+module_param(height, uint, 0);
+MODULE_PARM_DESC(height, "Display height, used with the custom argument");
+
+static unsigned buswidth;
+module_param(buswidth, uint, 0);
+MODULE_PARM_DESC(buswidth, "Display bus width, used with the custom argument");
+
+static int init[FBTFT_MAX_INIT_SEQUENCE];
+static int init_num = 0;
+module_param_array(init, int, &init_num, 0);
+MODULE_PARM_DESC(init, "Init sequence, used with the custom argument");
+
 static unsigned verbose = 3;
 module_param(verbose, uint, 0);
 MODULE_PARM_DESC(verbose,
-"0=silent, 0< show gpios, 1< show devices, 2< show devices before (default=3)");
+"0 silent, >0 show gpios, >1 show devices, >2 show devices before (default=3)");
 
 
 struct fbtft_device_display {
@@ -392,9 +409,6 @@ static struct fbtft_device_display displays[] = {
 
 /* used if gpios parameter is present */
 static struct fbtft_gpio fbtft_device_param_gpios[MAX_GPIOS+1] = { };
-static struct fbtft_platform_data fbtft_device_param_pdata = {
-	.gpios = fbtft_device_param_gpios,
-};
 
 static void fbtft_device_pdev_release(struct device *dev)
 {
@@ -457,7 +471,7 @@ static int __init fbtft_device_init(void)
 {
 	struct spi_master *master = NULL;
 	struct spi_board_info *spi = NULL;
-	struct fbtft_platform_data *pdata = NULL;
+	struct fbtft_platform_data *pdata;
 	const struct fbtft_gpio *gpio = NULL;
 	char *p_name, *p_num;
 	bool found = false;
@@ -466,6 +480,13 @@ static int __init fbtft_device_init(void)
 	int ret = 0;
 
 	pr_debug("\n\n"DRVNAME": init\n");
+
+	if (init_num > FBTFT_MAX_INIT_SEQUENCE) {
+		pr_err(DRVNAME \
+			":  init parameter: exceeded max array size: %d\n",
+			FBTFT_MAX_INIT_SEQUENCE);
+		return -EINVAL;
+	}
 
 	/* parse module parameter: gpios */
 	if (gpios_num > MAX_GPIOS) {
@@ -499,8 +520,8 @@ static int __init fbtft_device_init(void)
 			}
 			strcpy(fbtft_device_param_gpios[i].name, p_name);
 			fbtft_device_param_gpios[i].gpio = (int) val;
-			pdata = &fbtft_device_param_pdata;
 		}
+		gpio = fbtft_device_param_gpios;
 	}
 
 	if (verbose > 2)
@@ -562,14 +583,9 @@ static int __init fbtft_device_init(void)
 					spi->max_speed_hz = speed;
 				if (mode != -1)
 					spi->mode = mode;
-				if (pdata)
-					spi->platform_data = pdata;
 				pdata = (void *)spi->platform_data;
 			} else if (displays[i].pdev) {
 				p_device = displays[i].pdev;
-				if (pdata)
-					p_device->dev.platform_data = \
-								(void *)pdata;
 				pdata = p_device->dev.platform_data;
 			} else {
 				pr_err(DRVNAME": broken displays array\n");
@@ -584,6 +600,15 @@ static int __init fbtft_device_init(void)
 				pdata->fps = fps;
 			if (txbuflen)
 				pdata->txbuflen = txbuflen;
+			if (gpio)
+				pdata->gpios = gpio;
+			if (custom) {
+				pdata->display.width = width;
+				pdata->display.height = height;
+				pdata->display.buswidth = buswidth;
+				if (init_num)
+					pdata->display.init_sequence = init;
+			}
 
 			if (displays[i].spi) {
 				spi_device = spi_new_device(master, spi);

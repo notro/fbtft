@@ -33,22 +33,12 @@
 
 #define FBTFT_GPIO_NO_MATCH		0xFFFF
 #define FBTFT_GPIO_NAME_SIZE	32
+#define FBTFT_MAX_INIT_SEQUENCE      512
 #define FBTFT_GAMMA_MAX_VALUES_TOTAL 128
 
 struct fbtft_gpio {
 	char name[FBTFT_GPIO_NAME_SIZE];
 	unsigned gpio;
-};
-
-struct fbtft_platform_data {
-	const struct fbtft_gpio *gpios;
-	unsigned rotate;
-	bool bgr;          /* BlueGreenRed color format */
-	unsigned fps;
-	int txbuflen;
-	u8 startbyte;
-	char *gamma;       /* String representation of user provided Gamma curve(s) */
-	void *extra;
 };
 
 struct fbtft_par;
@@ -75,28 +65,46 @@ struct fbtft_ops {
 	void (*register_backlight)(struct fbtft_par *par);
 	void (*unregister_backlight)(struct fbtft_par *par);
 
+	int (*set_var)(struct fbtft_par *par);
 	int (*set_gamma)(struct fbtft_par *par, unsigned long *curves);
 };
 
 struct fbtft_display {
 	unsigned width;
 	unsigned height;
+	unsigned regwidth;
+	unsigned buswidth;
+	unsigned backlight;
+	struct fbtft_ops fbtftops;
 	unsigned bpp;
 	unsigned fps;
 	int txbuflen;
+	int *init_sequence;
 	char *gamma;       /* String representation of the default Gamma curve(s) */
 	int gamma_num;     /* Number of Gamma curves */
 	int gamma_len;     /* Number of values per Gamma curve */
+	unsigned long debug;
+};
+
+struct fbtft_platform_data {
+	struct fbtft_display display;
+	const struct fbtft_gpio *gpios;
+	unsigned rotate;
+	bool bgr;
+	unsigned fps;
+	int txbuflen;
+	u8 startbyte;
+	char *gamma;
+	void *extra;
 };
 
 struct fbtft_par {
-	struct fbtft_display *display;
 	struct spi_device *spi;
 	struct platform_device *pdev;
 	struct fb_info *info;
 	struct fbtft_platform_data *pdata;
 	u16 *ssbuf;
-    u32 pseudo_palette[16];
+	u32 pseudo_palette[16];
 	struct {
 		void *buf;
 		size_t len;
@@ -117,6 +125,7 @@ struct fbtft_par {
 		int led[16];
 		int aux[16];
 	} gpio;
+	int *init_sequence;
 	struct {
 		struct mutex lock;
 		unsigned long *curves;

@@ -255,6 +255,9 @@ extern int fbtft_register_framebuffer(struct fb_info *fb_info);
 extern int fbtft_unregister_framebuffer(struct fb_info *fb_info);
 extern void fbtft_register_backlight(struct fbtft_par *par);
 extern void fbtft_unregister_backlight(struct fbtft_par *par);
+extern int fbtft_init_display(struct fbtft_par *par);
+extern int fbtft_probe_common(struct fbtft_display *display, struct spi_device *sdev, struct platform_device *pdev);
+extern int fbtft_remove_common(struct device *dev, struct fb_info *info);
 
 /* fbtft-io.c */
 extern int fbtft_write_spi(struct fbtft_par *par, void *buf, size_t len);

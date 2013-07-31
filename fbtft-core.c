@@ -929,5 +929,307 @@ int fbtft_unregister_framebuffer(struct fb_info *fb_info)
 }
 EXPORT_SYMBOL(fbtft_unregister_framebuffer);
 
+/**
+ * fbtft_init_display() - Generic init_display() function
+ * @par: Driver data
+ *
+ * Uses par->init_sequence to do the initialization
+ *
+ * Return: 0 if successful, negative if error
+ */
+int fbtft_init_display(struct fbtft_par *par)
+{
+	char msg[128];
+	char str[16];
+	int i = 0;
+	int j;
+
+	fbtft_fbtft_dev_dbg(DEBUG_INIT_DISPLAY, par, par->info->device,
+		"%s()\n", __func__);
+
+	if (!par->init_sequence) {
+		dev_err(par->info->device,
+			"error: init_sequence is not set\n");
+		return -EINVAL;
+	}
+
+	par->fbtftops.reset(par);
+
+	if (par->gpio.cs != -1)
+		gpio_set_value(par->gpio.cs, 0);  /* Activate chip */
+
+	/* make sure stop marker exists */
+	for (i = 0; i < FBTFT_MAX_INIT_SEQUENCE; i++)
+		if (par->init_sequence[i] == -3)
+			break;
+	if (i == FBTFT_MAX_INIT_SEQUENCE) {
+		dev_err(par->info->device,
+			"missing stop marker at end of init sequence\n");
+		return -EINVAL;
+	}
+
+	i = 0;
+	while (i < FBTFT_MAX_INIT_SEQUENCE) {
+		if (par->init_sequence[i] == -3) {
+			/* done */
+			return 0;
+		}
+		if (par->init_sequence[i] >= 0) {
+			dev_err(par->info->device,
+				"missing delimiter at position %d\n", i);
+			return -EINVAL;
+		}
+		if (par->init_sequence[i+1] < 0) {
+			dev_err(par->info->device,
+				"missing value after delimiter %d at position %d\n",
+				par->init_sequence[i], i);
+			return -EINVAL;
+		}
+		switch (par->init_sequence[i]) {
+		case -1:
+			i++;
+			/* make debug message */
+			strcpy(msg, "");
+			j = i + 1;
+			while (par->init_sequence[j] >= 0) {
+				sprintf(str, "0x%02X ", par->init_sequence[j]);
+				strcat(msg, str);
+				j++;
+			}
+			fbtft_fbtft_dev_dbg(DEBUG_INIT_DISPLAY,
+				par, par->info->device,
+				"init: write(0x%02X) %s\n",
+				par->init_sequence[i], msg);
+			/* Write */
+			par->fbtftops.write_data_command(par, 0,
+				par->init_sequence[i++]);
+			while (par->init_sequence[i] >= 0) {
+				par->fbtftops.write_data_command(par, 1,
+					par->init_sequence[i++]);
+			}
+			break;
+		case -2:
+			i++;
+			fbtft_fbtft_dev_dbg(DEBUG_INIT_DISPLAY,
+				par, par->info->device,
+				"init: mdelay(%d)\n", par->init_sequence[i]);
+			mdelay(par->init_sequence[i++]);
+			break;
+		default:
+			dev_err(par->info->device,
+				"unknown delimiter %d at position %d\n",
+				par->init_sequence[i], i);
+			return -EINVAL;
+		}
+	}
+
+	dev_err(par->info->device,
+		"%s: something is wrong. Shouldn't get here.\n", __func__);
+	return -EINVAL;
+}
+EXPORT_SYMBOL(fbtft_init_display);
+
+/**
+ * fbtft_verify_gpios() - Generic verify_gpios() function
+ * @par: Driver data
+ *
+ * Uses @spi, @pdev and @buswidth to determine which GPIOs is needed
+ *
+ * Return: 0 if successful, negative if error
+ */
+int fbtft_verify_gpios(struct fbtft_par *par)
+{
+	struct fbtft_platform_data *pdata;
+	int i;
+
+	fbtft_fbtft_dev_dbg(DEBUG_VERIFY_GPIOS, par,
+		par->info->device, "%s()\n", __func__);
+
+	pdata = par->info->device->platform_data;
+	if (!pdata) {
+		dev_warn(par->info->device,
+			"%s(): buswidth value is not available\n", __func__);
+		return 0;
+	}
+
+	if (pdata->display.buswidth != 9 && par->gpio.dc < 0) {
+		dev_err(par->info->device,
+			"Missing info about 'dc' gpio. Aborting.\n");
+		return -EINVAL;
+	}
+
+	if (!par->pdev)
+		return 0;
+
+	if (par->gpio.wr < 0) {
+		dev_err(par->info->device, "Missing 'wr' gpio. Aborting.\n");
+		return -EINVAL;
+	}
+	for (i = 0; i < pdata->display.buswidth; i++) {
+		if (par->gpio.db[i] < 0) {
+			dev_err(par->info->device,
+				"Missing 'db%02d' gpio. Aborting.\n", i);
+			return -EINVAL;
+		}
+	}
+
+	return 0;
+}
+
+/**
+ * fbtft_probe_common() - Generic device probe() helper function
+ * @display: Display properties
+ * @sdev: SPI device
+ * @pdev: Platform device
+ *
+ * Allocates, initializes and registers a framebuffer
+ *
+ * Either @sdev or @pdev should be NULL
+ *
+ * Return: 0 if successful, negative if error
+ */
+int fbtft_probe_common(struct fbtft_display *display,
+			struct spi_device *sdev, struct platform_device *pdev)
+{
+	struct device *dev;
+	struct fb_info *info;
+	struct fbtft_par *par;
+	struct fbtft_platform_data *pdata;
+	int ret;
+
+	if (sdev)
+		dev = &sdev->dev;
+	else
+		dev = &pdev->dev;
+
+	if (unlikely(display->debug & DEBUG_DRIVER_INIT_FUNCTIONS))
+		dev_info(dev, "%s()\n", __func__);
+
+	pdata = dev->platform_data;
+	if (pdata) {
+		if (pdata->display.width)
+			display->width = pdata->display.width;
+		if (pdata->display.height)
+			display->height = pdata->display.height;
+		if (pdata->display.buswidth)
+			display->buswidth = pdata->display.buswidth;
+	}
+
+	info = fbtft_framebuffer_alloc(display, dev);
+	if (!info)
+		return -ENOMEM;
+
+	par = info->par;
+	if (sdev)
+		par->spi = sdev;
+	else
+		par->pdev = pdev;
+
+	if (!par->debug) {
+		par->debug = &dummy_debug;
+		*par->debug = display->debug;
+	}
+
+	/* write register functions */
+	if (display->regwidth == 8 && display->buswidth == 8) {
+		par->fbtftops.write_reg = fbtft_write_reg8_bus8;
+		par->fbtftops.write_data_command = \
+			fbtft_write_data_command8_bus8;
+	} else
+	if (display->regwidth == 8 && display->buswidth == 9 && par->spi) {
+		par->fbtftops.write_data_command = \
+			fbtft_write_data_command8_bus9;
+	} else if (display->regwidth == 16 && display->buswidth == 8) {
+		par->fbtftops.write_reg = fbtft_write_reg16_bus8;
+		par->fbtftops.write_data_command = \
+			fbtft_write_data_command16_bus8;
+	} else if (display->regwidth == 16 && display->buswidth == 16) {
+		par->fbtftops.write_reg = fbtft_write_reg16_bus16;
+		par->fbtftops.write_data_command = \
+			fbtft_write_data_command16_bus16;
+	} else {
+		dev_warn(dev,
+			"no default functions for regwidth=%d and buswidth=%d\n",
+			display->regwidth, display->buswidth);
+	}
+
+	/* write_vmem() functions */
+	if (display->buswidth == 8)
+		par->fbtftops.write_vmem = fbtft_write_vmem16_bus8;
+	else if (display->buswidth == 9)
+		par->fbtftops.write_vmem = fbtft_write_vmem16_bus9;
+	else if (display->buswidth == 16)
+		par->fbtftops.write_vmem = fbtft_write_vmem16_bus16;
+
+	/* GPIO write() functions */
+	if (par->pdev) {
+		if (display->buswidth == 8)
+			par->fbtftops.write = fbtft_write_gpio8_wr;
+		else if (display->buswidth == 16)
+			par->fbtftops.write = fbtft_write_gpio16_wr;
+	}
+
+	/* 9-bit SPI setup */
+	if (par->spi && display->buswidth == 9) {
+		par->spi->bits_per_word = 9;
+		ret = sdev->master->setup(par->spi);
+		if (ret) {
+			dev_err(dev, "9-bit SPI setup failed: %d.\n", ret);
+			return ret;
+		}
+	}
+
+	if (!par->fbtftops.verify_gpios)
+		par->fbtftops.verify_gpios = fbtft_verify_gpios;
+
+	/* make sure we still use the driver provided functions */
+	fbtft_merge_fbtftops(&par->fbtftops, &display->fbtftops);
+
+	/* use init_sequence if provided */
+	if (par->init_sequence)
+		par->fbtftops.init_display = fbtft_init_display;
+
+	/* use platform_data provided functions above all */
+	if (pdata)
+		fbtft_merge_fbtftops(&par->fbtftops, &pdata->display.fbtftops);
+
+	ret = fbtft_register_framebuffer(info);
+	if (ret < 0)
+		goto out_release;
+
+	return 0;
+
+out_release:
+	fbtft_framebuffer_release(info);
+
+	return ret;
+}
+EXPORT_SYMBOL(fbtft_probe_common);
+
+/**
+ * fbtft_remove_common() - Generic device remove() helper function
+ * @dev: Device
+ * @info: Framebuffer
+ *
+ * Unregisters and releases the framebuffer
+ *
+ * Return: 0 if successful, negative if error
+ */
+int fbtft_remove_common(struct device *dev, struct fb_info *info)
+{
+	struct fbtft_par *par = info->par;
+
+	if (par && (*par->debug & DEBUG_DRIVER_INIT_FUNCTIONS))
+		dev_info(dev, "%s()\n", __func__);
+
+	if (info) {
+		fbtft_unregister_framebuffer(info);
+		fbtft_framebuffer_release(info);
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(fbtft_remove_common);
+
 
 MODULE_LICENSE("GPL");

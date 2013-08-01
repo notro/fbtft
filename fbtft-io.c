@@ -209,7 +209,7 @@ int fbtft_write_gpio8_wr(struct fbtft_par *par, void *buf, size_t len)
 	static u8 prev_data = 0;
 #endif
 
-	fbtft_fbtft_dev_dbg(DEBUG_WRITE, par, par->info->device, "%s(len=%d)\n", __func__, len);
+	fbtft_dev_dbg_hex(DEBUG_WRITE, par, par->info->device, u8, buf, len, "%s(len=%d): ", __func__, len);
 
 	while (len--) {
 		data = *(u8 *) buf;
@@ -256,7 +256,7 @@ int fbtft_write_gpio16_wr(struct fbtft_par *par, void *buf, size_t len)
 	static u16 prev_data = 0;
 #endif
 
-	fbtft_fbtft_dev_dbg(DEBUG_WRITE, par, par->info->device, "%s(len=%d)\n", __func__, len);
+	fbtft_dev_dbg_hex(DEBUG_WRITE, par, par->info->device, u8, buf, len, "%s(len=%d): ", __func__, len);
 
 	while (len) {
 		data = *(u16 *) buf;

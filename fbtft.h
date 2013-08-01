@@ -325,7 +325,6 @@ extern void fbtft_write_data_command16_bus8(struct fbtft_par *par, unsigned dc, 
 #define DEBUG_VERIFY_GPIOS          (1<<31)
 
 
-/* used in drivers */
 #define fbtft_init_dbg(dev, format, arg...)                  \
 	if (unlikely((dev)->platform_data &&                 \
 	    (((struct fbtft_platform_data *)(dev)->platform_data)->display.debug & DEBUG_DRIVER_INIT_FUNCTIONS))) \
@@ -335,8 +334,7 @@ extern void fbtft_write_data_command16_bus8(struct fbtft_par *par, unsigned dc, 
 	if (unlikely(par->debug & level))                    \
 		dev_info(par->info->device, format, ##arg);
 
-/* used in the fbtft module */
-#define fbtft_fbtft_dev_dbg(level, par, dev, format, arg...) \
+#define fbtft_dev_dbg(level, par, dev, format, arg...)       \
 	if (unlikely(par->debug & level))                    \
 		dev_info(dev, format, ##arg);
 

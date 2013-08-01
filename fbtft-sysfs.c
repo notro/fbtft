@@ -29,7 +29,7 @@ int fbtft_gamma_parse_str(struct fbtft_par *par, unsigned long *curves, const ch
 	int ret = 0;
 	int curve_counter, value_counter;
 
-	fbtft_fbtft_dev_dbg(DEBUG_SYSFS, par, par->info->device, "%s() str=\n", __func__);
+	fbtft_par_dbg(DEBUG_SYSFS, par, "%s() str=\n", __func__);
 
 	if (!str || !curves)
 		return -EINVAL;

@@ -86,7 +86,8 @@ void fbtft_write_data_command8_bus8(struct fbtft_par *par, unsigned dc, u32 val)
 {
 	int ret;
 
-	fbtft_fbtft_dev_dbg(DEBUG_WRITE_DATA_COMMAND, par, par->info->device, "%s: dc=%d, val=0x%X\n", __func__, dc, val);
+	fbtft_par_dbg(DEBUG_WRITE_DATA_COMMAND, par, "%s: dc=%d, val=0x%X\n",
+		__func__, dc, val);
 
 	if (par->gpio.dc != -1)
 		gpio_set_value(par->gpio.dc, dc);
@@ -104,7 +105,8 @@ void fbtft_write_data_command8_bus9(struct fbtft_par *par, unsigned dc, u32 val)
 {
 	int ret;
 
-	fbtft_fbtft_dev_dbg(DEBUG_WRITE_DATA_COMMAND, par, par->info->device, "%s: dc=%d, val=0x%X\n", __func__, dc, val);
+	fbtft_par_dbg(DEBUG_WRITE_DATA_COMMAND, par, "%s: dc=%d, val=0x%X\n",
+		__func__, dc, val);
 
 	*(u16 *)par->buf = dc ? 0x100 | (u8)val : (u8)val;
 
@@ -118,7 +120,8 @@ void fbtft_write_data_command16_bus16(struct fbtft_par *par, unsigned dc, u32 va
 {
 	int ret;
 
-	fbtft_fbtft_dev_dbg(DEBUG_WRITE_DATA_COMMAND, par, par->info->device, "%s: dc=%d, val=0x%X\n", __func__, dc, val);
+	fbtft_par_dbg(DEBUG_WRITE_DATA_COMMAND, par, "%s: dc=%d, val=0x%X\n",
+		__func__, dc, val);
 
 	if (par->gpio.dc != -1)
 		gpio_set_value(par->gpio.dc, dc);
@@ -136,7 +139,8 @@ void fbtft_write_data_command16_bus8(struct fbtft_par *par, unsigned dc, u32 val
 	int ret;
 	unsigned offset = 0;
 
-	fbtft_fbtft_dev_dbg(DEBUG_WRITE_DATA_COMMAND, par, par->info->device, "%s: dc=%d, val=0x%X\n", __func__, dc, val);
+	fbtft_par_dbg(DEBUG_WRITE_DATA_COMMAND, par, "%s: dc=%d, val=0x%X\n",
+		__func__, dc, val);
 
 	if (par->gpio.dc != -1)
 		gpio_set_value(par->gpio.dc, dc);
@@ -183,7 +187,8 @@ int fbtft_write_vmem16_bus8(struct fbtft_par *par)
 	remain = len / 2;
 	vmem16 = (u16 *)(par->info->screen_base + offset);
 
-	fbtft_fbtft_dev_dbg(DEBUG_WRITE_VMEM, par, par->info->device, "%s: offset=%d, len=%d\n", __func__, offset, len);
+	fbtft_par_dbg(DEBUG_WRITE_VMEM, par, "%s: offset=%d, len=%d\n",
+		__func__, offset, len);
 
 	if (par->gpio.dc != -1)
 		gpio_set_value(par->gpio.dc, 1);
@@ -242,7 +247,8 @@ int fbtft_write_vmem16_bus9(struct fbtft_par *par)
 	remain = len;
 	vmem8 = par->info->screen_base + offset;
 
-	fbtft_fbtft_dev_dbg(DEBUG_WRITE_VMEM, par, par->info->device, "%s: offset=%d, len=%d\n", __func__, offset, len);
+	fbtft_par_dbg(DEBUG_WRITE_VMEM, par, "%s: offset=%d, len=%d\n",
+		__func__, offset, len);
 
 	tx_array_size = par->txbuf.len / 2;
 
@@ -287,7 +293,8 @@ int fbtft_write_vmem16_bus16(struct fbtft_par *par)
 	len = (par->dirty_lines_end - par->dirty_lines_start + 1) * par->info->fix.line_length;
 	vmem16 = (u16 *)(par->info->screen_base + offset);
 
-	fbtft_fbtft_dev_dbg(DEBUG_WRITE_VMEM, par, par->info->device, "%s: offset=%d, len=%d\n", __func__, offset, len);
+	fbtft_par_dbg(DEBUG_WRITE_VMEM, par, "%s: offset=%d, len=%d\n",
+		__func__, offset, len);
 
 	if (par->gpio.dc != -1)
 		gpio_set_value(par->gpio.dc, 1);

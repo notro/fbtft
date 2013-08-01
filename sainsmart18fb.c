@@ -32,9 +32,6 @@
 #define HEIGHT      160
 
 
-/* Module Parameter: debug  (also available through sysfs) */
-MODULE_PARM_DEBUG;
-
 // ftp://imall.iteadstudio.com/IM120419001_ITDB02_1.8SP/DS_ST7735.pdf
 // https://github.com/johnmccombs/arduino-libraries/blob/master/ST7735/ST7735.cpp
 
@@ -159,7 +156,6 @@ static int sainsmart18fb_probe(struct spi_device *spi)
 
 	par = info->par;
 	par->spi = spi;
-	fbtft_debug_init(par);
 	par->fbtftops.init_display = sainsmart18fb_init_display;
 	par->fbtftops.verify_gpios = sainsmart18fb_verify_gpios;
 	par->fbtftops.register_backlight = fbtft_register_backlight;

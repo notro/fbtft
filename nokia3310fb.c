@@ -36,9 +36,6 @@
 #define HEIGHT      48
 #define TXBUFLEN    84*6
 
-/* Module Parameter: debug  (also available through sysfs) */
-MODULE_PARM_DEBUG;
-
 static unsigned contrast = 0x40;
 module_param(contrast, uint, 0);
 MODULE_PARM_DESC(contrast, "Vop[6:0] Contrast: 0 - 0x7F (default: 0x40)");
@@ -182,7 +179,6 @@ static int nokia3310fb_probe(struct spi_device *spi)
 
 	par = info->par;
 	par->spi = spi;
-	fbtft_debug_init(par);
 	par->fbtftops.write_data_command = fbtft_write_data_command8_bus8;
 	par->fbtftops.write_vmem = nokia3310fb_write_vmem;
 	par->fbtftops.set_addr_win = nokia3310fb_set_addr_win;

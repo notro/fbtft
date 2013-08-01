@@ -39,9 +39,6 @@
 #define TXBUFLEN    4*PAGE_SIZE
 
 
-/* Module Parameter: debug  (also available through sysfs) */
-MODULE_PARM_DEBUG;
-
 /* write_cmd and write_data transfers need to be buffered so we can, if needed, do 9-bit emulation */
 #undef write_cmd
 #undef write_data
@@ -305,7 +302,6 @@ static int ili9341fb_probe(struct spi_device *spi)
 
     par = info->par;
     par->spi = spi;
-    fbtft_debug_init(par);
     par->fbtftops.init_display = ili9341fb_init_display;
     par->fbtftops.register_backlight = fbtft_register_backlight;
     par->fbtftops.request_gpios_match = ili9341fb_request_gpios_match;

@@ -30,9 +30,6 @@
 #define DRVNAME	    "flexfb"
 
 
-/* Module Parameter: debug  (also available through sysfs) */
-MODULE_PARM_DEBUG;
-
 static char *chip = NULL;
 module_param(chip, charp, 0);
 MODULE_PARM_DESC(chip, "LCD controller");
@@ -458,7 +455,6 @@ static int flexfb_probe_common(struct spi_device *sdev, struct platform_device *
 		par->spi = sdev;
 	else
 		par->pdev = pdev;
-	fbtft_debug_init(par);
 	par->fbtftops.init_display = flexfb_init_display;
 
 	/* registerwrite functions */

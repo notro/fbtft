@@ -38,10 +38,6 @@
                     "04 16 2 7 6 3 2 1 7 7"
 
 
-/* Module Parameter: debug  (also available through sysfs) */
-MODULE_PARM_DEBUG;
-
-
 /* Power supply configuration */
 #define ILI9325_BT  6        /* VGL=Vci*4 , VGH=Vci*4 */
 #define ILI9325_VC  0b011    /* Vci1=Vci*0.80 */
@@ -291,7 +287,6 @@ static int itdb28fb_probe_common(struct spi_device *sdev, struct platform_device
 	else
 		par->pdev = pdev;
 
-	fbtft_debug_init(par);
 	par->fbtftops.init_display = itdb28fb_init_display;
 	par->fbtftops.set_gamma = set_gamma;
 	par->fbtftops.register_backlight = fbtft_register_backlight;

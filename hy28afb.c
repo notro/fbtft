@@ -32,10 +32,6 @@
 #define HEIGHT      320
 
 
-/* Module Parameter: debug  (also available through sysfs) */
-MODULE_PARM_DEBUG;
-
-
 static unsigned read_devicecode(struct fbtft_par *par)
 {
 	int ret;
@@ -194,7 +190,6 @@ static int hy28afb_probe(struct spi_device *spi)
 	par->spi = spi;
 	if(!par->startbyte)
 		par->startbyte = 0b01110000;
-	fbtft_debug_init(par);
 	par->fbtftops.init_display = hy28afb_init_display;
 	par->fbtftops.write_reg = fbtft_write_reg16_bus8;
 	par->fbtftops.set_addr_win = hy28afb_set_addr_win;

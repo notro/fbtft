@@ -39,9 +39,6 @@
 #define LCD_REGISTER	0x70
 
 
-/* Module Parameter: debug  (also available through sysfs) */
-MODULE_PARM_DEBUG;
-
 #undef write_cmd
 #undef write_data
 
@@ -267,7 +264,6 @@ static int r61505ufb_probe(struct spi_device *spi)
 
 	par = info->par;
 	par->spi = spi;
-	fbtft_debug_init(par);
 	par->fbtftops.init_display = r61505ufb_init_display;
 	par->fbtftops.register_backlight = fbtft_register_backlight;
 	par->fbtftops.request_gpios_match = r61505ufb_request_gpios_match;

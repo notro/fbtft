@@ -20,9 +20,6 @@
                     "5 5 5 5 5 5 5"
 
 
-/* Module Parameter: debug  (also available through sysfs) */
-MODULE_PARM_DEBUG;
-
 void ssd1351fb_set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 {
 	fbtft_par_dbg(DEBUG_SET_ADDR_WIN, par, "%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
@@ -202,8 +199,6 @@ static int ssd1351fb_probe(struct spi_device *spi)
 
 	par = info->par;
 	par->spi = spi;
-
-	fbtft_debug_init(par);
 
 	par->fbtftops.init_display  = ssd1351fb_init_display;
 	par->fbtftops.set_addr_win  = ssd1351fb_set_addr_win;

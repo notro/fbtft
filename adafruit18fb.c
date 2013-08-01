@@ -34,9 +34,6 @@
 #define HEIGHT      160
 
 
-/* Module Parameter: debug  (also available through sysfs) */
-MODULE_PARM_DEBUG;
-
 static int adafruit18fb_init_display(struct fbtft_par *par)
 {
 	fbtft_par_dbg(DEBUG_INIT_DISPLAY, par, "%s()\n", __func__);
@@ -241,7 +238,6 @@ static int adafruit18fb_probe(struct spi_device *spi)
 
 	par = info->par;
 	par->spi = spi;
-	fbtft_debug_init(par);
 	par->fbtftops.init_display = adafruit18fb_init_display;
 	par->fbtftops.register_backlight = fbtft_register_backlight;
 	par->fbtftops.verify_gpios = adafruit18fb_verify_gpios;

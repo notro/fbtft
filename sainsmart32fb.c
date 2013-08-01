@@ -33,9 +33,6 @@
 #define WIDTH       240
 #define HEIGHT      320
 
-/* Module Parameter: debug  (also available through sysfs) */
-MODULE_PARM_DEBUG;
-
 static bool latched = false;
 module_param(latched, bool, 0);
 MODULE_PARM_DESC(latched, "Use with latched 16-bit databus");
@@ -251,7 +248,6 @@ static int sainsmart32fb_probe_common(struct spi_device *sdev, struct platform_d
 	else
 		par->pdev = pdev;
 
-	fbtft_debug_init(par);
 	par->fbtftops.init_display = sainsmart32fb_init_display;
 	par->fbtftops.register_backlight = fbtft_register_backlight;
 	par->fbtftops.write_reg = fbtft_write_reg16_bus8;

@@ -5,7 +5,8 @@
 
 int fbtft_write_spi(struct fbtft_par *par, void *buf, size_t len)
 {
-	fbtft_dev_dbg_hex(DEBUG_WRITE, par, par->info->device, u8, buf, len, "%s(len=%d): ", __func__, len);
+	fbtft_par_dbg_hex(DEBUG_WRITE, par, par->info->device, u8, buf, len,
+		"%s(len=%d): ", __func__, len);
 
 	if (!par->spi) {
 		dev_err(par->info->device, "%s: par->spi is unexpectedly NULL\n", __func__);
@@ -38,13 +39,15 @@ int fbtft_read_spi(struct fbtft_par *par, void *buf, size_t len)
 		}
 		txbuf[0] = par->startbyte | 0x3;
 		t.tx_buf = txbuf;
-		fbtft_dev_dbg_hex(DEBUG_READ, par, par->info->device, u8, txbuf, len, "%s(len=%d) txbuf => ", __func__, len);
+		fbtft_par_dbg_hex(DEBUG_READ, par, par->info->device, u8,
+			txbuf, len, "%s(len=%d) txbuf => ", __func__, len);
 	}
 
 	spi_message_init(&m);
 	spi_message_add_tail(&t, &m);
 	ret = spi_sync(par->spi, &m);
-	fbtft_dev_dbg_hex(DEBUG_READ, par, par->info->device, u8, buf, len, "%s(len=%d) buf <= ", __func__, len);
+	fbtft_par_dbg_hex(DEBUG_READ, par, par->info->device, u8, buf, len,
+		"%s(len=%d) buf <= ", __func__, len);
 
 	return ret;
 }
@@ -63,7 +66,8 @@ int fbtft_write_gpio8_wr(struct fbtft_par *par, void *buf, size_t len)
 	unsigned int reset=0;
 	u8 data;
 
-	fbtft_dev_dbg_hex(DEBUG_WRITE, par, par->info->device, u8, buf, len, "%s(len=%d): ", __func__, len);
+	fbtft_par_dbg_hex(DEBUG_WRITE, par, par->info->device, u8, buf, len,
+		"%s(len=%d): ", __func__, len);
 
 	while (len--) {
 		data = *(u8 *) buf;
@@ -99,7 +103,8 @@ int fbtft_write_gpio16_wr(struct fbtft_par *par, void *buf, size_t len)
 	unsigned int reset=0;
 	u16 data;
 
-	fbtft_dev_dbg_hex(DEBUG_WRITE, par, par->info->device, u8, buf, len, "%s(len=%d): ", __func__, len);
+	fbtft_par_dbg_hex(DEBUG_WRITE, par, par->info->device, u8, buf, len,
+		"%s(len=%d): ", __func__, len);
 
 	while (len) {
 		len -= 2;
@@ -147,7 +152,8 @@ int fbtft_write_gpio16_wr_latched(struct fbtft_par *par, void *buf, size_t len)
 	unsigned int reset=0;
 	u16 data;
 
-	fbtft_dev_dbg_hex(DEBUG_WRITE, par, par->info->device, u8, buf, len, "%s(len=%d): ", __func__, len);
+	fbtft_par_dbg_hex(DEBUG_WRITE, par, par->info->device, u8, buf, len,
+		"%s(len=%d): ", __func__, len);
 
 	while (len) {
 		len -= 2;
@@ -209,7 +215,8 @@ int fbtft_write_gpio8_wr(struct fbtft_par *par, void *buf, size_t len)
 	static u8 prev_data = 0;
 #endif
 
-	fbtft_dev_dbg_hex(DEBUG_WRITE, par, par->info->device, u8, buf, len, "%s(len=%d): ", __func__, len);
+	fbtft_par_dbg_hex(DEBUG_WRITE, par, par->info->device, u8, buf, len,
+		"%s(len=%d): ", __func__, len);
 
 	while (len--) {
 		data = *(u8 *) buf;
@@ -256,7 +263,8 @@ int fbtft_write_gpio16_wr(struct fbtft_par *par, void *buf, size_t len)
 	static u16 prev_data = 0;
 #endif
 
-	fbtft_dev_dbg_hex(DEBUG_WRITE, par, par->info->device, u8, buf, len, "%s(len=%d): ", __func__, len);
+	fbtft_par_dbg_hex(DEBUG_WRITE, par, par->info->device, u8, buf, len,
+		"%s(len=%d): ", __func__, len);
 
 	while (len) {
 		data = *(u16 *) buf;

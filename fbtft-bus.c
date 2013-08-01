@@ -25,7 +25,7 @@ void func(struct fbtft_par *par, int len, ...)                                  
             buf[i] = (type)va_arg(args, unsigned int);                                                           \
         }                                                                                                        \
         va_end(args);                                                                                            \
-        fbtft_dev_dbg_hex(DEBUG_WRITE_DATA_COMMAND, par, par->info->device, type, buf, len, "%s: ", __func__);   \
+        fbtft_par_dbg_hex(DEBUG_WRITE_DATA_COMMAND, par, par->info->device, type, buf, len, "%s: ", __func__);   \
     }                                                                                                            \
                                                                                                                  \
     va_start(args, len);                                                                                         \

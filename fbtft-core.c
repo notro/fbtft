@@ -47,7 +47,7 @@ module_param(debug, ulong , 0);
 MODULE_PARM_DESC(debug,"override device debug level");
 
 
-void _fbtft_dev_dbg_hex(const struct device *dev, int groupsize, void *buf, size_t len, const char *fmt, ...)
+void fbtft_dbg_hex(const struct device *dev, int groupsize, void *buf, size_t len, const char *fmt, ...)
 {
 	va_list args;
 	static char textbuf[512];
@@ -65,6 +65,7 @@ void _fbtft_dev_dbg_hex(const struct device *dev, int groupsize, void *buf, size
 	else
 		dev_info(dev, "%s\n", text);
 }
+EXPORT_SYMBOL(fbtft_dbg_hex);
 
 unsigned long fbtft_request_gpios_match(struct fbtft_par *par, const struct fbtft_gpio *gpio)
 {

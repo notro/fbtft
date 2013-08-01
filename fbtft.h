@@ -248,6 +248,7 @@ struct fbtft_par {
 #define write_data(par, val) par->fbtftops.write_data_command(par, 1, val)
 
 /* fbtft-core.c */
+extern void fbtft_dbg_hex(const struct device *dev, int groupsize, void *buf, size_t len, const char *fmt, ...);
 extern struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct device *dev);
 extern void fbtft_framebuffer_release(struct fb_info *info);
 extern int fbtft_register_framebuffer(struct fb_info *fb_info);
@@ -338,10 +339,8 @@ extern void fbtft_write_data_command16_bus8(struct fbtft_par *par, unsigned dc, 
 	if (unlikely(par->debug & level))                    \
 		dev_info(dev, format, ##arg);
 
-/* only used in the fbtft module */
-extern void _fbtft_dev_dbg_hex(const struct device *dev, int groupsize, void *buf, size_t len, const char *fmt, ...);
-#define fbtft_dev_dbg_hex(level, par, dev, type, buf, num, format, arg...) \
+#define fbtft_par_dbg_hex(level, par, dev, type, buf, num, format, arg...) \
         if (unlikely(par->debug & level))                                  \
-		_fbtft_dev_dbg_hex(dev, sizeof(type), buf, num * sizeof(type), format, ##arg);
+		fbtft_dbg_hex(dev, sizeof(type), buf, num * sizeof(type), format, ##arg);
 
 #endif /* __LINUX_FBTFT_H */

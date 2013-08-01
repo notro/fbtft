@@ -108,6 +108,10 @@ static int init_num = 0;
 module_param_array(init, int, &init_num, 0);
 MODULE_PARM_DESC(init, "Init sequence, used with the custom argument");
 
+static unsigned long debug = 0;
+module_param(debug, ulong , 0);
+MODULE_PARM_DESC(debug,"level: 0-7 (the remaining 29 bits is for advanced usage)");
+
 static unsigned verbose = 3;
 module_param(verbose, uint, 0);
 MODULE_PARM_DESC(verbose,
@@ -596,6 +600,7 @@ static int __init fbtft_device_init(void)
 			pdata->bgr = bgr;
 			pdata->startbyte = startbyte;
 			pdata->gamma = gamma;
+			pdata->display.debug = debug;
 			if (fps)
 				pdata->fps = fps;
 			if (txbuflen)

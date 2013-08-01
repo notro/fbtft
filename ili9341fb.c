@@ -105,7 +105,7 @@ static int ili9341fb_init_display(struct fbtft_par *par)
     u16 *p = (u16 *)par->buf;
     int i = 0;
 
-    fbtft_dev_dbg(DEBUG_INIT_DISPLAY, par->info->device, "%s()\n", __func__);
+    fbtft_par_dbg(DEBUG_INIT_DISPLAY, par, "%s()\n", __func__);
 
     par->fbtftops.reset(par);
 
@@ -216,7 +216,7 @@ void ili9341fb_set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int y
     u16 *p = (u16 *)par->buf;
     int i = 0;
 
-    fbtft_dev_dbg(DEBUG_SET_ADDR_WIN, par->info->device, "%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
+    fbtft_par_dbg(DEBUG_SET_ADDR_WIN, par, "%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
 
     xsl = (uint8_t)(xs & 0xff);
     xsh = (uint8_t)((xs >> 8) & 0xff);
@@ -297,7 +297,7 @@ static int ili9341fb_probe(struct spi_device *spi)
     struct fbtft_par *par;
     int ret;
 
-    fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &spi->dev, "%s()\n", __func__);
+    fbtft_init_dbg(&spi->dev, "%s()\n", __func__);
 
     info = fbtft_framebuffer_alloc(&ili9341fb_display, &spi->dev);
     if (!info)
@@ -351,7 +351,7 @@ static int ili9341fb_remove(struct spi_device *spi)
     struct fb_info *info = spi_get_drvdata(spi);
     struct fbtft_par *par;
 
-    fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &spi->dev, "%s()\n", __func__);
+    fbtft_init_dbg(&spi->dev, "%s()\n", __func__);
 
     if (info) {
         fbtft_unregister_framebuffer(info);
@@ -375,13 +375,11 @@ static struct spi_driver ili9341fb_driver = {
 
 static int __init ili9341fb_init(void)
 {
-    fbtft_pr_debug("\n\n"DRVNAME": %s()\n", __func__);
     return spi_register_driver(&ili9341fb_driver);
 }
 
 static void __exit ili9341fb_exit(void)
 {
-    fbtft_pr_debug(DRVNAME": %s()\n", __func__);
     spi_unregister_driver(&ili9341fb_driver);
 }
 

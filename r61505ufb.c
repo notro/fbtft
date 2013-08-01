@@ -75,7 +75,7 @@ static void r61505ufb_write_cmd(struct fbtft_par *par, uint8_t reg, uint8_t data
 
 static int r61505ufb_init_display(struct fbtft_par *par)
 {
-	fbtft_dev_dbg(DEBUG_INIT_DISPLAY, par->info->device, "%s()\n", __func__);
+	fbtft_par_dbg(DEBUG_INIT_DISPLAY, par, "%s()\n", __func__);
 
 	par->fbtftops.reset(par);
 
@@ -153,7 +153,7 @@ static void r61505ufb_set_addr_win(struct fbtft_par *par, int xs, int ys, int xe
 {
 	uint8_t xsl, xsh, xel, xeh, ysl, ysh, yel, yeh;
 
-	fbtft_dev_dbg(DEBUG_SET_ADDR_WIN, par->info->device, "%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
+	fbtft_par_dbg(DEBUG_SET_ADDR_WIN, par, "%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
 
 	xsl = (uint8_t)(xs & 0xff);
 	xsh = (uint8_t)((xs >> 8) & 0xff);
@@ -197,7 +197,7 @@ static int r61505ufb_write_vmem(struct fbtft_par *par)
 	vmem16 = (u16 *)(par->info->screen_base + offset);
 	buf_len = par->txbuf.len;
 
-	fbtft_fbtft_dev_dbg(DEBUG_WRITE_VMEM, par, par->info->device, "%s: offset=%d, len=%d\n", __func__, offset, len);
+	fbtft_par_dbg(DEBUG_WRITE_VMEM, par, "%s: offset=%d, len=%d\n", __func__, offset, len);
 
 	// sanity check
 	if (!par->txbuf.buf) {
@@ -259,7 +259,7 @@ static int r61505ufb_probe(struct spi_device *spi)
 	struct fbtft_par *par;
 	int ret;
 
-	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &spi->dev, "%s()\n", __func__);
+	fbtft_init_dbg(&spi->dev, "%s()\n", __func__);
 
 	info = fbtft_framebuffer_alloc(&r61505ufb_display, &spi->dev);
 	if (!info)
@@ -291,7 +291,7 @@ static int r61505ufb_remove(struct spi_device *spi)
 {
 	struct fb_info *info = spi_get_drvdata(spi);
 
-	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &spi->dev, "%s()\n", __func__);
+	fbtft_init_dbg(&spi->dev, "%s()\n", __func__);
 
 	if (info) {
 		fbtft_unregister_framebuffer(info);
@@ -312,13 +312,11 @@ static struct spi_driver r61505ufb_driver = {
 
 static int __init r61505ufb_init(void)
 {
-	fbtft_pr_debug("\n\n"DRVNAME": %s()\n", __func__);
 	return spi_register_driver(&r61505ufb_driver);
 }
 
 static void __exit r61505ufb_exit(void)
 {
-	fbtft_pr_debug(DRVNAME": %s()\n", __func__);
 	spi_unregister_driver(&r61505ufb_driver);
 }
 

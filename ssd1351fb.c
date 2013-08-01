@@ -23,10 +23,9 @@
 /* Module Parameter: debug  (also available through sysfs) */
 MODULE_PARM_DEBUG;
 
-
 void ssd1351fb_set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 {
-	fbtft_fbtft_dev_dbg(DEBUG_SET_ADDR_WIN, par, par->info->device, "%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
+	fbtft_par_dbg(DEBUG_SET_ADDR_WIN, par, "%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
 
 	write_cmd(par, 0x15);
 	write_data(par, xs);
@@ -41,7 +40,7 @@ void ssd1351fb_set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int y
 
 static int ssd1351fb_init_display(struct fbtft_par *par)
 {
-	fbtft_dev_dbg(DEBUG_INIT_DISPLAY, par->info->device, "%s()\n", __func__);
+	fbtft_par_dbg(DEBUG_INIT_DISPLAY, par, "%s()\n", __func__);
 
 	// Reset the device.
 	par->fbtftops.reset(par);
@@ -133,7 +132,7 @@ static int set_gamma(struct fbtft_par *par, unsigned long *curves)
 {
 	int i, acc = 0;
 
-	fbtft_dev_dbg(DEBUG_INIT_DISPLAY, par->info->device, "%s()\n", __func__);
+	fbtft_par_dbg(DEBUG_INIT_DISPLAY, par, "%s()\n", __func__);
 
 	/* verify lookup table */
 	for (i=0;i<63;i++) {
@@ -160,7 +159,7 @@ static int set_gamma(struct fbtft_par *par, unsigned long *curves)
 
 static int blank(struct fbtft_par *par, bool on)
 {
-	fbtft_dev_dbg(DEBUG_BLANK, par->info->device, "%s(blank=%s)\n", __func__, on ? "true" : "false");
+	fbtft_par_dbg(DEBUG_BLANK, par, "%s(blank=%s)\n", __func__, on ? "true" : "false");
 	if (on)
 		write_cmd(par, 0xAE);
 	else
@@ -170,7 +169,7 @@ static int blank(struct fbtft_par *par, bool on)
 
 static int ssd1351fb_verify_gpios(struct fbtft_par *par)
 {
-	fbtft_dev_dbg(DEBUG_VERIFY_GPIOS, par->info->device, "%s()\n", __func__);
+	fbtft_par_dbg(DEBUG_VERIFY_GPIOS, par, "%s()\n", __func__);
 
 	if (par->gpio.dc < 0)
 	{
@@ -195,7 +194,7 @@ static int ssd1351fb_probe(struct spi_device *spi)
 	struct fbtft_par *par;
 	int ret;
 
-	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &spi->dev, "%s()\n", __func__);
+	fbtft_init_dbg(&spi->dev, "%s()\n", __func__);
 
 	info = fbtft_framebuffer_alloc(&ssd1351fb_display, &spi->dev);
 
@@ -225,7 +224,7 @@ static int ssd1351fb_remove(struct spi_device *spi)
 {
 	struct fb_info *info = spi_get_drvdata(spi);
 
-	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &spi->dev, "%s()\n", __func__);
+	fbtft_init_dbg(&spi->dev, "%s()\n", __func__);
 
 	if (info)
 	{
@@ -249,15 +248,11 @@ static struct spi_driver ssd1351fb_driver =
 
 static int __init ssd1351fb_init(void)
 {
-	fbtft_pr_debug("\n\n"DRVNAME": %s()\n", __func__);
-
 	return spi_register_driver(&ssd1351fb_driver);
 }
 
 static void __exit ssd1351fb_exit(void)
 {
-	fbtft_pr_debug(DRVNAME": %s()\n", __func__);
-
 	spi_unregister_driver(&ssd1351fb_driver);
 }
 

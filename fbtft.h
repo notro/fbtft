@@ -345,13 +345,14 @@ extern void fbtft_write_data_command16_bus8(struct fbtft_par *par, unsigned dc, 
 		case 7:  *debug = 0xFFFFFFFF; break;      \
 		}
 
-#define fbtft_pr_debug(fmt, ...) \
-        fbtft_debug_expand_shorthand(&debug); \
-        if (debug & DEBUG_DRIVER_INIT_FUNCTIONS) { pr_info(fmt, ##__VA_ARGS__); }
-
 /* used in drivers */
-#define fbtft_dev_dbg(level, dev, format, arg...) \
-        if (debug & level) { dev_info(dev, format, ##arg); }
+#define fbtft_init_dbg(dev, format, arg...)                  \
+	if (unlikely(debug & DEBUG_DRIVER_INIT_FUNCTIONS))   \
+		dev_info(dev, format, ##arg);
+
+#define fbtft_par_dbg(level, par, format, arg...)            \
+	if (unlikely(*par->debug & level))                   \
+		dev_info(par->info->device, format, ##arg);
 
 /* used in the fbtft module */
 #define fbtft_fbtft_dev_dbg(level, par, dev, format, arg...) \

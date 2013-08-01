@@ -142,7 +142,7 @@ static int flexfb_init_display(struct fbtft_par *par)
 	int i = 0;
 	int j;
 
-	fbtft_dev_dbg(DEBUG_INIT_DISPLAY, par->info->device, "%s()\n", __func__);
+	fbtft_par_dbg(DEBUG_INIT_DISPLAY, par, "%s()\n", __func__);
 
 	par->fbtftops.reset(par);
 
@@ -179,7 +179,7 @@ static int flexfb_init_display(struct fbtft_par *par)
 				strcat(msg, str);
 				j++;
 			}
-			fbtft_dev_dbg(DEBUG_INIT_DISPLAY, par->info->device, "init: write(0x%02X) %s\n", initp[i], msg);
+			fbtft_par_dbg(DEBUG_INIT_DISPLAY, par, "init: write(0x%02X) %s\n", initp[i], msg);
 			/* Write */
 			par->fbtftops.write_data_command(par, 0, initp[i++]);
 			while (initp[i] >= 0) {
@@ -188,7 +188,7 @@ static int flexfb_init_display(struct fbtft_par *par)
 			break;
 		case -2:
 			i++;
-			fbtft_dev_dbg(DEBUG_INIT_DISPLAY, par->info->device, "init: mdelay(%d)\n", initp[i]);
+			fbtft_par_dbg(DEBUG_INIT_DISPLAY, par, "init: mdelay(%d)\n", initp[i]);
 			mdelay(initp[i++]);
 			break;
 		default:
@@ -204,7 +204,7 @@ static int flexfb_init_display(struct fbtft_par *par)
 /* ili9320, ili9325 */
 static void flexfb_set_addr_win_1(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 {
-	fbtft_dev_dbg(DEBUG_SET_ADDR_WIN, par->info->device, "%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
+	fbtft_par_dbg(DEBUG_SET_ADDR_WIN, par, "%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
 	switch (par->info->var.rotate) {
 	/* R20h = Horizontal GRAM Start Address */
 	/* R21h = Vertical GRAM Start Address */
@@ -231,7 +231,7 @@ static void flexfb_set_addr_win_1(struct fbtft_par *par, int xs, int ys, int xe,
 /* ssd1289 */
 static void flexfb_set_addr_win_2(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 {
-	fbtft_dev_dbg(DEBUG_SET_ADDR_WIN, par->info->device, "%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
+	fbtft_par_dbg(DEBUG_SET_ADDR_WIN, par, "%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
 
 	switch (par->info->var.rotate) {
 	/* R4Eh - Set GDDRAM X address counter */
@@ -261,7 +261,7 @@ static void flexfb_set_addr_win_2(struct fbtft_par *par, int xs, int ys, int xe,
 /* ssd1351 */
 static void set_addr_win_3(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 {
-	fbtft_fbtft_dev_dbg(DEBUG_SET_ADDR_WIN, par, par->info->device, "%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
+	fbtft_par_dbg(DEBUG_SET_ADDR_WIN, par, "%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
 
 	write_reg(par, 0x15, xs, xe);
 	write_reg(par, 0x75, ys, ye);
@@ -270,7 +270,7 @@ static void set_addr_win_3(struct fbtft_par *par, int xs, int ys, int xe, int ye
 
 static int flexfb_verify_gpios_dc(struct fbtft_par *par)
 {
-	fbtft_dev_dbg(DEBUG_VERIFY_GPIOS, par->info->device, "%s()\n", __func__);
+	fbtft_par_dbg(DEBUG_VERIFY_GPIOS, par, "%s()\n", __func__);
 
 	if (par->gpio.dc < 0) {
 		dev_err(par->info->device, "Missing info about 'dc' gpio. Aborting.\n");
@@ -285,7 +285,7 @@ static int flexfb_verify_gpios_db(struct fbtft_par *par)
 	int i;
 	int num_db = buswidth;
 
-	fbtft_dev_dbg(DEBUG_VERIFY_GPIOS, par->info->device, "%s()\n", __func__);
+	fbtft_par_dbg(DEBUG_VERIFY_GPIOS, par, "%s()\n", __func__);
 
 	if (par->gpio.dc < 0) {
 		dev_err(par->info->device, "Missing info about 'dc' gpio. Aborting.\n");
@@ -328,7 +328,7 @@ static int flexfb_probe_common(struct spi_device *sdev, struct platform_device *
 	else
 		dev = &pdev->dev;
 
-	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, dev, "%s(%s)\n", __func__, sdev ? "'SPI device'" : "'Platform device'");
+	fbtft_init_dbg(dev, "%s(%s)\n", __func__, sdev ? "'SPI device'" : "'Platform device'");
 
 	if (chip) {
 
@@ -443,11 +443,11 @@ static int flexfb_probe_common(struct spi_device *sdev, struct platform_device *
 	}
 	flex_display.width = width;
 	flex_display.height = height;
-	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, dev, "Display resolution: %dx%d\n", width, height);
-	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, dev, "chip = %s\n", chip ? chip : "not set");
-	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, dev, "setaddrwin = %d\n", setaddrwin);
-	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, dev, "regwidth = %d\n", regwidth);
-	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, dev, "buswidth = %d\n", buswidth);
+	fbtft_init_dbg(dev, "Display resolution: %dx%d\n", width, height);
+	fbtft_init_dbg(dev, "chip = %s\n", chip ? chip : "not set");
+	fbtft_init_dbg(dev, "setaddrwin = %d\n", setaddrwin);
+	fbtft_init_dbg(dev, "regwidth = %d\n", regwidth);
+	fbtft_init_dbg(dev, "buswidth = %d\n", buswidth);
 
 	info = fbtft_framebuffer_alloc(&flex_display, dev);
 	if (!info)
@@ -561,7 +561,7 @@ out_release:
 
 static int flexfb_remove_common(struct device *dev, struct fb_info *info)
 {
-	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, dev, "%s()\n", __func__);
+	fbtft_init_dbg(dev, "%s()\n", __func__);
 
 	if (info) {
 		fbtft_unregister_framebuffer(info);
@@ -623,7 +623,6 @@ static int __init flexfb_init(void)
 {
 	int ret, ret2;
 
-	fbtft_pr_debug("\n\n"DRVNAME": %s()\n", __func__);
 	ret = spi_register_driver(&flexfb_spi_driver);
 	ret2 = platform_driver_register(&flexfb_platform_driver);
 	if (ret < 0)
@@ -633,7 +632,6 @@ static int __init flexfb_init(void)
 
 static void __exit flexfb_exit(void)
 {
-	fbtft_pr_debug(DRVNAME": %s()\n", __func__);
 	spi_unregister_driver(&flexfb_spi_driver);
 	platform_driver_unregister(&flexfb_platform_driver);
 }

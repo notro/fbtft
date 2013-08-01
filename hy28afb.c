@@ -49,12 +49,12 @@ static unsigned read_devicecode(struct fbtft_par *par)
 static int hy28afb_init_display(struct fbtft_par *par)
 {
 	unsigned devcode;
-	fbtft_dev_dbg(DEBUG_INIT_DISPLAY, par->info->device, "%s()\n", __func__);
+	fbtft_par_dbg(DEBUG_INIT_DISPLAY, par, "%s()\n", __func__);
 
 	par->fbtftops.reset(par);
 
 	devcode = read_devicecode(par);
-	fbtft_dev_dbg(DEBUG_INIT_DISPLAY, par->info->device, "Device code: 0x%04X\n", devcode);
+	fbtft_par_dbg(DEBUG_INIT_DISPLAY, par, "Device code: 0x%04X\n", devcode);
 	if ((devcode != 0x0000) && (devcode != 0x9320))
 		dev_warn(par->info->device, "Unrecognized Device code: 0x%04X (expected 0x9320)\n", devcode);
 
@@ -147,7 +147,7 @@ static int hy28afb_init_display(struct fbtft_par *par)
 
 static void hy28afb_set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 {
-	fbtft_dev_dbg(DEBUG_SET_ADDR_WIN, par->info->device, "%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
+	fbtft_par_dbg(DEBUG_SET_ADDR_WIN, par, "%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
 
     switch (par->info->var.rotate) {
 	/* R20h = Horizontal GRAM Start Address */
@@ -184,7 +184,7 @@ static int hy28afb_probe(struct spi_device *spi)
 	struct fbtft_par *par;
 	int ret;
 
-	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &spi->dev, "%s()\n", __func__);
+	fbtft_init_dbg(&spi->dev, "%s()\n", __func__);
 
 	info = fbtft_framebuffer_alloc(&hy28afb_display, &spi->dev);
 	if (!info)
@@ -216,7 +216,7 @@ static int hy28afb_remove(struct spi_device *spi)
 {
 	struct fb_info *info = spi_get_drvdata(spi);
 
-	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &spi->dev, "%s()\n", __func__);
+	fbtft_init_dbg(&spi->dev, "%s()\n", __func__);
 
 	if (info) {
 		fbtft_unregister_framebuffer(info);
@@ -237,13 +237,11 @@ static struct spi_driver hy28afb_driver = {
 
 static int __init hy28afb_init(void)
 {
-	fbtft_pr_debug("\n\n"DRVNAME": %s()\n", __func__);
 	return spi_register_driver(&hy28afb_driver);
 }
 
 static void __exit hy28afb_exit(void)
 {
-	fbtft_pr_debug(DRVNAME": %s()\n", __func__);
 	spi_unregister_driver(&hy28afb_driver);
 }
 

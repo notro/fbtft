@@ -54,7 +54,7 @@ MODULE_PARM_DESC(bs, "BS[2:0] Bias voltage level: 0-7 (default: 4)");
 
 static int nokia3310fb_init_display(struct fbtft_par *par)
 {
-	fbtft_dev_dbg(DEBUG_INIT_DISPLAY, par->info->device, "%s()\n", __func__);
+	fbtft_par_dbg(DEBUG_INIT_DISPLAY, par, "%s()\n", __func__);
 
 	par->fbtftops.reset(par);
 
@@ -107,7 +107,7 @@ static int nokia3310fb_init_display(struct fbtft_par *par)
 
 static void nokia3310fb_set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 {
-	fbtft_fbtft_dev_dbg(DEBUG_SET_ADDR_WIN, par, par->info->device, "%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
+	fbtft_par_dbg(DEBUG_SET_ADDR_WIN, par, "%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
 
 	/* H=0 Set X address of RAM */
 	write_reg(par, 0x80); /* 7:1  1
@@ -128,7 +128,7 @@ static int nokia3310fb_write_vmem(struct fbtft_par *par)
 	int x, y, i;
 	int ret = 0;
 
-	fbtft_fbtft_dev_dbg(DEBUG_WRITE_VMEM, par, par->info->device, "%s()\n", __func__);
+	fbtft_par_dbg(DEBUG_WRITE_VMEM, par, "%s()\n", __func__);
 
 	for (x=0;x<84;x++) {
 		for (y=0;y<6;y++) {
@@ -151,7 +151,7 @@ static int nokia3310fb_write_vmem(struct fbtft_par *par)
 
 static int nokia3310fb_verify_gpios(struct fbtft_par *par)
 {
-	fbtft_dev_dbg(DEBUG_VERIFY_GPIOS, par->info->device, "%s()\n", __func__);
+	fbtft_par_dbg(DEBUG_VERIFY_GPIOS, par, "%s()\n", __func__);
 
 	if (par->gpio.dc < 0) {
 		dev_err(par->info->device, "Missing info about 'dc' gpio. Aborting.\n");
@@ -174,7 +174,7 @@ static int nokia3310fb_probe(struct spi_device *spi)
 	struct fbtft_par *par;
 	int ret;
 
-	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &spi->dev, "%s()\n", __func__);
+	fbtft_init_dbg(&spi->dev, "%s()\n", __func__);
 
 	info = fbtft_framebuffer_alloc(&nokia3310fb_display, &spi->dev);
 	if (!info)
@@ -206,7 +206,7 @@ static int nokia3310fb_remove(struct spi_device *spi)
 {
 	struct fb_info *info = spi_get_drvdata(spi);
 
-	fbtft_dev_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, &spi->dev, "%s()\n", __func__);
+	fbtft_init_dbg(&spi->dev, "%s()\n", __func__);
 
 	if (info) {
 		if (info->bl_dev) {
@@ -232,13 +232,11 @@ static struct spi_driver nokia3310fb_driver = {
 
 static int __init nokia3310fb_init(void)
 {
-	fbtft_pr_debug("\n\n"DRVNAME": %s()\n", __func__);
 	return spi_register_driver(&nokia3310fb_driver);
 }
 
 static void __exit nokia3310fb_exit(void)
 {
-	fbtft_pr_debug(DRVNAME": %s()\n", __func__);
 	spi_unregister_driver(&nokia3310fb_driver);
 }
 

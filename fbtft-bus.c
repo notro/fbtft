@@ -19,7 +19,7 @@ void func(struct fbtft_par *par, int len, ...)                                  
     int offset = 0;                                                                                              \
     type *buf = (type *)par->buf;                                                                                \
                                                                                                                  \
-    if (*par->debug & DEBUG_WRITE_DATA_COMMAND) {                                                                \
+    if (unlikely(par->debug & DEBUG_WRITE_DATA_COMMAND)) {                                                       \
         va_start(args, len);                                                                                     \
         for (i=0;i<len;i++) {                                                                                    \
             buf[i] = (type)va_arg(args, unsigned int);                                                           \

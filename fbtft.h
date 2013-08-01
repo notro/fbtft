@@ -236,8 +236,7 @@ struct fbtft_par {
 		int num_values;
 		int num_curves;
 	} gamma;
-	unsigned long *debug;
-	unsigned long current_debug;
+	unsigned long debug;
 	bool first_update_done;
 	bool bgr;
 	void *extra;
@@ -326,47 +325,29 @@ extern void fbtft_write_data_command16_bus8(struct fbtft_par *par, unsigned dc, 
 #define DEBUG_VERIFY_GPIOS          (1<<31)
 
 
-#define MODULE_PARM_DEBUG                                                                  \
-        static unsigned long debug = 0;                                                    \
-        module_param(debug, ulong , 0664);                                                 \
-        MODULE_PARM_DESC(debug,"level: 0-7 (the remaining 29 bits is for advanced usage)");
+#define MODULE_PARM_DEBUG
 
-#define fbtft_debug_init(par) \
-        par->debug = &debug
-
-#define fbtft_debug_expand_shorthand(debug)       \
-		switch (*debug & 0b111) {                 \
-		case 1:  *debug |= DEBUG_LEVEL_1; break;  \
-		case 2:  *debug |= DEBUG_LEVEL_2; break;  \
-		case 3:  *debug |= DEBUG_LEVEL_3; break;  \
-		case 4:  *debug |= DEBUG_LEVEL_4; break;  \
-		case 5:  *debug |= DEBUG_LEVEL_5; break;  \
-		case 6:  *debug |= DEBUG_LEVEL_6; break;  \
-		case 7:  *debug = 0xFFFFFFFF; break;      \
-		}
+#define fbtft_debug_init(par)
 
 /* used in drivers */
 #define fbtft_init_dbg(dev, format, arg...)                  \
-	if (unlikely(debug & DEBUG_DRIVER_INIT_FUNCTIONS))   \
+	if (unlikely((dev)->platform_data &&                 \
+	    (((struct fbtft_platform_data *)(dev)->platform_data)->display.debug & DEBUG_DRIVER_INIT_FUNCTIONS))) \
 		dev_info(dev, format, ##arg);
 
 #define fbtft_par_dbg(level, par, format, arg...)            \
-	if (unlikely(*par->debug & level))                   \
+	if (unlikely(par->debug & level))                    \
 		dev_info(par->info->device, format, ##arg);
 
 /* used in the fbtft module */
 #define fbtft_fbtft_dev_dbg(level, par, dev, format, arg...) \
-        if (*par->debug & level) { dev_info(dev, format, ##arg); }
+	if (unlikely(par->debug & level))                    \
+		dev_info(dev, format, ##arg);
 
 /* only used in the fbtft module */
 extern void _fbtft_dev_dbg_hex(const struct device *dev, int groupsize, void *buf, size_t len, const char *fmt, ...);
 #define fbtft_dev_dbg_hex(level, par, dev, type, buf, num, format, arg...) \
-        if (*par->debug & level) { _fbtft_dev_dbg_hex(dev, sizeof(type), buf, num * sizeof(type), format, ##arg); }
-
-#define fbtft_debug_sync_value(par)                        \
-        if (*par->debug != par->current_debug) {           \
-            fbtft_debug_expand_shorthand(par->debug)       \
-            par->current_debug = *par->debug;              \
-        }
+        if (unlikely(par->debug & level))                                  \
+		_fbtft_dev_dbg_hex(dev, sizeof(type), buf, num * sizeof(type), format, ##arg);
 
 #endif /* __LINUX_FBTFT_H */

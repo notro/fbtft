@@ -39,14 +39,12 @@
 
 extern void fbtft_sysfs_init(struct fbtft_par *par);
 extern void fbtft_sysfs_exit(struct fbtft_par *par);
+extern void fbtft_expand_debug_value(unsigned long *debug);
 extern int fbtft_gamma_parse_str(struct fbtft_par *par, unsigned long *curves, const char *str, int size);
 
-// This will be used if the driver doesn't provide debug support
-#ifdef DEBUG
-static unsigned long dummy_debug = 0xFFFFFFFF;
-#else
-static unsigned long dummy_debug = 0;
-#endif
+static unsigned long debug;
+module_param(debug, ulong , 0);
+MODULE_PARM_DESC(debug,"override device debug level");
 
 
 void _fbtft_dev_dbg_hex(const struct device *dev, int groupsize, void *buf, size_t len, const char *fmt, ...)
@@ -304,9 +302,9 @@ void fbtft_update_display(struct fbtft_par *par)
 	bool timeit = false;
 	int ret = 0;
 
-	if (unlikely(*par->debug & (DEBUG_TIME_FIRST_UPDATE | DEBUG_TIME_EACH_UPDATE))) {
-		if ( (*par->debug & DEBUG_TIME_EACH_UPDATE) || \
-			 ((*par->debug & DEBUG_TIME_FIRST_UPDATE) && !par->first_update_done) )
+	if (unlikely(par->debug & (DEBUG_TIME_FIRST_UPDATE | DEBUG_TIME_EACH_UPDATE))) {
+		if ( (par->debug & DEBUG_TIME_EACH_UPDATE) || \
+			 ((par->debug & DEBUG_TIME_FIRST_UPDATE) && !par->first_update_done) )
 		{
 			getnstimeofday(&ts_start);
 			timeit = true;
@@ -383,9 +381,6 @@ void fbtft_deferred_io(struct fb_info *info, struct list_head *pagelist)
 	unsigned long index;
 	unsigned y_low=0, y_high=0;
 	int count = 0;
-
-	/* debug can be changed via sysfs */
-	fbtft_debug_sync_value(par);
 
 	/* Mark display lines as dirty */
 	list_for_each_entry(page, pagelist, lru) {
@@ -621,7 +616,12 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 			init_sequence = pdata->display.init_sequence;
 		if (pdata->gamma)
 			gamma = pdata->gamma;
+		if (pdata->display.debug)
+			display->debug = pdata->display.debug;
 	}
+
+	display->debug |= debug;
+	fbtft_expand_debug_value(&display->debug);
 
 	switch (rotate) {
 	case 1:
@@ -710,6 +710,7 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 	par = info->par;
 	par->info = info;
 	par->pdata = dev->platform_data;
+	par->debug = display->debug;
 	par->buf = buf;
 	// Set display line markers as dirty for all. Ensures first update to update all of the display.
 	par->dirty_lines_start = 0;
@@ -829,8 +830,6 @@ int fbtft_register_framebuffer(struct fb_info *fb_info)
 		dev_err(fb_info->device, "missing fbtftops.init_display()\n");
 		return -EINVAL;
 	}
-	if (!par->debug)
-		par->debug = &dummy_debug;
 
 	if (spi)
 		spi_set_drvdata(spi, fb_info);
@@ -1125,11 +1124,6 @@ int fbtft_probe_common(struct fbtft_display *display,
 	else
 		par->pdev = pdev;
 
-	if (!par->debug) {
-		par->debug = &dummy_debug;
-		*par->debug = display->debug;
-	}
-
 	/* write register functions */
 	if (display->regwidth == 8 && display->buswidth == 8) {
 		par->fbtftops.write_reg = fbtft_write_reg8_bus8;
@@ -1219,7 +1213,7 @@ int fbtft_remove_common(struct device *dev, struct fb_info *info)
 {
 	struct fbtft_par *par = info->par;
 
-	if (par && (*par->debug & DEBUG_DRIVER_INIT_FUNCTIONS))
+	if (par && (par->debug & DEBUG_DRIVER_INIT_FUNCTIONS))
 		dev_info(dev, "%s()\n", __func__);
 
 	if (info) {

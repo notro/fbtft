@@ -20,6 +20,8 @@
 #define __LINUX_FBTFT_H
 
 #include <linux/fb.h>
+#include <linux/spi/spi.h>
+#include <linux/platform_device.h>
 
 
 #define FBTFT_NOP		0x00
@@ -278,6 +280,70 @@ extern void fbtft_write_data_command8_bus8(struct fbtft_par *par, unsigned dc, u
 extern void fbtft_write_data_command8_bus9(struct fbtft_par *par, unsigned dc, u32 val);
 extern void fbtft_write_data_command16_bus16(struct fbtft_par *par, unsigned dc, u32 val);
 extern void fbtft_write_data_command16_bus8(struct fbtft_par *par, unsigned dc, u32 val);
+
+
+#define FBTFT_REGISTER_DRIVER(_name, _display)                             \
+                                                                           \
+static int fbtft_driver_probe_spi(struct spi_device *spi)                  \
+{                                                                          \
+	return fbtft_probe_common(_display, spi, NULL);                    \
+}                                                                          \
+                                                                           \
+static int fbtft_driver_remove_spi(struct spi_device *spi)                 \
+{                                                                          \
+	struct fb_info *info = spi_get_drvdata(spi);                       \
+                                                                           \
+	return fbtft_remove_common(&spi->dev, info);                       \
+}                                                                          \
+                                                                           \
+static int fbtft_driver_probe_pdev(struct platform_device *pdev)           \
+{                                                                          \
+	return fbtft_probe_common(_display, NULL, pdev);                   \
+}                                                                          \
+                                                                           \
+static int fbtft_driver_remove_pdev(struct platform_device *pdev)          \
+{                                                                          \
+	struct fb_info *info = platform_get_drvdata(pdev);                 \
+                                                                           \
+	return fbtft_remove_common(&pdev->dev, info);                      \
+}                                                                          \
+                                                                           \
+static struct spi_driver fbtft_driver_spi_driver = {                       \
+	.driver = {                                                        \
+		.name   = _name,                                           \
+		.owner  = THIS_MODULE,                                     \
+	},                                                                 \
+	.probe  = fbtft_driver_probe_spi,                                  \
+	.remove = fbtft_driver_remove_spi,                                 \
+};                                                                         \
+                                                                           \
+static struct platform_driver fbtft_driver_platform_driver = {             \
+	.driver = {                                                        \
+		.name   = _name,                                           \
+		.owner  = THIS_MODULE,                                     \
+	},                                                                 \
+	.probe  = fbtft_driver_probe_pdev,                                 \
+	.remove = fbtft_driver_remove_pdev,                                \
+};                                                                         \
+                                                                           \
+static int __init fbtft_driver_module_init(void)                           \
+{                                                                          \
+	int ret;                                                           \
+                                                                           \
+	ret = spi_register_driver(&fbtft_driver_spi_driver);               \
+	if (ret < 0)                                                       \
+		return ret;                                                \
+	return platform_driver_register(&fbtft_driver_platform_driver);    \
+}                                                                          \
+                                                                           \
+static void __exit fbtft_driver_module_exit(void)                          \
+{                                                                          \
+	spi_unregister_driver(&fbtft_driver_spi_driver);                   \
+	platform_driver_unregister(&fbtft_driver_platform_driver);         \
+}                                                                          \
+                                                                           \
+module_init(fbtft_driver_module_init);                                     \
+module_exit(fbtft_driver_module_exit);
 
 
 /* Debug macros */

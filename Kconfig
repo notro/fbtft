@@ -8,6 +8,12 @@ menuconfig FB_TFT
 	select FB_DEFERRED_IO
 	select FB_BACKLIGHT
 
+config FB_TFT_ST7735R
+	tristate "FB driver for the ST7735R LCD Controller"
+	depends on FB_TFT
+	help
+	  Generic Framebuffer support for ST7735R
+
 config FB_FLEX
 	tristate "Generic FB driver for TFT LCD displays"
 	depends on FB_TFT

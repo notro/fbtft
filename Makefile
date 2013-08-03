@@ -3,6 +3,7 @@ obj-$(CONFIG_FB_TFT)             += fbtft.o
 fbtft-y                          += fbtft-core.o fbtft-sysfs.o fbtft-bus.o fbtft-io.o
 
 # drivers
+obj-$(CONFIG_FB_TFT_PCD8544)     += fb_pcd8544.o
 obj-$(CONFIG_FB_TFT_ST7735R)     += fb_st7735r.o
 obj-$(CONFIG_FB_FLEX)            += flexfb.o
 obj-$(CONFIG_FB_ADAFRUIT22)      += adafruit22fb.o

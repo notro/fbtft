@@ -640,6 +640,8 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 			gamma = pdata->gamma;
 		if (pdata->display.debug)
 			display->debug = pdata->display.debug;
+		if (pdata->display.backlight)
+			display->backlight = pdata->display.backlight;
 	}
 
 	display->debug |= debug;
@@ -778,6 +780,8 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display, struct de
 	par->fbtftops.update_display = fbtft_update_display;
 	par->fbtftops.request_gpios = fbtft_request_gpios;
 	par->fbtftops.free_gpios = fbtft_free_gpios;
+	if (display->backlight)
+		par->fbtftops.register_backlight = fbtft_register_backlight;
 
 	/* use driver provided functions */
 	fbtft_merge_fbtftops(&par->fbtftops, &display->fbtftops);

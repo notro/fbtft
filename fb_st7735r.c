@@ -169,7 +169,7 @@ static int set_gamma(struct fbtft_par *par, unsigned long *curves)
 #undef CURVE
 
 
-struct fbtft_display display = {
+static struct fbtft_display display = {
 	.regwidth = 8,
 	.width = 128,
 	.height = 160,
@@ -182,7 +182,6 @@ struct fbtft_display display = {
 		.set_var = set_var,
 		.set_gamma = set_gamma,
 	},
-	.backlight = 1,
 };
 FBTFT_REGISTER_DRIVER(DRVNAME, &display);
 

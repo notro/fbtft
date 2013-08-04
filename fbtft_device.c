@@ -77,10 +77,10 @@ static int txbuflen;
 module_param(txbuflen, int, 0);
 MODULE_PARM_DESC(txbuflen, "txbuflen (override driver default)");
 
-static bool bgr;
-module_param(bgr, bool, 0);
+static int bgr = -1;
+module_param(bgr, int, 0);
 MODULE_PARM_DESC(bgr,
-"Use if Red and Blue color is swapped (supported by some drivers).");
+"BGR bit (supported by some drivers).");
 
 static unsigned startbyte;
 module_param(startbyte, uint, 0);
@@ -632,7 +632,10 @@ static int __init fbtft_device_init(void)
 			}
 
 			pdata->rotate = rotate;
-			pdata->bgr = bgr;
+			if (bgr == 0)
+				pdata->bgr = false;
+			else if (bgr == 1)
+				pdata->bgr = true;
 			pdata->startbyte = startbyte;
 			pdata->gamma = gamma;
 			pdata->display.debug = debug;

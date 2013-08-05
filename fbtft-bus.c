@@ -72,6 +72,49 @@ define_fbtft_write_reg(fbtft_write_reg8_bus8, u8, )
 define_fbtft_write_reg(fbtft_write_reg16_bus8, u16, cpu_to_be16)
 define_fbtft_write_reg(fbtft_write_reg16_bus16, u16, )
 
+void fbtft_write_reg8_bus9(struct fbtft_par *par, int len, ...)
+{
+	va_list args;
+	int i, ret;
+	int pad = 0;
+	u16 *buf = (u16 *)par->buf;
+
+	if (unlikely(par->debug & DEBUG_WRITE_DATA_COMMAND)) {
+		va_start(args, len);
+		for (i = 0; i < len; i++)
+			*(((u8 *)buf) + i) = (u8)va_arg(args, unsigned int);
+		va_end(args);
+		fbtft_par_dbg_hex(DEBUG_WRITE_DATA_COMMAND, par,
+			par->info->device, u8, buf, len, "%s: ", __func__);
+	}
+	if (len <= 0)
+		return;
+
+	if (par->spi && (par->spi->bits_per_word == 8)) {
+		/* we're emulating 9-bit, pad start of buffer with no-ops
+		   (assuming here that zero is a no-op) */
+		pad = (len % 4) ? 4 - (len % 4) : 0;
+		for (i = 0; i < pad; i++)
+			*buf++ = 0x000;
+	}
+
+	va_start(args, len);
+	*buf++ = (u8)va_arg(args, unsigned int);
+	i = len - 1;
+	while (i--) {
+		*buf = (u8)va_arg(args, unsigned int);
+		*buf++ |= 0x100; /* dc=1 */
+	}
+	va_end(args);
+	ret = par->fbtftops.write(par, par->buf, (len + pad) * sizeof(u16));
+	if (ret < 0) {
+		dev_err(par->info->device,
+			"%s: write() failed and returned %d\n", __func__, ret);
+		return;
+	}
+}
+EXPORT_SYMBOL(fbtft_write_reg8_bus9);
+
 
 
 

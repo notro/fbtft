@@ -263,6 +263,7 @@ extern int fbtft_remove_common(struct device *dev, struct fb_info *info);
 
 /* fbtft-io.c */
 extern int fbtft_write_spi(struct fbtft_par *par, void *buf, size_t len);
+extern int fbtft_write_spi_emulate_9(struct fbtft_par *par, void *buf, size_t len);
 extern int fbtft_read_spi(struct fbtft_par *par, void *buf, size_t len);
 extern int fbtft_write_gpio8_wr(struct fbtft_par *par, void *buf, size_t len);
 extern int fbtft_write_gpio16_wr(struct fbtft_par *par, void *buf, size_t len);
@@ -274,6 +275,7 @@ extern int fbtft_write_vmem16_bus16(struct fbtft_par *par);
 extern int fbtft_write_vmem16_bus8(struct fbtft_par *par);
 extern int fbtft_write_vmem16_bus9(struct fbtft_par *par);
 extern void fbtft_write_reg8_bus8(struct fbtft_par *par, int len, ...);
+extern void fbtft_write_reg8_bus9(struct fbtft_par *par, int len, ...);
 extern void fbtft_write_reg16_bus8(struct fbtft_par *par, int len, ...);
 extern void fbtft_write_reg16_bus16(struct fbtft_par *par, int len, ...);
 extern void fbtft_write_data_command8_bus8(struct fbtft_par *par, unsigned dc, u32 val);

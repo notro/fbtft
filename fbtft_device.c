@@ -233,6 +233,26 @@ static struct fbtft_device_display displays[] = {
 			}
 		}
 	}, {
+		.name = "hy28a",
+		.spi = &(struct spi_board_info) {
+			.modalias = "fb_ili9320",
+			.max_speed_hz = 32000000,
+			.mode = SPI_MODE_3,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 8,
+					.backlight = 1,
+				},
+				.startbyte = 0b01110000,
+				.bgr = true,
+				.gpios = (const struct fbtft_gpio []) {
+					{ "reset", 25 },
+					{ "led", 18 },
+					{},
+				},
+			}
+		}
+	}, {
 		.name = "hy28afb",
 		.spi = &(struct spi_board_info) {
 			.modalias = "hy28afb",

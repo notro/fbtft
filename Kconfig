@@ -14,6 +14,12 @@ config FB_TFT_HX8340BN
 	help
 	  Generic Framebuffer support for HX8340BN
 
+config FB_TFT_ILI9320
+	tristate "FB driver for the ILI9320 LCD Controller"
+	depends on FB_TFT
+	help
+	  Generic Framebuffer support for ILI9320
+
 config FB_TFT_ILI9325
 	tristate "FB driver for the ILI9325 LCD Controller"
 	depends on FB_TFT

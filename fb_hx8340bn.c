@@ -202,7 +202,7 @@ static int set_gamma(struct fbtft_par *par, unsigned long *curves)
 #undef CURVE
 
 
-static struct fbtft_display hx8340bn_display = {
+static struct fbtft_display display = {
 	.regwidth = 8,
 	.width = WIDTH,
 	.height = HEIGHT,
@@ -217,108 +217,10 @@ static struct fbtft_display hx8340bn_display = {
 		.set_gamma = set_gamma,
 	},
 };
-
-static int hx8340bn_probe(struct spi_device *spi)
-{
-	struct fb_info *info;
-	struct fbtft_par *par;
-	struct fbtft_platform_data *pdata = spi->dev.platform_data;
-	int ret;
-
-	fbtft_init_dbg(&spi->dev, "%s()\n", __func__);
-
-	info = fbtft_framebuffer_alloc(&hx8340bn_display, &spi->dev);
-	if (!info)
-		return -ENOMEM;
-
-	par = info->par;
-	par->spi = spi;
-
-	if (pdata && pdata->display.backlight)
-		par->fbtftops.register_backlight = fbtft_register_backlight;
-
-	if (pdata && pdata->display.buswidth == 9) {
-		par->fbtftops.write_reg = fbtft_write_reg8_bus9;
-		par->fbtftops.write_vmem = fbtft_write_vmem16_bus9;
-		if (!emulate) {
-			spi->bits_per_word = 9;
-			ret = spi->master->setup(spi);
-			if (ret) {
-				dev_warn(&spi->dev,
-					"9-bit SPI not available, emulating using 8-bit.\n");
-				emulate = true;
-				spi->bits_per_word = 8;
-				ret = spi->master->setup(spi);
-				if (ret)
-					goto fbreg_fail;
-			}
-		}
-		if (emulate) {
-			/* allocate buffer with room for dc bits */
-			par->extra = vzalloc(par->txbuf.len + (par->txbuf.len / 8) + 8);
-			if (!par->extra) {
-				ret = -ENOMEM;
-				goto fbreg_fail;
-			}
-			par->fbtftops.write = fbtft_write_spi_emulate_9;
-		}
-	}
-
-	ret = fbtft_register_framebuffer(info);
-	if (ret < 0)
-		goto fbreg_fail;
-
-	return 0;
-
-fbreg_fail:
-	if (par->extra)
-		vfree(par->extra);
-	fbtft_framebuffer_release(info);
-
-	return ret;
-}
-
-static int hx8340bn_remove(struct spi_device *spi)
-{
-	struct fb_info *info = spi_get_drvdata(spi);
-	struct fbtft_par *par;
-
-	fbtft_init_dbg(&spi->dev, "%s()\n", __func__);
-
-	if (info) {
-		fbtft_unregister_framebuffer(info);
-		par = info->par;
-		if (par->extra)
-			vfree(par->extra);
-		fbtft_framebuffer_release(info);
-	}
-
-	return 0;
-}
-
-static struct spi_driver hx8340bn_driver = {
-	.driver = {
-		.name   = DRVNAME,
-		.owner  = THIS_MODULE,
-	},
-	.probe  = hx8340bn_probe,
-	.remove = hx8340bn_remove,
-};
-
-static int __init hx8340bn_init(void)
-{
-	return spi_register_driver(&hx8340bn_driver);
-}
-
-static void __exit hx8340bn_exit(void)
-{
-	spi_unregister_driver(&hx8340bn_driver);
-}
-
-module_init(hx8340bn_init);
-module_exit(hx8340bn_exit);
+FBTFT_REGISTER_DRIVER(DRVNAME, &display);
 
 MODULE_ALIAS("spi:" DRVNAME);
+MODULE_ALIAS("platform:" DRVNAME);
 
 MODULE_DESCRIPTION("FB driver for the HX8340BN LCD Controller");
 MODULE_AUTHOR("Noralf Tronnes");

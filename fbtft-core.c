@@ -1073,7 +1073,7 @@ int fbtft_verify_gpios(struct fbtft_par *par)
 		return 0;
 	}
 
-	if (pdata->display.buswidth != 9 && par->gpio.dc < 0) {
+	if (pdata->display.buswidth != 9 && par->startbyte == 0 && par->gpio.dc < 0) {
 		dev_err(par->info->device,
 			"Missing info about 'dc' gpio. Aborting.\n");
 		return -EINVAL;

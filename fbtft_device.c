@@ -712,8 +712,10 @@ static int __init fbtft_device_init(void)
 				pdata->bgr = false;
 			else if (bgr == 1)
 				pdata->bgr = true;
-			pdata->startbyte = startbyte;
-			pdata->gamma = gamma;
+			if (startbyte)
+				pdata->startbyte = startbyte;
+			if (gamma)
+				pdata->gamma = gamma;
 			pdata->display.debug = debug;
 			if (fps)
 				pdata->fps = fps;

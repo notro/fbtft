@@ -1153,6 +1153,7 @@ int fbtft_probe_common(struct fbtft_display *display,
 			fbtft_write_data_command8_bus8;
 	} else
 	if (display->regwidth == 8 && display->buswidth == 9 && par->spi) {
+		par->fbtftops.write_reg = fbtft_write_reg8_bus9;
 		par->fbtftops.write_data_command = \
 			fbtft_write_data_command8_bus9;
 	} else if (display->regwidth == 16 && display->buswidth == 8) {
@@ -1188,10 +1189,22 @@ int fbtft_probe_common(struct fbtft_display *display,
 	/* 9-bit SPI setup */
 	if (par->spi && display->buswidth == 9) {
 		par->spi->bits_per_word = 9;
-		ret = sdev->master->setup(par->spi);
+		ret = par->spi->master->setup(par->spi);
 		if (ret) {
-			dev_err(dev, "9-bit SPI setup failed: %d.\n", ret);
-			return ret;
+			dev_warn(&par->spi->dev,
+				"9-bit SPI not available, emulating using 8-bit.\n");
+			par->spi->bits_per_word = 8;
+			ret = par->spi->master->setup(par->spi);
+			if (ret)
+				goto out_release;
+			/* allocate buffer with room for dc bits */
+			par->extra = vzalloc(par->txbuf.len
+						+ (par->txbuf.len / 8) + 8);
+			if (!par->extra) {
+				ret = -ENOMEM;
+				goto out_release;
+			}
+			par->fbtftops.write = fbtft_write_spi_emulate_9;
 		}
 	}
 
@@ -1233,15 +1246,19 @@ EXPORT_SYMBOL(fbtft_probe_common);
  */
 int fbtft_remove_common(struct device *dev, struct fb_info *info)
 {
-	struct fbtft_par *par = info->par;
+	struct fbtft_par *par;
 
-	if (par && (par->debug & DEBUG_DRIVER_INIT_FUNCTIONS))
-		dev_info(dev, "%s()\n", __func__);
-
-	if (info) {
-		fbtft_unregister_framebuffer(info);
-		fbtft_framebuffer_release(info);
+	if (!info)
+		return -EINVAL;
+	par = info->par;
+	if (par) {
+		fbtft_par_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, par,
+			"%s()\n", __func__);
+		if (par->extra)
+			vfree(par->extra);
 	}
+	fbtft_unregister_framebuffer(info);
+	fbtft_framebuffer_release(info);
 
 	return 0;
 }

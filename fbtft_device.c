@@ -412,6 +412,32 @@ static struct fbtft_device_display displays[] = {
 			}
 		}
 	}, {
+		.name = "pioled",
+		.spi = &(struct spi_board_info) {
+			.modalias = "fb_ssd1351",
+			.max_speed_hz = 20000000,
+			.mode = SPI_MODE_0,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 8,
+				},
+				.bgr = true,
+				.gpios = (const struct fbtft_gpio []) {
+					{ "reset", 24 },
+					{ "dc", 25 },
+					{},
+				},
+				.gamma =	"0 2 2 2 2 2 2 2 " \
+						"2 2 2 2 2 2 2 2 " \
+						"2 2 2 2 2 2 2 2 " \
+						"2 2 2 2 2 2 2 3 " \
+						"3 3 3 3 3 3 3 3 " \
+						"3 3 3 3 3 3 3 3 " \
+						"3 3 3 4 4 4 4 4 " \
+						"4 4 4 4 4 4 4"
+			}
+		}
+	}, {
 		.name = "r61505ufb",
 		.spi = &(struct spi_board_info) {
 			.modalias = "r61505ufb",

@@ -20,6 +20,7 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
+#include <linux/gpio.h>
 #include <linux/spi/spi.h>
 
 #include "fbtft.h"
@@ -125,6 +126,8 @@ struct fbtft_device_display {
 };
 
 static void fbtft_device_pdev_release(struct device *dev);
+
+static int write_gpio16_wr_slow(struct fbtft_par *par, void *buf, size_t len);
 
 /* Supported displays in alphabetical order */
 static struct fbtft_device_display displays[] = {
@@ -484,6 +487,88 @@ static struct fbtft_device_display displays[] = {
 			}
 		}
 	}, {
+		.name = "sainsmart32",
+		.pdev = &(struct platform_device) {
+			.name = "fb_ssd1289",
+			.id = 0,
+			.dev = {
+			.release = fbtft_device_pdev_release,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 16,
+					.txbuflen = -2, /* disable buffer */
+					.backlight = 1,
+					.fbtftops.write = write_gpio16_wr_slow,
+				},
+				.bgr = true,
+				.gpios = (const struct fbtft_gpio []) {
+					{},
+				},
+			},
+		},
+		}
+	}, {
+		.name = "sainsmart32_fast",
+		.pdev = &(struct platform_device) {
+			.name = "fb_ssd1289",
+			.id = 0,
+			.dev = {
+			.release = fbtft_device_pdev_release,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 16,
+					.txbuflen = -2, /* disable buffer */
+					.backlight = 1,
+				},
+				.bgr = true,
+				.gpios = (const struct fbtft_gpio []) {
+					{},
+				},
+			},
+		},
+		}
+	}, {
+		.name = "sainsmart32_latched",
+		.pdev = &(struct platform_device) {
+			.name = "fb_ssd1289",
+			.id = 0,
+			.dev = {
+			.release = fbtft_device_pdev_release,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 16,
+					.txbuflen = -2, /* disable buffer */
+					.backlight = 1,
+					.fbtftops.write = \
+						fbtft_write_gpio16_wr_latched,
+				},
+				.bgr = true,
+				.gpios = (const struct fbtft_gpio []) {
+					{},
+				},
+			},
+		},
+		}
+	}, {
+		.name = "sainsmart32_spi",
+		.spi = &(struct spi_board_info) {
+			.modalias = "fb_ssd1289",
+			.max_speed_hz = 16000000,
+			.mode = SPI_MODE_0,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 8,
+					.backlight = 1,
+				},
+				.bgr = true,
+				.gpios = (const struct fbtft_gpio []) {
+					{ "reset", 25 },
+					{ "dc", 24 },
+					{},
+				},
+			}
+		}
+	}, {
 		.name = "sainsmart32spifb",
 		.spi = &(struct spi_board_info) {
 			.modalias = "sainsmart32spifb",
@@ -567,6 +652,54 @@ static struct fbtft_device_display displays[] = {
 		},
 	}
 };
+
+static int write_gpio16_wr_slow(struct fbtft_par *par, void *buf, size_t len)
+{
+	u16 data;
+	int i;
+#ifndef DO_NOT_OPTIMIZE_FBTFT_WRITE_GPIO
+	static u16 prev_data = 0;
+#endif
+
+	fbtft_par_dbg(DEBUG_WRITE, par, "%s(len=%d)\n", __func__, len);
+
+	while (len) {
+		data = *(u16 *) buf;
+
+		/* Start writing by pulling down /WR */
+		gpio_set_value(par->gpio.wr, 0);
+
+		/* Set data */
+#ifndef DO_NOT_OPTIMIZE_FBTFT_WRITE_GPIO
+		if (data == prev_data) {
+			gpio_set_value(par->gpio.wr, 0); /* used as delay */
+		} else {
+			for (i=0;i<16;i++) {
+				if ((data & 1) != (prev_data & 1))
+					gpio_set_value(par->gpio.db[i], (data & 1));
+				data >>= 1;
+				prev_data >>= 1;
+			}
+		}
+#else
+		for (i=0;i<16;i++) {
+			gpio_set_value(par->gpio.db[i], (data & 1));
+			data >>= 1;
+		}
+#endif
+
+		/* Pullup /WR */
+		gpio_set_value(par->gpio.wr, 1);
+
+#ifndef DO_NOT_OPTIMIZE_FBTFT_WRITE_GPIO
+		prev_data = *(u16 *) buf;
+#endif
+		buf += 2;
+		len -= 2;
+	}
+
+	return 0;
+}
 
 /* used if gpios parameter is present */
 static struct fbtft_gpio fbtft_device_param_gpios[MAX_GPIOS+1] = { };

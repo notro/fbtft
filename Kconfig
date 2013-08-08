@@ -38,6 +38,12 @@ config FB_TFT_PCD8544
 	help
 	  Generic Framebuffer support for PCD8544
 
+config FB_TFT_SSD1289
+	tristate "FB driver for the SSD1289 LCD Controller"
+	depends on FB_TFT
+	help
+	  Framebuffer support for SSD1289
+
 config FB_TFT_SSD1351
 	tristate "FB driver for the SSD1351 LCD Controller"
 	depends on FB_TFT

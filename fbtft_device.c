@@ -900,14 +900,14 @@ static int __init fbtft_device_init(void)
 				pdata->fps = fps;
 			if (txbuflen)
 				pdata->txbuflen = txbuflen;
+			if (init_num)
+				pdata->display.init_sequence = init;
 			if (gpio)
 				pdata->gpios = gpio;
 			if (custom) {
 				pdata->display.width = width;
 				pdata->display.height = height;
 				pdata->display.buswidth = buswidth;
-				if (init_num)
-					pdata->display.init_sequence = init;
 			}
 
 			if (displays[i].spi) {

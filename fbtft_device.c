@@ -433,6 +433,27 @@ static struct fbtft_device_display displays[] = {
 			}
 		}
 	}, {
+		.name = "mi0283qt-2",
+		.spi = &(struct spi_board_info) {
+			.modalias = "fb_hx8347d",
+			.max_speed_hz = 32000000,
+			.mode = SPI_MODE_0,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 8,
+					.backlight = 1,
+				},
+				.startbyte = 0b01110000,
+				.bgr = true,
+				.gpios = (const struct fbtft_gpio []) {
+					{ "reset", 25 },
+					{ "dc", 24 },
+					{ "led", 18 },
+					{},
+				},
+			}
+		}
+	}, {
 		.name = "mi0283qt-9a",
 		.spi = &(struct spi_board_info) {
 			.modalias = "fb_ili9341",

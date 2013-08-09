@@ -128,10 +128,80 @@ struct fbtft_device_display {
 static void fbtft_device_pdev_release(struct device *dev);
 
 static int write_gpio16_wr_slow(struct fbtft_par *par, void *buf, size_t len);
+static void adafruit18_green_tab_set_addr_win(struct fbtft_par *par,
+	int xs, int ys, int xe, int ye);
+
+#define ADAFRUIT18_GAMMA \
+		"02 1c 07 12 37 32 29 2d 29 25 2B 39 00 01 03 10\n" \
+		"03 1d 07 06 2E 2C 29 2D 2E 2E 37 3F 00 00 02 10"
 
 /* Supported displays in alphabetical order */
 static struct fbtft_device_display displays[] = {
 	{
+		.name = "adafruit18_black",
+		.spi = &(struct spi_board_info) {
+			.modalias = "fb_st7735r",
+			.max_speed_hz = 32000000,
+			.mode = SPI_MODE_0,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 8,
+					.backlight = 1,
+				},
+				.gpios = (const struct fbtft_gpio []) {
+					{ "reset", 25 },
+					{ "dc", 24 },
+					{ "led", 18 },
+					{},
+				},
+				.gamma = ADAFRUIT18_GAMMA,
+			}
+		}
+	}, {
+		.name = "adafruit18_red",
+		.spi = &(struct spi_board_info) {
+			.modalias = "fb_st7735r",
+			.max_speed_hz = 4000000,
+			.mode = SPI_MODE_0,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 8,
+					.backlight = 1,
+				},
+				.bgr = true,
+				.gpios = (const struct fbtft_gpio []) {
+					{ "reset", 25 },
+					{ "dc", 24 },
+					{ "led", 18 },
+					{},
+				},
+				.gamma = ADAFRUIT18_GAMMA,
+			}
+		}
+	}, {
+		.name = "adafruit18_green",
+		.spi = &(struct spi_board_info) {
+			.modalias = "fb_st7735r",
+			.max_speed_hz = 4000000,
+			.mode = SPI_MODE_0,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 8,
+					.backlight = 1,
+					.fbtftops.set_addr_win = \
+					    adafruit18_green_tab_set_addr_win,
+				},
+				.bgr = true,
+				.gpios = (const struct fbtft_gpio []) {
+					{ "reset", 25 },
+					{ "dc", 24 },
+					{ "led", 18 },
+					{},
+				},
+				.gamma = ADAFRUIT18_GAMMA,
+			}
+		}
+	}, {
 		.name = "adafruit18fb",
 		.spi = &(struct spi_board_info) {
 			.modalias = "adafruit18fb",
@@ -699,6 +769,16 @@ static int write_gpio16_wr_slow(struct fbtft_par *par, void *buf, size_t len)
 	}
 
 	return 0;
+}
+
+static void adafruit18_green_tab_set_addr_win(struct fbtft_par *par,
+						int xs, int ys, int xe, int ye)
+{
+	fbtft_par_dbg(DEBUG_SET_ADDR_WIN, par,
+		"%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
+	write_reg(par, 0x2A, 0, xs + 2, 0, xe + 2);
+	write_reg(par, 0x2B, 0, ys + 1, 0, ye + 1);
+	write_reg(par, 0x2C);
 }
 
 /* used if gpios parameter is present */

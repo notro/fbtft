@@ -983,6 +983,7 @@ EXPORT_SYMBOL(fbtft_unregister_framebuffer);
  */
 int fbtft_init_display(struct fbtft_par *par)
 {
+	int buf[64];
 	char msg[128];
 	char str[16];
 	int i = 0;
@@ -1042,13 +1043,35 @@ int fbtft_init_display(struct fbtft_par *par)
 			fbtft_par_dbg(DEBUG_INIT_DISPLAY, par,
 				"init: write(0x%02X) %s\n",
 				par->init_sequence[i], msg);
+
 			/* Write */
-			par->fbtftops.write_data_command(par, 0,
-				par->init_sequence[i++]);
+			j = 0;
 			while (par->init_sequence[i] >= 0) {
-				par->fbtftops.write_data_command(par, 1,
-					par->init_sequence[i++]);
+				if (j > 63) {
+					dev_err(par->info->device,
+					"%s: Maximum register values exceeded\n",
+					__func__);
+					return -EINVAL;
+				}
+				buf[j++] = par->init_sequence[i++];
 			}
+			par->fbtftops.write_register(par, j,
+				buf[0], buf[1], buf[2], buf[3],
+				buf[4], buf[5], buf[6], buf[7],
+				buf[8], buf[9], buf[10], buf[11],
+				buf[12], buf[13], buf[14], buf[15],
+				buf[16], buf[17], buf[18], buf[19],
+				buf[20], buf[21], buf[22], buf[23],
+				buf[24], buf[25], buf[26], buf[27],
+				buf[28], buf[29], buf[30], buf[31],
+				buf[32], buf[33], buf[34], buf[35],
+				buf[36], buf[37], buf[38], buf[39],
+				buf[40], buf[41], buf[42], buf[43],
+				buf[44], buf[45], buf[46], buf[47],
+				buf[48], buf[49], buf[50], buf[51],
+				buf[52], buf[53], buf[54], buf[55],
+				buf[56], buf[57], buf[58], buf[59],
+				buf[60], buf[61], buf[62], buf[63]);
 			break;
 		case -2:
 			i++;

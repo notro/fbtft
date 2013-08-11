@@ -105,13 +105,14 @@ module_param(buswidth, uint, 0);
 MODULE_PARM_DESC(buswidth, "Display bus width, used with the custom argument");
 
 static int init[FBTFT_MAX_INIT_SEQUENCE];
-static int init_num = 0;
+static int init_num;
 module_param_array(init, int, &init_num, 0);
 MODULE_PARM_DESC(init, "Init sequence, used with the custom argument");
 
-static unsigned long debug = 0;
+static unsigned long debug;
 module_param(debug, ulong , 0);
-MODULE_PARM_DESC(debug,"level: 0-7 (the remaining 29 bits is for advanced usage)");
+MODULE_PARM_DESC(debug,
+"level: 0-7 (the remaining 29 bits is for advanced usage)");
 
 static unsigned verbose = 3;
 module_param(verbose, uint, 0);
@@ -749,7 +750,7 @@ static int write_gpio16_wr_slow(struct fbtft_par *par, void *buf, size_t len)
 	u16 data;
 	int i;
 #ifndef DO_NOT_OPTIMIZE_FBTFT_WRITE_GPIO
-	static u16 prev_data = 0;
+	static u16 prev_data;
 #endif
 
 	fbtft_par_dbg(DEBUG_WRITE, par, "%s(len=%d)\n", __func__, len);
@@ -765,15 +766,16 @@ static int write_gpio16_wr_slow(struct fbtft_par *par, void *buf, size_t len)
 		if (data == prev_data) {
 			gpio_set_value(par->gpio.wr, 0); /* used as delay */
 		} else {
-			for (i=0;i<16;i++) {
+			for (i = 0; i < 16; i++) {
 				if ((data & 1) != (prev_data & 1))
-					gpio_set_value(par->gpio.db[i], (data & 1));
+					gpio_set_value(par->gpio.db[i],
+								(data & 1));
 				data >>= 1;
 				prev_data >>= 1;
 			}
 		}
 #else
-		for (i=0;i<16;i++) {
+		for (i = 0; i < 16; i++) {
 			gpio_set_value(par->gpio.db[i], (data & 1));
 			data >>= 1;
 		}

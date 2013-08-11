@@ -21,11 +21,12 @@ static int get_next_ulong(char **str_p, unsigned long *val, char *sep, int base)
 	return 0;
 }
 
-int fbtft_gamma_parse_str(struct fbtft_par *par, unsigned long *curves, const char *str, int size)
+int fbtft_gamma_parse_str(struct fbtft_par *par, unsigned long *curves,
+						const char *str, int size)
 {
-	char *str_p, *curve_p=NULL;
+	char *str_p, *curve_p = NULL;
 	char *tmp;
-	unsigned long val=0;
+	unsigned long val = 0;
 	int ret = 0;
 	int curve_counter, value_counter;
 
@@ -34,8 +35,7 @@ int fbtft_gamma_parse_str(struct fbtft_par *par, unsigned long *curves, const ch
 	if (!str || !curves)
 		return -EINVAL;
 
-	if (par->debug & DEBUG_SYSFS)
-		printk("%s\n", str);
+	fbtft_par_dbg(DEBUG_SYSFS, par, "%s\n", str);
 
 	tmp = kmalloc(size+1, GFP_KERNEL);
 	if (!tmp)
@@ -57,7 +57,7 @@ int fbtft_gamma_parse_str(struct fbtft_par *par, unsigned long *curves, const ch
 	curve_counter = 0;
 	while (str_p) {
 		if (curve_counter == par->gamma.num_curves) {
-			printk("Gamma: Too many curves\n");
+			dev_err(par->info->device, "Gamma: Too many curves\n");
 			ret = -EINVAL;
 			goto out;
 		}
@@ -65,26 +65,26 @@ int fbtft_gamma_parse_str(struct fbtft_par *par, unsigned long *curves, const ch
 		value_counter = 0;
 		while (curve_p) {
 			if (value_counter == par->gamma.num_values) {
-				printk("Gamma: Too many values\n");
+				dev_err(par->info->device,
+					"Gamma: Too many values\n");
 				ret = -EINVAL;
 				goto out;
 			}
 			ret = get_next_ulong(&curve_p, &val, " ", 16);
-			if (ret) {
+			if (ret)
 				goto out;
-			}
 			curves[curve_counter * par->gamma.num_values + value_counter] = val;
 			value_counter++;
 		}
 		if (value_counter != par->gamma.num_values) {
-			printk("Gamma: Too few values\n");
+			dev_err(par->info->device, "Gamma: Too few values\n");
 			ret = -EINVAL;
 			goto out;
 		}
 		curve_counter++;
 	}
 	if (curve_counter != par->gamma.num_curves) {
-		printk("Gamma: Too few curves\n");
+		dev_err(par->info->device, "Gamma: Too few curves\n");
 		ret = -EINVAL;
 		goto out;
 	}
@@ -94,7 +94,8 @@ out:
 	return ret;
 }
 
-static ssize_t sprintf_gamma(struct fbtft_par *par, unsigned long *curves, char *buf)
+static ssize_t
+sprintf_gamma(struct fbtft_par *par, unsigned long *curves, char *buf)
 {
 	ssize_t len = 0;
 	unsigned int i, j;
@@ -112,8 +113,8 @@ static ssize_t sprintf_gamma(struct fbtft_par *par, unsigned long *curves, char 
 }
 
 static ssize_t store_gamma_curve(struct device *device,
-                                 struct device_attribute *attr,
-                                 const char *buf, size_t count)
+					struct device_attribute *attr,
+					const char *buf, size_t count)
 {
 	struct fb_info *fb_info = dev_get_drvdata(device);
 	struct fbtft_par *par = fb_info->par;
@@ -137,7 +138,7 @@ static ssize_t store_gamma_curve(struct device *device,
 }
 
 static ssize_t show_gamma_curve(struct device *device,
-                                struct device_attribute *attr, char *buf)
+				struct device_attribute *attr, char *buf)
 {
 	struct fb_info *fb_info = dev_get_drvdata(device);
 	struct fbtft_par *par = fb_info->par;
@@ -146,25 +147,40 @@ static ssize_t show_gamma_curve(struct device *device,
 }
 
 static struct device_attribute gamma_device_attrs[] = {
-        __ATTR(gamma, S_IRUGO | S_IWUGO, show_gamma_curve, store_gamma_curve),
+	__ATTR(gamma, S_IRUGO | S_IWUGO, show_gamma_curve, store_gamma_curve),
 };
 
 
-void fbtft_expand_debug_value(unsigned long *debug) {
+void fbtft_expand_debug_value(unsigned long *debug)
+{
 	switch (*debug & 0b111) {
-	case 1:  *debug |= DEBUG_LEVEL_1; break;
-	case 2:  *debug |= DEBUG_LEVEL_2; break;
-	case 3:  *debug |= DEBUG_LEVEL_3; break;
-	case 4:  *debug |= DEBUG_LEVEL_4; break;
-	case 5:  *debug |= DEBUG_LEVEL_5; break;
-	case 6:  *debug |= DEBUG_LEVEL_6; break;
-	case 7:  *debug = 0xFFFFFFFF; break;
+	case 1:
+		*debug |= DEBUG_LEVEL_1;
+		break;
+	case 2:
+		*debug |= DEBUG_LEVEL_2;
+		break;
+	case 3:
+		*debug |= DEBUG_LEVEL_3;
+		break;
+	case 4:
+		*debug |= DEBUG_LEVEL_4;
+		break;
+	case 5:
+		*debug |= DEBUG_LEVEL_5;
+		break;
+	case 6:
+		*debug |= DEBUG_LEVEL_6;
+		break;
+	case 7:
+		*debug = 0xFFFFFFFF;
+		break;
 	}
 }
 
 static ssize_t store_debug(struct device *device,
-                                 struct device_attribute *attr,
-                                 const char *buf, size_t count)
+				struct device_attribute *attr,
+				const char *buf, size_t count)
 {
 	struct fb_info *fb_info = dev_get_drvdata(device);
 	struct fbtft_par *par = fb_info->par;
@@ -179,7 +195,7 @@ static ssize_t store_debug(struct device *device,
 }
 
 static ssize_t show_debug(struct device *device,
-                                struct device_attribute *attr, char *buf)
+				struct device_attribute *attr, char *buf)
 {
 	struct fb_info *fb_info = dev_get_drvdata(device);
 	struct fbtft_par *par = fb_info->par;
@@ -188,7 +204,7 @@ static ssize_t show_debug(struct device *device,
 }
 
 static struct device_attribute debug_device_attr = \
-        __ATTR(debug, S_IRUGO | S_IWUGO, show_debug, store_debug);
+	__ATTR(debug, S_IRUGO | S_IWUGO, show_debug, store_debug);
 
 
 void fbtft_sysfs_init(struct fbtft_par *par)

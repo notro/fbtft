@@ -132,72 +132,6 @@ static int ssd1351_init[] = { -1,0xfd,0x12,-1,0xfd,0xb1,-1,0xae,-1,0xb3,0xf1,-1,
                               -1,0xc1,0xc8,0x80,0xc8,-1,0xc7,0x0f,-1,0xb6,0x01,-1,0xa6,-1,0xaf,-3 };
 
 
-static int flexfb_init_display(struct fbtft_par *par)
-{
-	char msg[128];
-	char str[16];
-	int i = 0;
-	int j;
-
-	fbtft_par_dbg(DEBUG_INIT_DISPLAY, par, "%s()\n", __func__);
-
-	par->fbtftops.reset(par);
-
-	if (par->gpio.cs != -1)
-		gpio_set_value(par->gpio.cs, 0);  /* Activate chip */
-
-	/* make sure stop marker exists */
-	if (initp[initp_num - 1] != -3) {
-		dev_err(par->info->device, "argument 'init': missing stop marker (-3) at end of init sequence\n");
-		return -1;
-	}
-
-	while (i < initp_num) {
-		if (initp[i] >= 0) {
-			dev_err(par->info->device, "argument 'init': missing delimiter at position %d\n", i);
-			return -1;
-		}
-		if (initp[i] == -3) {
-			/* done */
-			return 0;
-		}
-		if ( ((i+1) == initp_num) || (initp[i+1] < 0) ) {
-			dev_err(par->info->device, "argument 'init': missing value after delimiter %d at position %d\n", initp[i], i);
-			return -1;
-		}
-		switch (initp[i]) {
-		case -1:
-			i++;
-			/* make debug message */
-			strcpy(msg, "");
-			j = i + 1;
-			while (initp[j] >= 0) {
-				sprintf(str, "0x%02X ", initp[j]);
-				strcat(msg, str);
-				j++;
-			}
-			fbtft_par_dbg(DEBUG_INIT_DISPLAY, par, "init: write(0x%02X) %s\n", initp[i], msg);
-			/* Write */
-			par->fbtftops.write_data_command(par, 0, initp[i++]);
-			while (initp[i] >= 0) {
-				par->fbtftops.write_data_command(par, 1, initp[i++]);
-			}
-			break;
-		case -2:
-			i++;
-			fbtft_par_dbg(DEBUG_INIT_DISPLAY, par, "init: mdelay(%d)\n", initp[i]);
-			mdelay(initp[i++]);
-			break;
-		default:
-			dev_err(par->info->device, "argument 'init': unknown delimiter %d at position %d\n", initp[i], i);
-			return -1;
-		}
-	}
-
-	dev_err(par->info->device, "%s: something is wrong. Shouldn't get here.\n", __func__);
-	return -1;
-}
-
 /* ili9320, ili9325 */
 static void flexfb_set_addr_win_1(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 {
@@ -455,7 +389,9 @@ static int flexfb_probe_common(struct spi_device *sdev, struct platform_device *
 		par->spi = sdev;
 	else
 		par->pdev = pdev;
-	par->fbtftops.init_display = flexfb_init_display;
+	if (!par->init_sequence)
+		par->init_sequence = initp;
+	par->fbtftops.init_display = fbtft_init_display;
 
 	/* registerwrite functions */
 	switch (regwidth) {

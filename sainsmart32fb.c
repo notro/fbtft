@@ -250,12 +250,12 @@ static int sainsmart32fb_probe_common(struct spi_device *sdev, struct platform_d
 
 	par->fbtftops.init_display = sainsmart32fb_init_display;
 	par->fbtftops.register_backlight = fbtft_register_backlight;
-	par->fbtftops.write_reg = fbtft_write_reg16_bus8;
+	par->fbtftops.write_register = fbtft_write_reg16_bus8;
 	par->fbtftops.set_addr_win = sainsmart32fb_set_addr_win;
 	par->fbtftops.verify_gpios = sainsmart32fb_verify_gpios;
 
 	if (pdev) {
-		par->fbtftops.write_reg = fbtft_write_reg16_bus16;
+		par->fbtftops.write_register = fbtft_write_reg16_bus16;
 		par->fbtftops.write_vmem = fbtft_write_vmem16_bus16;
 		if (latched)
 			par->fbtftops.write = fbtft_write_gpio16_wr_latched;

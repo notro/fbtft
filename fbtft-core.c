@@ -553,8 +553,8 @@ void fbtft_merge_fbtftops(struct fbtft_ops *dst, struct fbtft_ops *src)
 		dst->write_vmem = src->write_vmem;
 	if (src->write_data_command)
 		dst->write_data_command = src->write_data_command;
-	if (src->write_reg)
-		dst->write_reg = src->write_reg;
+	if (src->write_register)
+		dst->write_register = src->write_register;
 	if (src->set_addr_win)
 		dst->set_addr_win = src->set_addr_win;
 	if (src->reset)
@@ -793,7 +793,7 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display,
 	par->fbtftops.read = fbtft_read_spi;
 	par->fbtftops.write_vmem = fbtft_write_vmem16_bus8;
 	par->fbtftops.write_data_command = fbtft_write_data_command8_bus8;
-	par->fbtftops.write_reg = fbtft_write_reg8_bus8;
+	par->fbtftops.write_register = fbtft_write_reg8_bus8;
 	par->fbtftops.set_addr_win = fbtft_set_addr_win;
 	par->fbtftops.reset = fbtft_reset;
 	par->fbtftops.mkdirty = fbtft_mkdirty;
@@ -1168,20 +1168,20 @@ int fbtft_probe_common(struct fbtft_display *display,
 
 	/* write register functions */
 	if (display->regwidth == 8 && display->buswidth == 8) {
-		par->fbtftops.write_reg = fbtft_write_reg8_bus8;
+		par->fbtftops.write_register = fbtft_write_reg8_bus8;
 		par->fbtftops.write_data_command = \
 			fbtft_write_data_command8_bus8;
 	} else
 	if (display->regwidth == 8 && display->buswidth == 9 && par->spi) {
-		par->fbtftops.write_reg = fbtft_write_reg8_bus9;
+		par->fbtftops.write_register = fbtft_write_reg8_bus9;
 		par->fbtftops.write_data_command = \
 			fbtft_write_data_command8_bus9;
 	} else if (display->regwidth == 16 && display->buswidth == 8) {
-		par->fbtftops.write_reg = fbtft_write_reg16_bus8;
+		par->fbtftops.write_register = fbtft_write_reg16_bus8;
 		par->fbtftops.write_data_command = \
 			fbtft_write_data_command16_bus8;
 	} else if (display->regwidth == 16 && display->buswidth == 16) {
-		par->fbtftops.write_reg = fbtft_write_reg16_bus16;
+		par->fbtftops.write_register = fbtft_write_reg16_bus16;
 		par->fbtftops.write_data_command = \
 			fbtft_write_data_command16_bus16;
 	} else {

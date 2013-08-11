@@ -290,7 +290,7 @@ static int itdb28fb_probe_common(struct spi_device *sdev, struct platform_device
 	par->fbtftops.init_display = itdb28fb_init_display;
 	par->fbtftops.set_gamma = set_gamma;
 	par->fbtftops.register_backlight = fbtft_register_backlight;
-	par->fbtftops.write_reg = fbtft_write_reg16_bus8;
+	par->fbtftops.write_register = fbtft_write_reg16_bus8;
 	par->fbtftops.set_addr_win = itdb28fb_set_addr_win;
 	par->fbtftops.verify_gpios = itdb28fb_verify_gpios;
 	if (pdev)

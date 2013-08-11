@@ -396,11 +396,11 @@ static int flexfb_probe_common(struct spi_device *sdev, struct platform_device *
 	/* registerwrite functions */
 	switch (regwidth) {
 	case 8:
-		par->fbtftops.write_reg = fbtft_write_reg8_bus8;
+		par->fbtftops.write_register = fbtft_write_reg8_bus8;
 		par->fbtftops.write_data_command = fbtft_write_data_command8_bus8;
 		break;
 	case 16:
-		par->fbtftops.write_reg = fbtft_write_reg16_bus8;
+		par->fbtftops.write_register = fbtft_write_reg16_bus8;
 		par->fbtftops.write_data_command = fbtft_write_data_command16_bus8;
 		break;
 	default:
@@ -443,7 +443,7 @@ static int flexfb_probe_common(struct spi_device *sdev, struct platform_device *
 			par->fbtftops.write_vmem = fbtft_write_vmem16_bus8;
 			break;
 		case 16:
-			par->fbtftops.write_reg = fbtft_write_reg16_bus16;
+			par->fbtftops.write_register = fbtft_write_reg16_bus16;
 			par->fbtftops.write_data_command = fbtft_write_data_command16_bus16;
 			if (latched)
 				par->fbtftops.write = fbtft_write_gpio16_wr_latched;

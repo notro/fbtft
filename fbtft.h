@@ -82,7 +82,7 @@ struct fbtft_ops {
 	int (*read)(struct fbtft_par *par, void *buf, size_t len);
 	int (*write_vmem)(struct fbtft_par *par);
 	void (*write_data_command)(struct fbtft_par *par, unsigned dc, u32 val);
-	void (*write_reg)(struct fbtft_par *par, int len, ...);
+	void (*write_register)(struct fbtft_par *par, int len, ...);
 
 	void (*set_addr_win)(struct fbtft_par *par,
 		int xs, int ys, int xe, int ye);
@@ -252,7 +252,7 @@ struct fbtft_par {
 
 #define write_reg(par, ...)                                              \
 do {                                                                     \
-	par->fbtftops.write_reg(par, NUMARGS(__VA_ARGS__), __VA_ARGS__); \
+	par->fbtftops.write_register(par, NUMARGS(__VA_ARGS__), __VA_ARGS__); \
 } while (0)
 
 #define write_cmd(par, val)                            \

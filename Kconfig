@@ -68,62 +68,6 @@ config FB_FLEX
 	help
 	  Generic Framebuffer support for TFT LCD displays.
 
-config FB_ADAFRUIT22
-	tristate "FB driver for the Adafruit 2.2\" LCD display"
-	depends on FB_TFT
-	help
-	  Framebuffer support for the Adafruit 2.2\" LCD display in 9-bit SPI mode.
-
-config FB_ADAFRUIT18
-	tristate "FB driver for the Adafruit 1.8\" LCD display"
-	depends on FB_TFT
-	help
-	  Framebuffer support for the Adafruit 1.8\" LCD display in 8-bit SPI mode.
-
-config FB_R61505U
-	tristate "FB driver for the R61505U LCD display controller"
-	depends on FB_TFT
-	help
-	  Framebuffer support for the R61505U LCD display controller in 8-bit SPI mode.
-
-config FB_ILI9341
-	tristate "FB driver for the ILI9341 LCD display controller"
-	depends on FB_TFT
-	help
-	  Framebuffer support for the ILI9341 LCD display controller in 8/9-bit SPI mode.
-
-config FB_SAINSMART18
-	tristate "FB driver for the Sainsmart 1.8\" LCD display"
-	depends on FB_TFT
-	help
-	  Framebuffer support for the Sainsmart 1.8\" LCD display in 8-bit SPI mode.
-
-config FB_SAINSMART32
-	tristate "FB driver for the Sainsmart 3.2\" LCD display"
-	depends on FB_TFT
-
-config FB_NOKIA3310
-	tristate "FB driver for the Nokia 5110/3310 LCD display"
-	depends on FB_TFT
-	help
-	  Framebuffer support for the Nokia 5110/3310 LCD display in 8-bit SPI mode.
-
-config FB_ITDB28
-	tristate "FB driver for the ITDB02-28 LCD display"
-	depends on FB_TFT
-	help
-	  Framebuffer support for the ITDB02-2.8 LCD display in 8-bit parallel mode.
-
-config FB_HY28A
-	tristate "FB driver for the HY28A SPI LCD display"
-	depends on FB_TFT
-
-config FB_SSD1351
-	tristate "FB driver for the SSD1351 1.5\" OLED display"
-	depends on FB_TFT
-	help
-	  Framebuffer support for the SSD1351 1.5\" OLED display in 8-bit SPI mode.
-
 config FB_TFT_FBTFT_DEVICE
 	tristate "Module to for adding FBTFT devices"
 	depends on FB_TFT

@@ -203,36 +203,6 @@ static struct fbtft_device_display displays[] = {
 			}
 		}
 	}, {
-		.name = "adafruit18fb",
-		.spi = &(struct spi_board_info) {
-			.modalias = "adafruit18fb",
-			.max_speed_hz = 4000000,
-			.mode = SPI_MODE_0,
-			.platform_data = &(struct fbtft_platform_data) {
-				.gpios = (const struct fbtft_gpio []) {
-					{ "reset", 25 },
-					{ "dc", 24 },
-					{ "led", 23 },
-					{},
-				},
-			}
-		}
-	}, {
-		.name = "adafruit18greenfb",
-		.spi = &(struct spi_board_info) {
-			.modalias = "adafruit18greenfb",
-			.max_speed_hz = 4000000,
-			.mode = SPI_MODE_0,
-			.platform_data = &(struct fbtft_platform_data) {
-				.gpios = (const struct fbtft_gpio []) {
-					{ "reset", 25 },
-					{ "dc", 24 },
-					{ "led", 23 },
-					{},
-				},
-			}
-		}
-	}, {
 		.name = "adafruit22",
 		.spi = &(struct spi_board_info) {
 			.modalias = "fb_hx8340bn",
@@ -244,20 +214,6 @@ static struct fbtft_device_display displays[] = {
 					.backlight = 1,
 				},
 				.bgr = true,
-				.gpios = (const struct fbtft_gpio []) {
-					{ "reset", 25 },
-					{ "led", 23 },
-					{},
-				},
-			}
-		}
-	}, {
-		.name = "adafruit22fb",
-		.spi = &(struct spi_board_info) {
-			.modalias = "adafruit22fb",
-			.max_speed_hz = 32000000,
-			.mode = SPI_MODE_0,
-			.platform_data = &(struct fbtft_platform_data) {
 				.gpios = (const struct fbtft_gpio []) {
 					{ "reset", 25 },
 					{ "led", 23 },
@@ -327,34 +283,6 @@ static struct fbtft_device_display displays[] = {
 			}
 		}
 	}, {
-		.name = "hy28afb",
-		.spi = &(struct spi_board_info) {
-			.modalias = "hy28afb",
-			.max_speed_hz = 32000000,
-			.mode = SPI_MODE_3,
-			.platform_data = &(struct fbtft_platform_data) {
-				.gpios = (const struct fbtft_gpio []) {
-					{ "reset", 25 },
-					{ "led", 18 },
-					{},
-				},
-			}
-		}
-	}, {
-		.name = "ili9341fb",
-		.spi = &(struct spi_board_info) {
-			.modalias = "ili9341fb",
-			.max_speed_hz = 32000000,
-			.mode = SPI_MODE_0,
-			.platform_data = &(struct fbtft_platform_data) {
-				.gpios = (const struct fbtft_gpio []) {
-					{ "reset", 23 },
-					{ "led", 24 },
-					{},
-				},
-			}
-		}
-	}, {
 		.name = "itdb28",
 		.pdev = &(struct platform_device) {
 			.name = "fb_ili9325",
@@ -385,47 +313,6 @@ static struct fbtft_device_display displays[] = {
 					.backlight = 1,
 				},
 				.bgr = true,
-				.gpios = (const struct fbtft_gpio []) {
-					{ "reset", 25 },
-					{ "dc", 24 },
-					{},
-				},
-			}
-		}
-	}, {
-		.name = "itdb28fb",
-		.pdev = &(struct platform_device) {
-			.name = "itdb28fb",
-			.id = 0,
-			.dev = {
-			.release = fbtft_device_pdev_release,
-			.platform_data = &(struct fbtft_platform_data) {
-				.gpios = (const struct fbtft_gpio []) {
-					{ "reset", 17 },
-					{ "dc", 1 },
-					{ "wr", 0 },
-					{ "cs", 21 },
-					{ "db00", 9 },
-					{ "db01", 11 },
-					{ "db02", 18 },
-					{ "db03", 23 },
-					{ "db04", 24 },
-					{ "db05", 25 },
-					{ "db06", 8 },
-					{ "db07", 7 },
-					{ "led", 4 },
-					{},
-				},
-			},
-			}
-		}
-	}, {
-		.name = "itdb28spifb",
-		.spi = &(struct spi_board_info) {
-			.modalias = "itdb28spifb",
-			.max_speed_hz = 32000000,
-			.mode = SPI_MODE_0,
-			.platform_data = &(struct fbtft_platform_data) {
 				.gpios = (const struct fbtft_gpio []) {
 					{ "reset", 25 },
 					{ "dc", 24 },
@@ -492,21 +379,6 @@ static struct fbtft_device_display displays[] = {
 			}
 		}
 	}, {
-		.name = "nokia3310fb",
-		.spi = &(struct spi_board_info) {
-			.modalias = "nokia3310fb",
-			.max_speed_hz = 4000000,
-			.mode = SPI_MODE_0,
-			.platform_data = &(struct fbtft_platform_data) {
-				.gpios = (const struct fbtft_gpio []) {
-					{ "reset", 25 },
-					{ "dc", 24 },
-					{ "led", 23 },
-					{},
-				},
-			}
-		}
-	}, {
 		.name = "pioled",
 		.spi = &(struct spi_board_info) {
 			.modalias = "fb_ssd1351",
@@ -533,21 +405,6 @@ static struct fbtft_device_display displays[] = {
 			}
 		}
 	}, {
-		.name = "r61505ufb",
-		.spi = &(struct spi_board_info) {
-			.modalias = "r61505ufb",
-			.max_speed_hz = 32000000,
-			.mode = SPI_MODE_0,
-			.platform_data = &(struct fbtft_platform_data) {
-				.gpios = (const struct fbtft_gpio []) {
-					{ "reset", 23 },
-					{ "led", 24 },
-					{ "dc", 7 },
-					{},
-				},
-			}
-		}
-	}, {
 		.name = "sainsmart18",
 		.spi = &(struct spi_board_info) {
 			.modalias = "fb_st7735r",
@@ -557,20 +414,6 @@ static struct fbtft_device_display displays[] = {
 				.display = {
 					.buswidth = 8,
 				},
-				.gpios = (const struct fbtft_gpio []) {
-					{ "reset", 25 },
-					{ "dc", 24 },
-					{},
-				},
-			}
-		}
-	}, {
-		.name = "sainsmart18fb",
-		.spi = &(struct spi_board_info) {
-			.modalias = "sainsmart18fb",
-			.max_speed_hz = 32000000,
-			.mode = SPI_MODE_0,
-			.platform_data = &(struct fbtft_platform_data) {
 				.gpios = (const struct fbtft_gpio []) {
 					{ "reset", 25 },
 					{ "dc", 24 },
@@ -661,34 +504,6 @@ static struct fbtft_device_display displays[] = {
 			}
 		}
 	}, {
-		.name = "sainsmart32spifb",
-		.spi = &(struct spi_board_info) {
-			.modalias = "sainsmart32spifb",
-			.max_speed_hz = 16000000,
-			.mode = SPI_MODE_0,
-			.platform_data = &(struct fbtft_platform_data) {
-				.gpios = (const struct fbtft_gpio []) {
-					{ "reset", 25 },
-					{ "dc", 24 },
-					{},
-				},
-			}
-		}
-	}, {
-		.name = "sainsmart32fb",
-		.pdev = &(struct platform_device) {
-			.name = "sainsmart32fb",
-			.id = 0,
-			.dev = {
-			.release = fbtft_device_pdev_release,
-			.platform_data = &(struct fbtft_platform_data) {
-				.gpios = (const struct fbtft_gpio []) {
-					{},
-				},
-			},
-		},
-		}
-	}, {
 		.name = "spidev",
 		.spi = &(struct spi_board_info) {
 			.modalias = "spidev",
@@ -698,20 +513,6 @@ static struct fbtft_device_display displays[] = {
 			.mode = SPI_MODE_0,
 			.platform_data = &(struct fbtft_platform_data) {
 				.gpios = (const struct fbtft_gpio []) {
-					{},
-				},
-			}
-		}
-	}, {
-		.name = "ssd1351fb",
-		.spi = &(struct spi_board_info) {
-			.modalias = "ssd1351fb",
-			.max_speed_hz = 20000000,
-			.mode = SPI_MODE_0,
-			.platform_data = &(struct fbtft_platform_data) {
-				.gpios = (const struct fbtft_gpio []) {
-					{ "reset", 24 },
-					{ "dc", 25 },
 					{},
 				},
 			}

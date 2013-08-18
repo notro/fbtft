@@ -397,11 +397,9 @@ static int flexfb_probe_common(struct spi_device *sdev, struct platform_device *
 	switch (regwidth) {
 	case 8:
 		par->fbtftops.write_register = fbtft_write_reg8_bus8;
-		par->fbtftops.write_data_command = fbtft_write_data_command8_bus8;
 		break;
 	case 16:
 		par->fbtftops.write_register = fbtft_write_reg16_bus8;
-		par->fbtftops.write_data_command = fbtft_write_data_command16_bus8;
 		break;
 	default:
 		dev_err(dev, "argument 'regwidth': %d is not supported.\n", regwidth);
@@ -421,7 +419,6 @@ static int flexfb_probe_common(struct spi_device *sdev, struct platform_device *
 				dev_err(dev, "argument 'regwidth': %d is not supported with buswidth=%d and SPI.\n", regwidth, buswidth);
 				return -EINVAL;
 			}
-			par->fbtftops.write_data_command = fbtft_write_data_command8_bus9;
 			par->fbtftops.write_register = fbtft_write_reg8_bus9;
 			par->fbtftops.write_vmem = fbtft_write_vmem16_bus9;
 			sdev->bits_per_word=9;
@@ -445,7 +442,6 @@ static int flexfb_probe_common(struct spi_device *sdev, struct platform_device *
 			break;
 		case 16:
 			par->fbtftops.write_register = fbtft_write_reg16_bus16;
-			par->fbtftops.write_data_command = fbtft_write_data_command16_bus16;
 			if (latched)
 				par->fbtftops.write = fbtft_write_gpio16_wr_latched;
 			else

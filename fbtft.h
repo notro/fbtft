@@ -56,7 +56,6 @@ struct fbtft_par;
  * @write: Writes to interface bus
  * @read: Reads from interface bus
  * @write_vmem: Writes video memory to display
- * @write_data_command: Writes to controller register
  * @write_reg: Writes to controller register
  * @set_addr_win: Set the GRAM update window
  * @reset: Reset the LCD controller
@@ -81,7 +80,6 @@ struct fbtft_ops {
 	int (*write)(struct fbtft_par *par, void *buf, size_t len);
 	int (*read)(struct fbtft_par *par, void *buf, size_t len);
 	int (*write_vmem)(struct fbtft_par *par);
-	void (*write_data_command)(struct fbtft_par *par, unsigned dc, u32 val);
 	void (*write_register)(struct fbtft_par *par, int len, ...);
 
 	void (*set_addr_win)(struct fbtft_par *par,
@@ -255,16 +253,6 @@ do {                                                                     \
 	par->fbtftops.write_register(par, NUMARGS(__VA_ARGS__), __VA_ARGS__); \
 } while (0)
 
-#define write_cmd(par, val)                            \
-do {                                                   \
-	par->fbtftops.write_data_command(par, 0, val); \
-} while (0)
-
-#define write_data(par, val)                           \
-do {                                                   \
-	par->fbtftops.write_data_command(par, 1, val); \
-} while (0)
-
 /* fbtft-core.c */
 extern void fbtft_dbg_hex(const struct device *dev,
 	int groupsize, void *buf, size_t len, const char *fmt, ...);
@@ -299,14 +287,6 @@ extern void fbtft_write_reg8_bus8(struct fbtft_par *par, int len, ...);
 extern void fbtft_write_reg8_bus9(struct fbtft_par *par, int len, ...);
 extern void fbtft_write_reg16_bus8(struct fbtft_par *par, int len, ...);
 extern void fbtft_write_reg16_bus16(struct fbtft_par *par, int len, ...);
-extern void fbtft_write_data_command8_bus8(struct fbtft_par *par,
-	unsigned dc, u32 val);
-extern void fbtft_write_data_command8_bus9(struct fbtft_par *par,
-	unsigned dc, u32 val);
-extern void fbtft_write_data_command16_bus16(struct fbtft_par *par,
-	unsigned dc, u32 val);
-extern void fbtft_write_data_command16_bus8(struct fbtft_par *par,
-	unsigned dc, u32 val);
 
 
 #define FBTFT_REGISTER_DRIVER(_name, _display)                             \

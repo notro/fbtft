@@ -283,21 +283,15 @@ void fbtft_set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 		"%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
 
 	/* Column address set */
-	write_cmd(par, 0x2A);
-	write_data(par, (xs >> 8) & 0xFF);
-	write_data(par, xs & 0xFF);
-	write_data(par, (xe >> 8) & 0xFF);
-	write_data(par, xe & 0xFF);
+	write_reg(par, 0x2A,
+		(xs >> 8) & 0xFF, xs & 0xFF, (xe >> 8) & 0xFF, xe & 0xFF);
 
 	/* Row adress set */
-	write_cmd(par, 0x2B);
-	write_data(par, (ys >> 8) & 0xFF);
-	write_data(par, ys & 0xFF);
-	write_data(par, (ye >> 8) & 0xFF);
-	write_data(par, ye & 0xFF);
+	write_reg(par, 0x2B,
+		(ys >> 8) & 0xFF, ys & 0xFF, (ye >> 8) & 0xFF, ye & 0xFF);
 
 	/* Memory write */
-	write_cmd(par, 0x2C);
+	write_reg(par, 0x2C);
 }
 
 
@@ -551,8 +545,6 @@ void fbtft_merge_fbtftops(struct fbtft_ops *dst, struct fbtft_ops *src)
 		dst->read = src->read;
 	if (src->write_vmem)
 		dst->write_vmem = src->write_vmem;
-	if (src->write_data_command)
-		dst->write_data_command = src->write_data_command;
 	if (src->write_register)
 		dst->write_register = src->write_register;
 	if (src->set_addr_win)
@@ -792,7 +784,6 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display,
 	par->fbtftops.write = fbtft_write_spi;
 	par->fbtftops.read = fbtft_read_spi;
 	par->fbtftops.write_vmem = fbtft_write_vmem16_bus8;
-	par->fbtftops.write_data_command = fbtft_write_data_command8_bus8;
 	par->fbtftops.write_register = fbtft_write_reg8_bus8;
 	par->fbtftops.set_addr_win = fbtft_set_addr_win;
 	par->fbtftops.reset = fbtft_reset;
@@ -1192,21 +1183,13 @@ int fbtft_probe_common(struct fbtft_display *display,
 	/* write register functions */
 	if (display->regwidth == 8 && display->buswidth == 8) {
 		par->fbtftops.write_register = fbtft_write_reg8_bus8;
-		par->fbtftops.write_data_command = \
-			fbtft_write_data_command8_bus8;
 	} else
 	if (display->regwidth == 8 && display->buswidth == 9 && par->spi) {
 		par->fbtftops.write_register = fbtft_write_reg8_bus9;
-		par->fbtftops.write_data_command = \
-			fbtft_write_data_command8_bus9;
 	} else if (display->regwidth == 16 && display->buswidth == 8) {
 		par->fbtftops.write_register = fbtft_write_reg16_bus8;
-		par->fbtftops.write_data_command = \
-			fbtft_write_data_command16_bus8;
 	} else if (display->regwidth == 16 && display->buswidth == 16) {
 		par->fbtftops.write_register = fbtft_write_reg16_bus16;
-		par->fbtftops.write_data_command = \
-			fbtft_write_data_command16_bus16;
 	} else {
 		dev_warn(dev,
 			"no default functions for regwidth=%d and buswidth=%d\n",

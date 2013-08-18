@@ -139,7 +139,7 @@ static void adafruit18_green_tab_set_addr_win(struct fbtft_par *par,
 /* Supported displays in alphabetical order */
 static struct fbtft_device_display displays[] = {
 	{
-		.name = "adafruit18_black",
+		.name = "adafruit18",
 		.spi = &(struct spi_board_info) {
 			.modalias = "fb_st7735r",
 			.max_speed_hz = 32000000,
@@ -149,27 +149,6 @@ static struct fbtft_device_display displays[] = {
 					.buswidth = 8,
 					.backlight = 1,
 				},
-				.gpios = (const struct fbtft_gpio []) {
-					{ "reset", 25 },
-					{ "dc", 24 },
-					{ "led", 18 },
-					{},
-				},
-				.gamma = ADAFRUIT18_GAMMA,
-			}
-		}
-	}, {
-		.name = "adafruit18_red",
-		.spi = &(struct spi_board_info) {
-			.modalias = "fb_st7735r",
-			.max_speed_hz = 4000000,
-			.mode = SPI_MODE_0,
-			.platform_data = &(struct fbtft_platform_data) {
-				.display = {
-					.buswidth = 8,
-					.backlight = 1,
-				},
-				.bgr = true,
 				.gpios = (const struct fbtft_gpio []) {
 					{ "reset", 25 },
 					{ "dc", 24 },

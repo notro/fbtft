@@ -185,15 +185,15 @@ static void set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 		write_reg(par, 0x0020, xs);
 		write_reg(par, 0x0021, ys);
 		break;
-	case 2:
+	case 180:
 		write_reg(par, 0x0020, WIDTH - 1 - xs);
 		write_reg(par, 0x0021, HEIGHT - 1 - ys);
 		break;
-	case 1:
+	case 270:
 		write_reg(par, 0x0020, WIDTH - 1 - ys);
 		write_reg(par, 0x0021, xs);
 		break;
-	case 3:
+	case 90:
 		write_reg(par, 0x0020, ys);
 		write_reg(par, 0x0021, HEIGHT - 1 - xs);
 		break;
@@ -210,13 +210,13 @@ static int set_var(struct fbtft_par *par)
 	case 0:
 		write_reg(par, 0x03, 0x0030 | (par->bgr << 12));
 		break;
-	case 2:
+	case 180:
 		write_reg(par, 0x03, 0x0000 | (par->bgr << 12));
 		break;
-	case 1:
+	case 270:
 		write_reg(par, 0x03, 0x0028 | (par->bgr << 12));
 		break;
-	case 3:
+	case 90:
 		write_reg(par, 0x03, 0x0018 | (par->bgr << 12));
 		break;
 	}

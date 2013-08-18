@@ -143,15 +143,15 @@ static void flexfb_set_addr_win_1(struct fbtft_par *par, int xs, int ys, int xe,
 		write_reg(par, 0x0020, xs);
 		write_reg(par, 0x0021, ys);
 		break;
-	case 2:
+	case 180:
 		write_reg(par, 0x0020, width - 1 - xs);
 		write_reg(par, 0x0021, height - 1 - ys);
 		break;
-	case 1:
+	case 270:
 		write_reg(par, 0x0020, width - 1 - ys);
 		write_reg(par, 0x0021, xs);
 		break;
-	case 3:
+	case 90:
 		write_reg(par, 0x0020, ys);
 		write_reg(par, 0x0021, height - 1 - xs);
 		break;
@@ -171,15 +171,15 @@ static void flexfb_set_addr_win_2(struct fbtft_par *par, int xs, int ys, int xe,
 		write_reg(par, 0x4e, xs);
 		write_reg(par, 0x4f, ys);
 		break;
-	case 2:
+	case 180:
 		write_reg(par, 0x4e, par->info->var.xres - 1 - xs);
 		write_reg(par, 0x4f, par->info->var.yres - 1 - ys);
 		break;
-	case 1:
+	case 270:
 		write_reg(par, 0x4e, par->info->var.yres - 1 - ys);
 		write_reg(par, 0x4f, xs);
 		break;
-	case 3:
+	case 90:
 		write_reg(par, 0x4e, ys);
 		write_reg(par, 0x4f, par->info->var.xres - 1 - xs);
 		break;

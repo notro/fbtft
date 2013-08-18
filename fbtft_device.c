@@ -39,8 +39,8 @@ MODULE_PARM_DESC(name, "Devicename (required). " \
 
 static unsigned rotate;
 module_param(rotate, uint, 0);
-MODULE_PARM_DESC(rotate, "Rotate display 0=normal, 1=clockwise, " \
-"2=upside down, 3=counterclockwise (not supported by all drivers)");
+MODULE_PARM_DESC(rotate,
+"Angle to rotate display counter clockwise: 0, 90, 180, 270");
 
 static unsigned busnum;
 module_param(busnum, uint, 0);
@@ -736,8 +736,13 @@ static int __init fbtft_device_init(void)
 
 	pr_debug(DRVNAME":  name='%s', busnum=%d, cs=%d\n", name, busnum, cs);
 
-	if (rotate > 3) {
-		pr_warn("argument 'rotate' illegal value: %d (0-3). Setting it to 0.\n",
+	if (rotate > 0 && rotate < 4) {
+		rotate = (4 - rotate) * 90;
+		pr_warn("argument 'rotate' should be an angle. Values 1-3 is deprecated. Setting it to %d.\n",
+			rotate);
+	}
+	if (rotate != 0 && rotate != 90 && rotate != 180 && rotate != 270) {
+		pr_warn("argument 'rotate' illegal value: %d. Setting it to 0.\n",
 			rotate);
 		rotate = 0;
 	}

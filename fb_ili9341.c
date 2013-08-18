@@ -111,14 +111,14 @@ static int set_var(struct fbtft_par *par)
 	case 0:
 		write_reg(par, 0x36, (1 << MEM_X) | (par->bgr << MEM_BGR));
 		break;
-	case 1:
+	case 270:
 		write_reg(par, 0x36,
 			(1<<MEM_V) | (1 << MEM_L) | (par->bgr << MEM_BGR));
 		break;
-	case 2:
+	case 180:
 		write_reg(par, 0x36, (1 << MEM_Y) | (par->bgr << MEM_BGR));
 		break;
-	case 3:
+	case 90:
 		write_reg(par, 0x36, (1 << MEM_Y) | (1 << MEM_X) |
 				     (1 << MEM_V) | (par->bgr << MEM_BGR));
 		break;

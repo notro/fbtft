@@ -649,7 +649,7 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display,
 			fps = pdata->fps;
 		if (pdata->txbuflen)
 			txbuflen = pdata->txbuflen;
-		rotate = pdata->rotate & 3;
+		rotate = pdata->rotate;
 		bgr = pdata->bgr;
 		startbyte = pdata->startbyte;
 		if (pdata->display.init_sequence)
@@ -666,8 +666,8 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display,
 	fbtft_expand_debug_value(&display->debug);
 
 	switch (rotate) {
-	case 1:
-	case 3:
+	case 90:
+	case 270:
 		width =  display->height;
 		height = display->width;
 		break;

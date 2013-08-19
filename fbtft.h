@@ -204,7 +204,7 @@ struct fbtft_platform_data {
  * @current_debug:
  * @first_update_done: Used to only time the first display update
  * @bgr: BGR mode/\n
- * @extra: Extra info needed by driver (not used by core)
+ * @extra: Extra info needed by driver
  */
 struct fbtft_par {
 	struct spi_device *spi;

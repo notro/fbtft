@@ -325,7 +325,7 @@ void fbtft_update_display(struct fbtft_par *par, unsigned start_line, unsigned e
 
 	/* Sanity checks */
 	if (start_line > end_line) {
-		fbtft_par_dbg(0xFFFFFFFF, par,
+		dev_warn(par->info->device,
 			"%s: start_line=%u is larger than end_line=%u. Shouldn't happen, will do full display update\n",
 			__func__, start_line, end_line);
 		start_line = 0;

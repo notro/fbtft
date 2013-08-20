@@ -382,10 +382,12 @@ void fbtft_mkdirty(struct fb_info *info, int y, int height)
 	}
 
 	/* Mark display lines/area as dirty */
+	spin_lock(&par->dirty_lock);
 	if (y < par->dirty_lines_start)
 		par->dirty_lines_start = y;
 	if (y + height - 1 > par->dirty_lines_end)
 		par->dirty_lines_end = y + height - 1;
+	spin_unlock(&par->dirty_lock);
 
 	/* Schedule deferred_io to update display (no-op if already on queue)*/
 	schedule_delayed_work(&info->deferred_work, fbdefio->delay);
@@ -394,10 +396,19 @@ void fbtft_mkdirty(struct fb_info *info, int y, int height)
 void fbtft_deferred_io(struct fb_info *info, struct list_head *pagelist)
 {
 	struct fbtft_par *par = info->par;
+	unsigned dirty_lines_start, dirty_lines_end;
 	struct page *page;
 	unsigned long index;
 	unsigned y_low = 0, y_high = 0;
 	int count = 0;
+
+	spin_lock(&par->dirty_lock);
+	dirty_lines_start = par->dirty_lines_start;
+	dirty_lines_end = par->dirty_lines_end;
+	/* set display line markers as clean */
+	par->dirty_lines_start = par->info->var.yres - 1;
+	par->dirty_lines_end = 0;
+	spin_unlock(&par->dirty_lock);
 
 	/* Mark display lines as dirty */
 	list_for_each_entry(page, pagelist, lru) {
@@ -410,18 +421,14 @@ void fbtft_deferred_io(struct fb_info *info, struct list_head *pagelist)
 			page->index, y_low, y_high);
 		if (y_high > info->var.yres - 1)
 			y_high = info->var.yres - 1;
-		if (y_low < par->dirty_lines_start)
-			par->dirty_lines_start = y_low;
-		if (y_high > par->dirty_lines_end)
-			par->dirty_lines_end = y_high;
+		if (y_low < dirty_lines_start)
+			dirty_lines_start = y_low;
+		if (y_high > dirty_lines_end)
+			dirty_lines_end = y_high;
 	}
 
 	par->fbtftops.update_display(info->par,
-				par->dirty_lines_start,	par->dirty_lines_end);
-
-	/* set display line markers as clean */
-	par->dirty_lines_start = par->info->var.yres - 1;
-	par->dirty_lines_end = 0;
+					dirty_lines_start, dirty_lines_end);
 }
 
 
@@ -750,6 +757,7 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display,
 	par->pdata = dev->platform_data;
 	par->debug = display->debug;
 	par->buf = buf;
+	spin_lock_init(&par->dirty_lock);
 	par->bgr = bgr;
 	par->startbyte = startbyte;
 	par->init_sequence = init_sequence;

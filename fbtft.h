@@ -20,6 +20,7 @@
 #define __LINUX_FBTFT_H
 
 #include <linux/fb.h>
+#include <linux/spinlock.h>
 #include <linux/spi/spi.h>
 #include <linux/platform_device.h>
 
@@ -185,6 +186,7 @@ struct fbtft_platform_data {
  * @startbyte: Used by some controllers when in SPI mode.
  *             Format: 6 bit Device id + RS bit + RW bit
  * @fbtftops: FBTFT operations provided by driver or device (platform_data)
+ * @dirty_lock: Protects dirty_lines_start and dirty_lines_end
  * @dirty_lines_start: Where to begin updating display
  * @dirty_lines_end: Where to end updating display
  * @gpio.reset: GPIO used to reset display
@@ -221,6 +223,7 @@ struct fbtft_par {
 	u8 *buf;
 	u8 startbyte;
 	struct fbtft_ops fbtftops;
+	spinlock_t dirty_lock;
 	unsigned dirty_lines_start;
 	unsigned dirty_lines_end;
 	struct {

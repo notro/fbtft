@@ -79,14 +79,15 @@ struct fbtft_par;
 struct fbtft_ops {
 	int (*write)(struct fbtft_par *par, void *buf, size_t len);
 	int (*read)(struct fbtft_par *par, void *buf, size_t len);
-	int (*write_vmem)(struct fbtft_par *par);
+	int (*write_vmem)(struct fbtft_par *par, size_t offset, size_t len);
 	void (*write_register)(struct fbtft_par *par, int len, ...);
 
 	void (*set_addr_win)(struct fbtft_par *par,
 		int xs, int ys, int xe, int ye);
 	void (*reset)(struct fbtft_par *par);
 	void (*mkdirty)(struct fb_info *info, int from, int to);
-	void (*update_display)(struct fbtft_par *par);
+	void (*update_display)(struct fbtft_par *par,
+				unsigned start_line, unsigned end_line);
 	int (*init_display)(struct fbtft_par *par);
 	int (*blank)(struct fbtft_par *par, bool on);
 
@@ -279,10 +280,10 @@ extern int fbtft_write_gpio16_wr_latched(struct fbtft_par *par,
 	void *buf, size_t len);
 
 /* fbtft-bus.c */
-extern int fbtft_write_vmem8_bus8(struct fbtft_par *par);
-extern int fbtft_write_vmem16_bus16(struct fbtft_par *par);
-extern int fbtft_write_vmem16_bus8(struct fbtft_par *par);
-extern int fbtft_write_vmem16_bus9(struct fbtft_par *par);
+extern int fbtft_write_vmem8_bus8(struct fbtft_par *par, size_t offset, size_t len);
+extern int fbtft_write_vmem16_bus16(struct fbtft_par *par, size_t offset, size_t len);
+extern int fbtft_write_vmem16_bus8(struct fbtft_par *par, size_t offset, size_t len);
+extern int fbtft_write_vmem16_bus9(struct fbtft_par *par, size_t offset, size_t len);
 extern void fbtft_write_reg8_bus8(struct fbtft_par *par, int len, ...);
 extern void fbtft_write_reg8_bus9(struct fbtft_par *par, int len, ...);
 extern void fbtft_write_reg16_bus8(struct fbtft_par *par, int len, ...);

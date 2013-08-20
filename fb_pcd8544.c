@@ -108,7 +108,7 @@ static void set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 	                      */
 }
 
-static int write_vmem(struct fbtft_par *par)
+static int write_vmem(struct fbtft_par *par, size_t offset, size_t len)
 {
 	u16 *vmem16 = (u16 *)par->info->screen_base;
 	u8 *buf = par->txbuf.buf;

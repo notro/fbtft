@@ -307,8 +307,9 @@ void fbtft_reset(struct fbtft_par *par)
 }
 
 
-void fbtft_update_display(struct fbtft_par *par)
+void fbtft_update_display(struct fbtft_par *par, unsigned start_line, unsigned end_line)
 {
+	size_t offset, len;
 	struct timespec ts_start, ts_end, test_of_time;
 	long ms, us, ns;
 	bool timeit = false;
@@ -323,29 +324,31 @@ void fbtft_update_display(struct fbtft_par *par)
 	}
 
 	/* Sanity checks */
-	if (par->dirty_lines_start > par->dirty_lines_end) {
+	if (start_line > end_line) {
 		fbtft_par_dbg(0xFFFFFFFF, par,
-			"%s: dirty_lines_start=%d is larger than dirty_lines_end=%d. Shouldn't happen, will do full display update\n",
-			__func__, par->dirty_lines_start, par->dirty_lines_end);
-		par->dirty_lines_start = 0;
-		par->dirty_lines_end = par->info->var.yres - 1;
+			"%s: start_line=%u is larger than end_line=%u. Shouldn't happen, will do full display update\n",
+			__func__, start_line, end_line);
+		start_line = 0;
+		end_line = par->info->var.yres - 1;
 	}
-	if (par->dirty_lines_start > par->info->var.yres - 1 || par->dirty_lines_end > par->info->var.yres - 1) {
+	if (start_line > par->info->var.yres - 1 || end_line > par->info->var.yres - 1) {
 		dev_warn(par->info->device,
-			"%s: dirty_lines_start=%d or dirty_lines_end=%d larger than max=%d. Shouldn't happen, will do full display update\n",
-			__func__, par->dirty_lines_start, par->dirty_lines_end, par->info->var.yres - 1);
-		par->dirty_lines_start = 0;
-		par->dirty_lines_end = par->info->var.yres - 1;
+			"%s: start_line=%u or end_line=%u is larger than max=%d. Shouldn't happen, will do full display update\n",
+			__func__, start_line, end_line, par->info->var.yres - 1);
+		start_line = 0;
+		end_line = par->info->var.yres - 1;
 	}
 
-	fbtft_par_dbg(DEBUG_UPDATE_DISPLAY, par, "%s: dirty_lines_start=%d dirty_lines_end=%d\n",
-		__func__, par->dirty_lines_start, par->dirty_lines_end);
+	fbtft_par_dbg(DEBUG_UPDATE_DISPLAY, par, "%s(start_line=%u, end_line=%u)\n",
+		__func__, start_line, end_line);
 
 	if (par->fbtftops.set_addr_win)
-		par->fbtftops.set_addr_win(par, 0, par->dirty_lines_start,
-				par->info->var.xres-1, par->dirty_lines_end);
+		par->fbtftops.set_addr_win(par, 0, start_line,
+				par->info->var.xres-1, end_line);
 
-	ret = par->fbtftops.write_vmem(par);
+	offset = start_line * par->info->fix.line_length;
+	len = (end_line - start_line + 1) * par->info->fix.line_length;
+	ret = par->fbtftops.write_vmem(par, offset, len);
 	if (ret < 0)
 		dev_err(par->info->device,
 			"%s: write_vmem failed to update display buffer\n",
@@ -361,13 +364,9 @@ void fbtft_update_display(struct fbtft_par *par)
 			"Elapsed time for display update: %4lu.%.3lu%.3lu ms (fps: %2lu, lines=%u)\n",
 			ms, us, ns,
 			test_of_time.tv_nsec ? 1000000000 / test_of_time.tv_nsec : 0,
-			par->dirty_lines_end - par->dirty_lines_start + 1);
+			end_line - start_line + 1);
 		par->first_update_done = true;
 	}
-
-	/* set display line markers as clean */
-	par->dirty_lines_start = par->info->var.yres - 1;
-	par->dirty_lines_end = 0;
 }
 
 
@@ -417,7 +416,12 @@ void fbtft_deferred_io(struct fb_info *info, struct list_head *pagelist)
 			par->dirty_lines_end = y_high;
 	}
 
-	par->fbtftops.update_display(info->par);
+	par->fbtftops.update_display(info->par,
+				par->dirty_lines_start,	par->dirty_lines_end);
+
+	/* set display line markers as clean */
+	par->dirty_lines_start = par->info->var.yres - 1;
+	par->dirty_lines_end = 0;
 }
 
 
@@ -746,10 +750,6 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display,
 	par->pdata = dev->platform_data;
 	par->debug = display->debug;
 	par->buf = buf;
-	/* Set display line markers as dirty for all.
-	   Ensures that the first update is updating the whole display. */
-	par->dirty_lines_start = 0;
-	par->dirty_lines_end = par->info->var.yres - 1;
 	par->bgr = bgr;
 	par->startbyte = startbyte;
 	par->init_sequence = init_sequence;
@@ -887,7 +887,8 @@ int fbtft_register_framebuffer(struct fb_info *fb_info)
 			goto reg_fail;
 	}
 
-	par->fbtftops.update_display(par);
+	/* update the entire display */
+	par->fbtftops.update_display(par, 0, par->info->var.yres - 1);
 
 	if (par->fbtftops.set_gamma && par->gamma.curves) {
 		ret = par->fbtftops.set_gamma(par, par->gamma.curves);

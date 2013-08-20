@@ -125,7 +125,7 @@ EXPORT_SYMBOL(fbtft_write_reg8_bus9);
  *****************************************************************************/
 
 /* 16 bit pixel over 8-bit databus */
-int fbtft_write_vmem16_bus8(struct fbtft_par *par)
+int fbtft_write_vmem16_bus8(struct fbtft_par *par, size_t offset, size_t len)
 {
 	u16 *vmem16;
 	u16 *txbuf16 = (u16 *)par->txbuf.buf;
@@ -134,16 +134,13 @@ int fbtft_write_vmem16_bus8(struct fbtft_par *par)
 	size_t tx_array_size;
 	int i;
 	int ret = 0;
-	size_t offset, len;
 	size_t startbyte_size = 0;
 
-	offset = par->dirty_lines_start * par->info->fix.line_length;
-	len = (par->dirty_lines_end - par->dirty_lines_start + 1) * par->info->fix.line_length;
+	fbtft_par_dbg(DEBUG_WRITE_VMEM, par, "%s(offset=%zu, len=%zu)\n",
+		__func__, offset, len);
+
 	remain = len / 2;
 	vmem16 = (u16 *)(par->info->screen_base + offset);
-
-	fbtft_par_dbg(DEBUG_WRITE_VMEM, par, "%s: offset=%d, len=%d\n",
-		__func__, offset, len);
 
 	if (par->gpio.dc != -1)
 		gpio_set_value(par->gpio.dc, 1);
@@ -164,7 +161,7 @@ int fbtft_write_vmem16_bus8(struct fbtft_par *par)
 
 	while (remain) {
 		to_copy = remain > tx_array_size ? tx_array_size : remain;
-		dev_dbg(par->info->device, "    to_copy=%d, remain=%d\n",
+		dev_dbg(par->info->device, "    to_copy=%zu, remain=%zu\n",
 						to_copy, remain - to_copy);
 
 		for (i = 0; i < to_copy; i++)
@@ -183,7 +180,7 @@ int fbtft_write_vmem16_bus8(struct fbtft_par *par)
 EXPORT_SYMBOL(fbtft_write_vmem16_bus8);
 
 /* 16 bit pixel over 9-bit SPI bus: dc + high byte, dc + low byte */
-int fbtft_write_vmem16_bus9(struct fbtft_par *par)
+int fbtft_write_vmem16_bus9(struct fbtft_par *par, size_t offset, size_t len)
 {
 	u8 *vmem8;
 	u16 *txbuf16 = par->txbuf.buf;
@@ -192,26 +189,23 @@ int fbtft_write_vmem16_bus9(struct fbtft_par *par)
 	size_t tx_array_size;
 	int i;
 	int ret = 0;
-	size_t offset, len;
+
+	fbtft_par_dbg(DEBUG_WRITE_VMEM, par, "%s(offset=%zu, len=%zu)\n",
+		__func__, offset, len);
 
 	if (!par->txbuf.buf) {
 		dev_err(par->info->device, "%s: txbuf.buf is NULL\n", __func__);
 		return -1;
 	}
 
-	offset = par->dirty_lines_start * par->info->fix.line_length;
-	len = (par->dirty_lines_end - par->dirty_lines_start + 1) * par->info->fix.line_length;
 	remain = len;
 	vmem8 = par->info->screen_base + offset;
-
-	fbtft_par_dbg(DEBUG_WRITE_VMEM, par, "%s: offset=%d, len=%d\n",
-		__func__, offset, len);
 
 	tx_array_size = par->txbuf.len / 2;
 
 	while (remain) {
 		to_copy = remain > tx_array_size ? tx_array_size : remain;
-		dev_dbg(par->info->device, "    to_copy=%d, remain=%d\n",
+		dev_dbg(par->info->device, "    to_copy=%zu, remain=%zu\n",
 						to_copy, remain - to_copy);
 
 #ifdef __LITTLE_ENDIAN
@@ -234,7 +228,7 @@ int fbtft_write_vmem16_bus9(struct fbtft_par *par)
 }
 EXPORT_SYMBOL(fbtft_write_vmem16_bus9);
 
-int fbtft_write_vmem8_bus8(struct fbtft_par *par)
+int fbtft_write_vmem8_bus8(struct fbtft_par *par, size_t offset, size_t len)
 {
 	dev_err(par->info->device, "%s: function not implemented\n", __func__);
 	return -1;
@@ -242,17 +236,14 @@ int fbtft_write_vmem8_bus8(struct fbtft_par *par)
 EXPORT_SYMBOL(fbtft_write_vmem8_bus8);
 
 /* 16 bit pixel over 16-bit databus */
-int fbtft_write_vmem16_bus16(struct fbtft_par *par)
+int fbtft_write_vmem16_bus16(struct fbtft_par *par, size_t offset, size_t len)
 {
 	u16 *vmem16;
-	size_t offset, len;
 
-	offset = par->dirty_lines_start * par->info->fix.line_length;
-	len = (par->dirty_lines_end - par->dirty_lines_start + 1) * par->info->fix.line_length;
-	vmem16 = (u16 *)(par->info->screen_base + offset);
-
-	fbtft_par_dbg(DEBUG_WRITE_VMEM, par, "%s: offset=%d, len=%d\n",
+	fbtft_par_dbg(DEBUG_WRITE_VMEM, par, "%s(offset=%zu, len=%zu)\n",
 		__func__, offset, len);
+
+	vmem16 = (u16 *)(par->info->screen_base + offset);
 
 	if (par->gpio.dc != -1)
 		gpio_set_value(par->gpio.dc, 1);

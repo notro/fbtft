@@ -34,6 +34,8 @@
 #include <linux/delay.h>
 #include <linux/uaccess.h>
 #include <linux/backlight.h>
+#include <linux/platform_device.h>
+#include <linux/spinlock.h>
 
 #include "fbtft.h"
 

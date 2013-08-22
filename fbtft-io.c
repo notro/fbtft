@@ -1,6 +1,10 @@
-
+#include <linux/export.h>
+#include <linux/errno.h>
 #include <linux/gpio.h>
 #include <linux/spi/spi.h>
+#ifdef CONFIG_ARCH_BCM2708
+#include <mach/platform.h>
+#endif
 #include "fbtft.h"
 
 int fbtft_write_spi(struct fbtft_par *par, void *buf, size_t len)

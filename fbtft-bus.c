@@ -1,3 +1,5 @@
+#include <linux/export.h>
+#include <linux/errno.h>
 #include <linux/gpio.h>
 #include <linux/spi/spi.h>
 #include "fbtft.h"

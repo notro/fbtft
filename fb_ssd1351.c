@@ -21,10 +21,17 @@
 			"2 2 2 2 2 2 2 2 " \
 			"2 2 2 2 2 2 2" \
 
+static void register_onboard_backlight(struct fbtft_par *par);
 
 static int init_display(struct fbtft_par *par)
 {
 	fbtft_par_dbg(DEBUG_INIT_DISPLAY, par, "%s()\n", __func__);
+
+	if (par->pdata
+		&& par->pdata->display.backlight == FBTFT_ONBOARD_BACKLIGHT) {
+		/* module uses onboard GPIO for panel power */
+		par->fbtftops.register_backlight = register_onboard_backlight;
+	}
 
 	par->fbtftops.reset(par);
 
@@ -148,6 +155,62 @@ static struct fbtft_display display = {
 		.blank = blank,
 	},
 };
+
+static void update_onboard_backlight(struct backlight_device *bd)
+{
+	struct fbtft_par *par = bl_get_data(bd);
+	bool on;
+
+	fbtft_par_dbg(DEBUG_BACKLIGHT, par,
+		"%s: power=%d, fb_blank=%d\n",
+		__func__, bd->props.power, bd->props.fb_blank);
+
+	on = (bd->props.power == FB_BLANK_UNBLANK)
+		&& (bd->props.fb_blank == FB_BLANK_UNBLANK);
+	/* Onboard backlight connected to GPIO0 on SSD1351, GPIO1 unused */
+	write_reg(par, 0xB5, on ? 0x03 : 0x02);
+}
+
+static void register_onboard_backlight(struct fbtft_par *par)
+{
+	struct backlight_device *bd;
+	struct backlight_properties bl_props = { 0, };
+	struct backlight_ops *bl_ops;
+
+	fbtft_par_dbg(DEBUG_BACKLIGHT, par, "%s()\n", __func__);
+
+	bl_ops = kzalloc(sizeof(struct backlight_ops), GFP_KERNEL);
+	if (!bl_ops) {
+		dev_err(par->info->device,
+			"%s: could not allocate memory for backlight operations.\n",
+			__func__);
+		return;
+	}
+
+	bl_ops->update_status = update_onboard_backlight;
+	bl_props.type = BACKLIGHT_RAW;
+	bl_props.power = FB_BLANK_POWERDOWN;
+
+	bd = backlight_device_register(dev_driver_string(par->info->device),
+				par->info->device, par, bl_ops, &bl_props);
+	if (IS_ERR(bd)) {
+		dev_err(par->info->device,
+			"cannot register backlight device (%ld)\n",
+			PTR_ERR(bd));
+		goto failed;
+	}
+	par->info->bl_dev = bd;
+
+	if (!par->fbtftops.unregister_backlight)
+		par->fbtftops.unregister_backlight = fbtft_unregister_backlight;
+
+	return;
+failed:
+	kfree(bl_ops);
+}
+
+
+
 FBTFT_REGISTER_DRIVER(DRVNAME, &display);
 
 MODULE_ALIAS("spi:" DRVNAME);

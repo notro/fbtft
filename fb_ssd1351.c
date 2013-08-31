@@ -156,7 +156,7 @@ static struct fbtft_display display = {
 	},
 };
 
-static void update_onboard_backlight(struct backlight_device *bd)
+static int update_onboard_backlight(struct backlight_device *bd)
 {
 	struct fbtft_par *par = bl_get_data(bd);
 	bool on;
@@ -169,6 +169,8 @@ static void update_onboard_backlight(struct backlight_device *bd)
 		&& (bd->props.fb_blank == FB_BLANK_UNBLANK);
 	/* Onboard backlight connected to GPIO0 on SSD1351, GPIO1 unused */
 	write_reg(par, 0xB5, on ? 0x03 : 0x02);
+
+	return 0;
 }
 
 static void register_onboard_backlight(struct fbtft_par *par)

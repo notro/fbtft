@@ -71,7 +71,3 @@ config FB_FLEX
 config FB_TFT_FBTFT_DEVICE
 	tristate "Module to for adding FBTFT devices"
 	depends on FB_TFT
-
-config TOUCHSCREEN_ADS7846_DEVICE
-	tristate "Module for adding an ads7846 device"
-	depends on SPI

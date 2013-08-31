@@ -16,4 +16,3 @@ obj-$(CONFIG_FB_FLEX)            += flexfb.o
 
 # Device modules
 obj-$(CONFIG_FB_TFT_FBTFT_DEVICE) += fbtft_device.o
-obj-$(CONFIG_TOUCHSCREEN_ADS7846_DEVICE) += ads7846_device.o

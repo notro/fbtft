@@ -21,13 +21,13 @@ void func(struct fbtft_par *par, int len, ...)                                \
 	int offset = 0;                                                       \
 	type *buf = (type *)par->buf;                                         \
 									      \
-	if (unlikely(par->debug & DEBUG_WRITE_DATA_COMMAND)) {                \
+	if (unlikely(par->debug & DEBUG_WRITE_REGISTER)) {                    \
 		va_start(args, len);                                          \
 		for (i = 0; i < len; i++) {                                   \
 			buf[i] = (type)va_arg(args, unsigned int);            \
 		}                                                             \
 		va_end(args);                                                 \
-		fbtft_par_dbg_hex(DEBUG_WRITE_DATA_COMMAND, par, par->info->device, type, buf, len, "%s: ", __func__);   \
+		fbtft_par_dbg_hex(DEBUG_WRITE_REGISTER, par, par->info->device, type, buf, len, "%s: ", __func__);   \
 	}                                                                     \
 									      \
 	va_start(args, len);                                                  \
@@ -81,12 +81,12 @@ void fbtft_write_reg8_bus9(struct fbtft_par *par, int len, ...)
 	int pad = 0;
 	u16 *buf = (u16 *)par->buf;
 
-	if (unlikely(par->debug & DEBUG_WRITE_DATA_COMMAND)) {
+	if (unlikely(par->debug & DEBUG_WRITE_REGISTER)) {
 		va_start(args, len);
 		for (i = 0; i < len; i++)
 			*(((u8 *)buf) + i) = (u8)va_arg(args, unsigned int);
 		va_end(args);
-		fbtft_par_dbg_hex(DEBUG_WRITE_DATA_COMMAND, par,
+		fbtft_par_dbg_hex(DEBUG_WRITE_REGISTER, par,
 			par->info->device, u8, buf, len, "%s: ", __func__);
 	}
 	if (len <= 0)

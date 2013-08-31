@@ -391,7 +391,7 @@ module_exit(fbtft_driver_module_exit);
 #define DEBUG_READ                  (1<<18)
 #define DEBUG_WRITE                 (1<<19)
 #define DEBUG_WRITE_VMEM            (1<<20)
-#define DEBUG_WRITE_DATA_COMMAND    (1<<21)
+#define DEBUG_WRITE_REGISTER        (1<<21)
 #define DEBUG_SET_ADDR_WIN          (1<<22)
 #define DEBUG_RESET                 (1<<23)
 #define DEBUG_MKDIRTY               (1<<24)

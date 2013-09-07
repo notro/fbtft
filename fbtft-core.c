@@ -224,6 +224,8 @@ void fbtft_unregister_backlight(struct fbtft_par *par)
 	fbtft_par_dbg(DEBUG_BACKLIGHT, par, "%s()\n", __func__);
 
 	if (par->info->bl_dev) {
+		par->info->bl_dev->props.power = FB_BLANK_POWERDOWN;
+		backlight_update_status(par->info->bl_dev);
 		bl_ops = par->info->bl_dev->ops;
 		backlight_device_unregister(par->info->bl_dev);
 		par->info->bl_dev = NULL;
@@ -969,11 +971,11 @@ int fbtft_unregister_framebuffer(struct fb_info *fb_info)
 		spi_set_drvdata(spi, NULL);
 	if (par->pdev)
 		platform_set_drvdata(par->pdev, NULL);
+	if (par->fbtftops.unregister_backlight)
+		par->fbtftops.unregister_backlight(par);
 	fbtft_sysfs_exit(par);
 	par->fbtftops.free_gpios(par);
 	ret = unregister_framebuffer(fb_info);
-	if (par->fbtftops.unregister_backlight)
-		par->fbtftops.unregister_backlight(par);
 	return ret;
 }
 EXPORT_SYMBOL(fbtft_unregister_framebuffer);

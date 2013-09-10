@@ -9,6 +9,12 @@
 
 int fbtft_write_spi(struct fbtft_par *par, void *buf, size_t len)
 {
+	struct spi_transfer t = {
+		.tx_buf = buf,
+		.len = len,
+	};
+	struct spi_message m;
+
 	fbtft_par_dbg_hex(DEBUG_WRITE, par, par->info->device, u8, buf, len,
 		"%s(len=%d): ", __func__, len);
 
@@ -17,7 +23,14 @@ int fbtft_write_spi(struct fbtft_par *par, void *buf, size_t len)
 			"%s: par->spi is unexpectedly NULL\n", __func__);
 		return -1;
 	}
-	return spi_write(par->spi, buf, len);
+
+	spi_message_init(&m);
+	if (par->txbuf.dma && buf == par->txbuf.buf) {
+		t.tx_dma = par->txbuf.dma;
+		m.is_dma_mapped = 1;
+	}
+	spi_message_add_tail(&t, &m);
+	return spi_sync(par->spi, &m);
 }
 EXPORT_SYMBOL(fbtft_write_spi);
 

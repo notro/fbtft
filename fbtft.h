@@ -219,6 +219,7 @@ struct fbtft_par {
 	u32 pseudo_palette[16];
 	struct {
 		void *buf;
+		dma_addr_t dma;
 		size_t len;
 	} txbuf;
 	u8 *buf;

@@ -36,6 +36,7 @@
 #include <linux/backlight.h>
 #include <linux/platform_device.h>
 #include <linux/spinlock.h>
+#include <linux/dma-mapping.h>
 
 #include "fbtft.h"
 
@@ -48,6 +49,10 @@ extern int fbtft_gamma_parse_str(struct fbtft_par *par, unsigned long *curves,
 static unsigned long debug;
 module_param(debug, ulong , 0);
 MODULE_PARM_DESC(debug, "override device debug level");
+
+static bool dma;
+module_param(dma, bool, 0);
+MODULE_PARM_DESC(dma, "Use DMA buffer");
 
 
 void fbtft_dbg_hex(const struct device *dev, int groupsize,
@@ -788,7 +793,12 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display,
 #endif
 
 	if (txbuflen > 0) {
-		txbuf = vzalloc(txbuflen);
+		if (dma) {
+			dev->coherent_dma_mask = ~0;
+			txbuf = dma_alloc_coherent(dev, txbuflen, &par->txbuf.dma, GFP_DMA);
+		} else {
+			txbuf = vzalloc(txbuflen);
+		}
 		if (!txbuf)
 			goto alloc_fail;
 		par->txbuf.buf = txbuf;
@@ -817,8 +827,6 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display,
 alloc_fail:
 	if (vmem)
 		vfree(vmem);
-	if (txbuf)
-		vfree(txbuf);
 	if (buf)
 		vfree(buf);
 	kfree(fbops);
@@ -841,8 +849,12 @@ void fbtft_framebuffer_release(struct fb_info *info)
 
 	fb_deferred_io_cleanup(info);
 	vfree(info->screen_base);
-	if (par->txbuf.buf)
-		vfree(par->txbuf.buf);
+	if (par->txbuf.buf) {
+		if (par->txbuf.dma)
+			dma_free_coherent(info->device, par->txbuf.len, par->txbuf.buf, par->txbuf.dma);
+		else
+			vfree(par->txbuf.buf);
+	}
 	vfree(par->buf);
 	kfree(info->fbops);
 	kfree(info->fbdefio);
@@ -921,7 +933,8 @@ int fbtft_register_framebuffer(struct fb_info *fb_info)
 	fbtft_sysfs_init(par);
 
 	if (par->txbuf.buf)
-		sprintf(text1, ", %d KiB buffer memory", par->txbuf.len >> 10);
+		sprintf(text1, ", %d KiB %sbuffer memory",
+			par->txbuf.len >> 10, par->txbuf.dma ? "DMA " : "");
 	if (spi)
 		sprintf(text2, ", spi%d.%d at %d MHz", spi->master->bus_num,
 				spi->chip_select, spi->max_speed_hz/1000000);

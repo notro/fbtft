@@ -62,6 +62,12 @@ config FB_TFT_ST7735R
 	help
 	  Generic Framebuffer support for ST7735R
 
+config FB_TFT_WATTEROTT
+	tristate "FB driver for the WATTEROTT LCD Controller"
+	depends on FB_TFT
+	help
+	  Generic Framebuffer support for WATTEROTT
+
 config FB_FLEX
 	tristate "Generic FB driver for TFT LCD displays"
 	depends on FB_TFT

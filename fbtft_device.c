@@ -359,6 +359,19 @@ static struct fbtft_device_display displays[] = {
 			}
 		}
 	}, {
+		.name = "mi0283qt-v2",
+		.spi = &(struct spi_board_info) {
+			.modalias = "fb_watterott",
+			.max_speed_hz = 4000000,
+			.mode = SPI_MODE_3,
+			.platform_data = &(struct fbtft_platform_data) {
+				.gpios = (const struct fbtft_gpio []) {
+					{ "reset", 25 },
+					{},
+				},
+			}
+		}
+	}, {
 		.name = "nokia3310",
 		.spi = &(struct spi_board_info) {
 			.modalias = "fb_pcd8544",

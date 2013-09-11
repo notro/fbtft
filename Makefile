@@ -12,6 +12,7 @@ obj-$(CONFIG_FB_TFT_PCD8544)     += fb_pcd8544.o
 obj-$(CONFIG_FB_TFT_SSD1289)     += fb_ssd1289.o
 obj-$(CONFIG_FB_TFT_SSD1351)     += fb_ssd1351.o
 obj-$(CONFIG_FB_TFT_ST7735R)     += fb_st7735r.o
+obj-$(CONFIG_FB_TFT_WATTEROTT)   += fb_watterott.o
 obj-$(CONFIG_FB_FLEX)            += flexfb.o
 
 # Device modules

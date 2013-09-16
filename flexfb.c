@@ -21,6 +21,7 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
+#include <linux/vmalloc.h>
 #include <linux/gpio.h>
 #include <linux/spi/spi.h>
 #include <linux/delay.h>
@@ -408,6 +409,7 @@ static int flexfb_probe_common(struct spi_device *sdev, struct platform_device *
 
 	/* bus functions */
 	if (sdev) {
+		par->fbtftops.write = fbtft_write_spi;
 		switch (buswidth) {
 		case 8:
 			par->fbtftops.write_vmem = fbtft_write_vmem16_bus8;
@@ -424,15 +426,26 @@ static int flexfb_probe_common(struct spi_device *sdev, struct platform_device *
 			sdev->bits_per_word=9;
 			ret = sdev->master->setup(sdev);
 			if (ret) {
-				dev_err(dev, "SPI 9-bit setup failed: %d.\n", ret);
-				return ret;
+				dev_warn(dev,
+					"9-bit SPI not available, emulating using 8-bit.\n");
+				sdev->bits_per_word = 8;
+				ret = sdev->master->setup(sdev);
+				if (ret)
+					goto out_release;
+				/* allocate buffer with room for dc bits */
+				par->extra = vzalloc(par->txbuf.len +
+						(par->txbuf.len / 8) + 8);
+				if (!par->extra) {
+					ret = -ENOMEM;
+					goto out_release;
+				}
+				par->fbtftops.write = fbtft_write_spi_emulate_9;
 			}
 			break;
 		default:
 			dev_err(dev, "argument 'buswidth': %d is not supported with SPI.\n", buswidth);
 			return -EINVAL;
 		}
-		par->fbtftops.write = fbtft_write_spi;
 	} else {
 		par->fbtftops.verify_gpios = flexfb_verify_gpios_db;
 		switch (buswidth) {
@@ -490,12 +503,19 @@ out_release:
 
 static int flexfb_remove_common(struct device *dev, struct fb_info *info)
 {
-	fbtft_init_dbg(dev, "%s()\n", __func__);
+	struct fbtft_par *par;
 
-	if (info) {
-		fbtft_unregister_framebuffer(info);
-		fbtft_framebuffer_release(info);
+	if (!info)
+		return -EINVAL;
+	par = info->par;
+	if (par) {
+		fbtft_par_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, par,
+			"%s()\n", __func__);
+		if (par->extra)
+			vfree(par->extra);
 	}
+	fbtft_unregister_framebuffer(info);
+	fbtft_framebuffer_release(info);
 
 	return 0;
 }

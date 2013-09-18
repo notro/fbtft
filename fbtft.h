@@ -207,6 +207,7 @@ struct fbtft_platform_data {
  * @debug: Pointer to debug value
  * @current_debug:
  * @first_update_done: Used to only time the first display update
+ * @update_time: Used to calculate 'fps' in debug output
  * @bgr: BGR mode/\n
  * @extra: Extra info needed by driver
  */
@@ -248,6 +249,7 @@ struct fbtft_par {
 	} gamma;
 	unsigned long debug;
 	bool first_update_done;
+	struct timespec update_time;
 	bool bgr;
 	void *extra;
 };

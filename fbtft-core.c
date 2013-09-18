@@ -322,8 +322,9 @@ void fbtft_reset(struct fbtft_par *par)
 void fbtft_update_display(struct fbtft_par *par, unsigned start_line, unsigned end_line)
 {
 	size_t offset, len;
-	struct timespec ts_start, ts_end, test_of_time;
-	long ms, us, ns;
+	struct timespec ts_start, ts_end, ts_fps, ts_duration;
+	long fps_ms, fps_us, duration_ms, duration_us;
+	long fps, throughput;
 	bool timeit = false;
 	int ret = 0;
 
@@ -368,15 +369,29 @@ void fbtft_update_display(struct fbtft_par *par, unsigned start_line, unsigned e
 
 	if (unlikely(timeit)) {
 		getnstimeofday(&ts_end);
-		test_of_time = timespec_sub(ts_end, ts_start);
-		us = (test_of_time.tv_nsec / 1000) % 1000;
-		ms = (test_of_time.tv_sec * 1000) + ((test_of_time.tv_nsec / 1000000) % 1000);
-		ns = test_of_time.tv_nsec % 1000;
+		if (par->update_time.tv_nsec == 0 && par->update_time.tv_sec == 0) {
+			par->update_time.tv_sec = ts_start.tv_sec;
+			par->update_time.tv_nsec = ts_start.tv_nsec;
+		}
+		ts_fps = timespec_sub(ts_start, par->update_time);
+		par->update_time.tv_sec = ts_start.tv_sec;
+		par->update_time.tv_nsec = ts_start.tv_nsec;
+		fps_ms = (ts_fps.tv_sec * 1000) + ((ts_fps.tv_nsec / 1000000) % 1000);
+		fps_us = (ts_fps.tv_nsec / 1000) % 1000;
+		fps = fps_ms * 1000 + fps_us;
+		fps = fps ? 1000000 / fps : 0;
+
+		ts_duration = timespec_sub(ts_end, ts_start);
+		duration_ms = (ts_duration.tv_sec * 1000) + ((ts_duration.tv_nsec / 1000000) % 1000);
+		duration_us = (ts_duration.tv_nsec / 1000) % 1000;
+		throughput = duration_ms * 1000 + duration_us;
+		throughput = throughput ? (len * 1000) / throughput : 0;
+		throughput = throughput * 1000 / 1024;
+
 		dev_info(par->info->device,
-			"Elapsed time for display update: %4lu.%.3lu%.3lu ms (fps: %2lu, lines=%u)\n",
-			ms, us, ns,
-			test_of_time.tv_nsec ? 1000000000 / test_of_time.tv_nsec : 0,
-			end_line - start_line + 1);
+			"Display update: %ld kB/s (%ld.%.3ld ms), fps=%ld (%ld.%.3ld ms)\n",
+			throughput, duration_ms, duration_us,
+			fps, fps_ms, fps_us);
 		par->first_update_done = true;
 	}
 }

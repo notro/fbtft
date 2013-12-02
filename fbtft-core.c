@@ -718,7 +718,7 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display,
 	if (!fbdefio)
 		goto alloc_fail;
 
-	buf = vzalloc(128);
+	buf = kmalloc(128, GFP_KERNEL);
 	if (!buf)
 		goto alloc_fail;
 
@@ -812,7 +812,7 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display,
 			dev->coherent_dma_mask = ~0;
 			txbuf = dma_alloc_coherent(dev, txbuflen, &par->txbuf.dma, GFP_DMA);
 		} else {
-			txbuf = vzalloc(txbuflen);
+			txbuf = kmalloc(txbuflen, GFP_KERNEL);
 		}
 		if (!txbuf)
 			goto alloc_fail;
@@ -840,10 +840,8 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display,
 	return info;
 
 alloc_fail:
-	if (vmem)
-		vfree(vmem);
-	if (buf)
-		vfree(buf);
+	vfree(vmem);
+	kfree(buf);
 	kfree(fbops);
 	kfree(fbdefio);
 	kfree(gamma_curves);
@@ -868,9 +866,9 @@ void fbtft_framebuffer_release(struct fb_info *info)
 		if (par->txbuf.dma)
 			dma_free_coherent(info->device, par->txbuf.len, par->txbuf.buf, par->txbuf.dma);
 		else
-			vfree(par->txbuf.buf);
+			kfree(par->txbuf.buf);
 	}
-	vfree(par->buf);
+	kfree(par->buf);
 	kfree(info->fbops);
 	kfree(info->fbdefio);
 	kfree(par->gamma.curves);
@@ -1268,8 +1266,9 @@ int fbtft_probe_common(struct fbtft_display *display,
 			if (ret)
 				goto out_release;
 			/* allocate buffer with room for dc bits */
-			par->extra = vzalloc(par->txbuf.len
-						+ (par->txbuf.len / 8) + 8);
+			par->extra = kmalloc(
+				par->txbuf.len + (par->txbuf.len / 8) + 8,
+				GFP_KERNEL);
 			if (!par->extra) {
 				ret = -ENOMEM;
 				goto out_release;
@@ -1325,7 +1324,7 @@ int fbtft_remove_common(struct device *dev, struct fb_info *info)
 		fbtft_par_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, par,
 			"%s()\n", __func__);
 		if (par->extra)
-			vfree(par->extra);
+			kfree(par->extra);
 	}
 	fbtft_unregister_framebuffer(info);
 	fbtft_framebuffer_release(info);

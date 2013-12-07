@@ -335,6 +335,38 @@ static struct fbtft_device_display displays[] = {
 			}
 		}
 	}, {
+		.name = "itdb24",
+		.pdev = &(struct platform_device) {
+			.name = "fb_s6d1121",
+			.id = 0,
+			.dev = {
+			.release = fbtft_device_pdev_release,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 8,
+					.backlight = 1,
+				},
+				.bgr = false,
+				.gpios = (const struct fbtft_gpio []) {
+					/* Wiring for LCD adapter kit */
+					{ "reset", 7 },
+					{ "dc", 0 }, 	/* rev 2: 2 */
+					{ "wr", 1 }, 	/* rev 2: 3 */
+					{ "cs", 8 },
+					{ "db00", 17 },
+					{ "db01", 18 },
+					{ "db02", 21 }, /* rev 2: 27 */
+					{ "db03", 22 },
+					{ "db04", 23 },
+					{ "db05", 24 },
+					{ "db06", 25 },
+					{ "db07", 4 },
+					{}
+				},
+			},
+			}
+		}
+	}, {
 		.name = "itdb28",
 		.pdev = &(struct platform_device) {
 			.name = "fb_ili9325",

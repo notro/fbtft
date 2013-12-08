@@ -136,6 +136,25 @@ static void adafruit18_green_tab_set_addr_win(struct fbtft_par *par,
 		"02 1c 07 12 37 32 29 2d 29 25 2B 39 00 01 03 10\n" \
 		"03 1d 07 06 2E 2C 29 2D 2E 2E 37 3F 00 00 02 10"
 
+static int hy28b_init_sequence[] = {
+	-1,0x00e7,0x0010,-1,0x0000,0x0001,-1,0x0001,0x0100,-1,0x0002,0x0700,
+	-1,0x0003,0x1030,-1,0x0004,0x0000,-1,0x0008,0x0207,-1,0x0009,0x0000,
+	-1,0x000a,0x0000,-1,0x000c,0x0001,-1,0x000d,0x0000,-1,0x000f,0x0000,
+	-1,0x0010,0x0000,-1,0x0011,0x0007,-1,0x0012,0x0000,-1,0x0013,0x0000,
+	-2,50,-1,0x0010,0x1590,-1,0x0011,0x0227,-2,50,-1,0x0012,0x009c,-2,50,
+	-1,0x0013,0x1900,-1,0x0029,0x0023,-1,0x002b,0x000e,-2,50,
+	-1,0x0020,0x0000,-1,0x0021,0x0000,-2,50,-1,0x0050,0x0000,
+	-1,0x0051,0x00ef,-1,0x0052,0x0000,-1,0x0053,0x013f,-1,0x0060,0xa700,
+	-1,0x0061,0x0001,-1,0x006a,0x0000,-1,0x0080,0x0000,-1,0x0081,0x0000,
+	-1,0x0082,0x0000,-1,0x0083,0x0000,-1,0x0084,0x0000,-1,0x0085,0x0000,
+	-1,0x0090,0x0010,-1,0x0092,0x0000,-1,0x0093,0x0003,-1,0x0095,0x0110,
+	-1,0x0097,0x0000,-1,0x0098,0x0000,-1,0x0007,0x0133,-1,0x0020,0x0000,
+	-1,0x0021,0x0000,-2,100,-3 };
+
+#define HY28B_GAMMA \
+	"04 1F 4 7 7 0 7 7 6 0\n" \
+	"0F 00 1 7 4 0 0 0 6 7"
+
 /* Supported displays in alphabetical order */
 static struct fbtft_device_display displays[] = {
 	{
@@ -332,6 +351,29 @@ static struct fbtft_device_display displays[] = {
 					{ "led", 18 },
 					{},
 				},
+			}
+		}
+	}, {
+		.name = "hy28b",
+		.spi = &(struct spi_board_info) {
+			.modalias = "fb_ili9325",
+			.max_speed_hz = 48000000,
+			.mode = SPI_MODE_3,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 8,
+					.backlight = 1,
+					.init_sequence = hy28b_init_sequence,
+				},
+				.startbyte = 0b01110000,
+				.bgr = true,
+				.fps= 50,
+				.gpios = (const struct fbtft_gpio []) {
+					{ "reset", 25 },
+					{ "led", 18 },
+					{},
+				},
+				.gamma = HY28B_GAMMA,
 			}
 		}
 	}, {

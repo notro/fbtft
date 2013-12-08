@@ -317,23 +317,6 @@ static struct fbtft_device_display displays[] = {
 			}
 		}
 	}, {
-		.name = "ssd1331",
-		.spi = &(struct spi_board_info) {
-			.modalias = "fb_ssd1331",
-			.max_speed_hz = 20000000,
-			.mode = SPI_MODE_3,
-			.platform_data = &(struct fbtft_platform_data) {
-				.display = {
-					.buswidth = 8,
-				},
-				.gpios = (const struct fbtft_gpio []) {
-					{ "reset", 24 },
-					{ "dc", 25 },
-					{},
-				},
-			}
-		}
-	}, {
 		.name = "hy28a",
 		.spi = &(struct spi_board_info) {
 			.modalias = "fb_ili9320",
@@ -652,6 +635,23 @@ static struct fbtft_device_display displays[] = {
 			.mode = SPI_MODE_0,
 			.platform_data = &(struct fbtft_platform_data) {
 				.gpios = (const struct fbtft_gpio []) {
+					{},
+				},
+			}
+		}
+	}, {
+		.name = "ssd1331",
+		.spi = &(struct spi_board_info) {
+			.modalias = "fb_ssd1331",
+			.max_speed_hz = 20000000,
+			.mode = SPI_MODE_3,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 8,
+				},
+				.gpios = (const struct fbtft_gpio []) {
+					{ "reset", 24 },
+					{ "dc", 25 },
 					{},
 				},
 			}

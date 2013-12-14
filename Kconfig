@@ -86,6 +86,12 @@ config FB_TFT_ST7735R
 	help
 	  Generic Framebuffer support for ST7735R
 
+config FB_TFT_TINYLCD
+	tristate "FB driver for tinylcd.com display"
+	depends on FB_TFT
+	help
+	  Custom Framebuffer support for tinylcd.com display
+
 config FB_TFT_WATTEROTT
 	tristate "FB driver for the WATTEROTT LCD Controller"
 	depends on FB_TFT

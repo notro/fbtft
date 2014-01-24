@@ -58,9 +58,8 @@ static int mode = -1;
 module_param(mode, int, 0);
 MODULE_PARM_DESC(mode, "SPI mode (override device default)");
 
-static char *gpios[MAX_GPIOS] = { NULL, };
-static int gpios_num;
-module_param_array(gpios, charp, &gpios_num, 0);
+static char *gpios;
+module_param(gpios, charp, 0);
 MODULE_PARM_DESC(gpios,
 "List of gpios. Comma separated with the form: reset:23,dc:24 " \
 "(when overriding the default, all gpios must be specified)");
@@ -831,7 +830,8 @@ static void pr_p_devices(void)
 	bus_for_each_dev(&platform_bus_type, NULL, NULL, p_device_found);
 }
 
-static void fbtft_device_delete(struct spi_master *master, unsigned cs)
+#ifdef MODULE
+static void fbtft_device_spi_delete(struct spi_master *master, unsigned cs)
 {
 	struct device *dev;
 	char str[32];
@@ -845,19 +845,54 @@ static void fbtft_device_delete(struct spi_master *master, unsigned cs)
 	}
 }
 
+static int fbtft_device_spi_device_register(struct spi_board_info *spi)
+{
+	struct spi_master *master;
+
+	master = spi_busnum_to_master(spi->bus_num);
+	if (!master) {
+		pr_err(DRVNAME ":  spi_busnum_to_master(%d) returned NULL\n",
+								spi->bus_num);
+		return -EINVAL;
+	}
+	/* make sure it's available */
+	fbtft_device_spi_delete(master, spi->chip_select);
+	spi_device = spi_new_device(master, spi);
+	put_device(&master->dev);
+	if (!spi_device) {
+		pr_err(DRVNAME ":    spi_new_device() returned NULL\n");
+		return -EPERM;
+	}
+	return 0;
+}
+#else
+static int fbtft_device_spi_device_register(struct spi_board_info *spi)
+{
+	return spi_register_board_info(spi, 1);
+}
+#endif
+
 static int __init fbtft_device_init(void)
 {
-	struct spi_master *master = NULL;
 	struct spi_board_info *spi = NULL;
 	struct fbtft_platform_data *pdata;
 	const struct fbtft_gpio *gpio = NULL;
-	char *p_name, *p_num;
+	char *p_gpio, *p_name, *p_num;
 	bool found = false;
-	int i;
+	int i = 0;
 	long val;
 	int ret = 0;
 
 	pr_debug("\n\n"DRVNAME": init\n");
+
+	if (name == NULL) {
+#ifdef MODULE
+		pr_err(DRVNAME":  missing module parameter: 'name'\n");
+		return -EINVAL;
+#else
+		return 0;
+#endif
+	}
 
 	if (init_num > FBTFT_MAX_INIT_SEQUENCE) {
 		pr_err(DRVNAME \
@@ -867,51 +902,45 @@ static int __init fbtft_device_init(void)
 	}
 
 	/* parse module parameter: gpios */
-	if (gpios_num > MAX_GPIOS) {
-		pr_err(DRVNAME \
-			":  gpios parameter: exceeded max array size: %d\n",
-			MAX_GPIOS);
-		return -EINVAL;
-	}
-	if (gpios_num > 0) {
-		for (i = 0; i < gpios_num; i++) {
-			if (strchr(gpios[i], ':') == NULL) {
-				pr_err(DRVNAME \
-					":  error: missing ':' in gpios parameter: %s\n",
-					gpios[i]);
-				return -EINVAL;
-			}
-			p_num = gpios[i];
-			p_name = strsep(&p_num, ":");
-			if (p_name == NULL || p_num == NULL) {
-				pr_err(DRVNAME \
-					":  something bad happened parsing gpios parameter: %s\n",
-					gpios[i]);
-				return -EINVAL;
-			}
-			ret = kstrtol(p_num, 10, &val);
-			if (ret) {
-				pr_err(DRVNAME \
-					":  could not parse number in gpios parameter: %s:%s\n",
-					p_name, p_num);
-				return -EINVAL;
-			}
-			strcpy(fbtft_device_param_gpios[i].name, p_name);
-			fbtft_device_param_gpios[i].gpio = (int) val;
+	while ((p_gpio = strsep(&gpios, ","))) {
+		if (strchr(p_gpio, ':') == NULL) {
+			pr_err(DRVNAME \
+				":  error: missing ':' in gpios parameter: %s\n",
+				p_gpio);
+			return -EINVAL;
 		}
-		gpio = fbtft_device_param_gpios;
+		p_num = p_gpio;
+		p_name = strsep(&p_num, ":");
+		if (p_name == NULL || p_num == NULL) {
+			pr_err(DRVNAME \
+				":  something bad happened parsing gpios parameter: %s\n",
+				p_gpio);
+			return -EINVAL;
+		}
+		ret = kstrtol(p_num, 10, &val);
+		if (ret) {
+			pr_err(DRVNAME \
+				":  could not parse number in gpios parameter: %s:%s\n",
+				p_name, p_num);
+			return -EINVAL;
+		}
+		strcpy(fbtft_device_param_gpios[i].name, p_name);
+		fbtft_device_param_gpios[i++].gpio = (int) val;
+		if (i == MAX_GPIOS) {
+			pr_err(DRVNAME \
+				":  gpios parameter: exceeded max array size: %d\n",
+				MAX_GPIOS);
+			return -EINVAL;
+		}
 	}
+	if (fbtft_device_param_gpios[0].name[0])
+		gpio = fbtft_device_param_gpios;
 
 	if (verbose > 2)
 		pr_spi_devices(); /* print list of registered SPI devices */
 
 	if (verbose > 2)
 		pr_p_devices(); /* print list of 'fb' platform devices */
-
-	if (name == NULL) {
-		pr_err(DRVNAME":  missing module parameter: 'name'\n");
-		return -EINVAL;
-	}
 
 	pr_debug(DRVNAME":  name='%s', busnum=%d, cs=%d\n", name, busnum, cs);
 
@@ -950,15 +979,6 @@ static int __init fbtft_device_init(void)
 	for (i = 0; i < ARRAY_SIZE(displays); i++) {
 		if (strncmp(name, displays[i].name, 32) == 0) {
 			if (displays[i].spi) {
-				master = spi_busnum_to_master(busnum);
-				if (!master) {
-					pr_err(DRVNAME \
-						":  spi_busnum_to_master(%d) returned NULL\n",
-						busnum);
-					return -EINVAL;
-				}
-				/* make sure bus:cs is available */
-				fbtft_device_delete(master, cs);
 				spi = displays[i].spi;
 				spi->chip_select = cs;
 				spi->bus_num = busnum;
@@ -1001,12 +1021,11 @@ static int __init fbtft_device_init(void)
 			}
 
 			if (displays[i].spi) {
-				spi_device = spi_new_device(master, spi);
-				put_device(&master->dev);
-				if (!spi_device) {
+				ret = fbtft_device_spi_device_register(spi);
+				if (ret) {
 					pr_err(DRVNAME \
-						":    spi_new_device() returned NULL\n");
-					return -EPERM;
+						": failed to register SPI device\n");
+					return ret;
 				}
 				found = true;
 				break;
@@ -1065,7 +1084,7 @@ static void __exit fbtft_device_exit(void)
 
 }
 
-module_init(fbtft_device_init);
+arch_initcall(fbtft_device_init);
 module_exit(fbtft_device_exit);
 
 MODULE_DESCRIPTION("Add a FBTFT device.");

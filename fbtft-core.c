@@ -50,7 +50,7 @@ static unsigned long debug;
 module_param(debug, ulong , 0);
 MODULE_PARM_DESC(debug, "override device debug level");
 
-static bool dma;
+static bool dma = true;
 module_param(dma, bool, 0);
 MODULE_PARM_DESC(dma, "Use DMA buffer");
 

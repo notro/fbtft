@@ -879,7 +879,8 @@ static void fbtft_device_spi_delete(struct spi_master *master, unsigned cs)
 
 	dev = bus_find_device_by_name(&spi_bus_type, NULL, str);
 	if (dev) {
-		pr_err(DRVNAME": Deleting %s\n", str);
+		if (verbose)
+			pr_info(DRVNAME": Deleting %s\n", str);
 		device_del(dev);
 	}
 }

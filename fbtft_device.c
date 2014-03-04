@@ -500,6 +500,25 @@ static struct fbtft_device_display displays[] = {
 			}
 		}
 	}, {
+		.name = "pitft",
+		.spi = &(struct spi_board_info) {
+			.modalias = "fb_ili9340",
+			.max_speed_hz = 32000000,
+			.mode = SPI_MODE_0,
+			.chip_select = 0,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 8,
+					.backlight = 1,
+				},
+				.bgr = true,
+				.gpios = (const struct fbtft_gpio []) {
+					{ "dc", 25 },
+					{},
+				},
+			}
+		}
+	}, {
 		.name = "pioled",
 		.spi = &(struct spi_board_info) {
 			.modalias = "fb_ssd1351",

@@ -323,10 +323,17 @@ static int fbtft_driver_remove_pdev(struct platform_device *pdev)          \
 	return fbtft_remove_common(&pdev->dev, info);                      \
 }                                                                          \
 									   \
+static const struct of_device_id fbtft_dt_id[] = {			   \
+	{.compatible = _name, },					   \
+	{ }								   \
+};									   \
+MODULE_DEVICE_TABLE(of,fbtft_dt_id);					   \
+									   \
 static struct spi_driver fbtft_driver_spi_driver = {                       \
 	.driver = {                                                        \
 		.name   = _name,                                           \
 		.owner  = THIS_MODULE,                                     \
+		.of_match_table = of_match_ptr(fbtft_dt_id),	           \
 	},                                                                 \
 	.probe  = fbtft_driver_probe_spi,                                  \
 	.remove = fbtft_driver_remove_spi,                                 \

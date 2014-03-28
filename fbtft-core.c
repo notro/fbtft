@@ -1173,6 +1173,66 @@ int fbtft_verify_gpios(struct fbtft_par *par)
 	return 0;
 }
 
+//----------------------------------------
+int fbtft_of_probe(struct spi_device *spi)
+{
+   struct fbtft_platform_data   *pdata;
+   int buswidth;
+   int reset;
+   int dc;
+   // struct fbtft_gpio gpio_settings[] = {
+   // 		{"reset",0},
+   // 		{"dc",0},
+   // 		{},
+   // };
+   struct fbtft_gpio *gpio_settings;
+   
+   if (!of_device_is_available(spi->dev.of_node)) {
+       dev_err(&spi->dev, "No device tree data available.\n");
+       return -EINVAL;
+   }else {
+   		dev_err(&spi->dev,"Device tree data available.\n");
+   }
+
+   if (of_property_read_u32(spi->dev.of_node, "buswidth", &buswidth)) {
+       dev_err(&spi->dev, "Missing -buswidth- property in the DT.\n");
+       return -EINVAL;
+   }else {
+   		dev_err(&spi->dev, "buswidth read properly, value: %d",buswidth);
+   }
+
+   if (of_property_read_u32(spi->dev.of_node, "reset", &reset)) {
+       dev_err(&spi->dev, "Missing -reset- property in the DT.\n");
+       return -EINVAL;
+   }else {
+   		dev_err(&spi->dev, "reset pin read properly, value: %d",reset);
+   }
+
+   if (of_property_read_u32(spi->dev.of_node, "dc", &dc)) {
+       dev_err(&spi->dev, "Missing -dc- property in the DT.\n");
+       return -EINVAL;
+   }else {
+   		dev_err(&spi->dev, "dc pin read properly, value: %d",dc);
+   }
+
+   pdata = kzalloc(sizeof(*pdata), GFP_KERNEL);
+   pdata->display.buswidth = buswidth;
+   gpio_settings = kzalloc(sizeof(struct fbtft_gpio)*2,GFP_KERNEL);
+   //gpio_settings->name = "reset";
+   strcpy(gpio_settings->name,"reset");
+   gpio_settings->gpio = reset;
+   gpio_settings++;
+   strcpy(gpio_settings->name,"dc");
+   gpio_settings->gpio = dc;
+   gpio_settings--;
+   pdata->gpios = gpio_settings;
+   
+   spi->dev.platform_data = pdata;
+
+   return 0;
+}
+//----------------------------------------
+
 /**
  * fbtft_probe_common() - Generic device probe() helper function
  * @display: Display properties
@@ -1193,7 +1253,12 @@ int fbtft_probe_common(struct fbtft_display *display,
 	struct fbtft_par *par;
 	struct fbtft_platform_data *pdata;
 	int ret;
+	int status;
 
+	//----------------------------------------
+	status = fbtft_of_probe(sdev);
+	//----------------------------------------
+	
 	if (sdev)
 		dev = &sdev->dev;
 	else

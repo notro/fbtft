@@ -5,6 +5,7 @@ fbtft-y                          += fbtft-core.o fbtft-sysfs.o fbtft-bus.o fbtft
 # drivers
 obj-$(CONFIG_FB_TFT_HX8340BN)    += fb_hx8340bn.o
 obj-$(CONFIG_FB_TFT_HX8347D)     += fb_hx8347d.o
+obj-$(CONFIG_FB_TFT_HX8353D)     += fb_hx8353d.o
 obj-$(CONFIG_FB_TFT_ILI9320)     += fb_ili9320.o
 obj-$(CONFIG_FB_TFT_ILI9325)     += fb_ili9325.o
 obj-$(CONFIG_FB_TFT_ILI9340)     += fb_ili9340.o

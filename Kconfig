@@ -104,6 +104,18 @@ config FB_TFT_WATTEROTT
 	help
 	  Generic Framebuffer support for WATTEROTT
 
+config FB_TFT_BD663474
+	tristate "FB driver for the BD663474 LCD Controller"
+	depends on FB_TFT
+	help
+	  Generic Framebuffer support for BD663474
+
+config FB_TFT_UPD161704
+	tristate "FB driver for the uPD161704 LCD Controller"
+	depends on FB_TFT
+	help
+	  Generic Framebuffer support for uPD161704
+
 config FB_FLEX
 	tristate "Generic FB driver for TFT LCD displays"
 	depends on FB_TFT

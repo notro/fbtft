@@ -1,3 +1,4 @@
+# Optionally, include config file to allow out of tree kernel modules build
 -include .config
 
 # Core module

@@ -46,12 +46,12 @@ static int init_display(struct fbtft_par *par)
 
 	/* Initialization sequence from Lib_UTFT */
 
-	//oscillator start
-	write_reg(par, 0x000,0x0001);	//Oscillator control (0:oscillator stop, 1: oscillator operation)
+	/* oscillator start */
+	write_reg(par, 0x000,0x0001);	/*oscillator 0: stop, 1: operation */
 	mdelay(10);
 
 	/* Power settings */
-	write_reg(par, 0x100, 0x0000 ); /*power supply setup*/
+	write_reg(par, 0x100, 0x0000 ); /* power supply setup */
 	write_reg(par, 0x101, 0x0000 );
 	write_reg(par, 0x102, 0x3110 );
 	write_reg(par, 0x103, 0xe200 );
@@ -91,7 +91,7 @@ static int init_display(struct fbtft_par *par)
 	write_reg(par, 0x216, 0x0000 );
 	write_reg(par, 0x217, 0x0000 );
 
-	// Gray scale settings
+	/* Gray scale settings */
 	write_reg(par, 0x300, 0x5343);
 	write_reg(par, 0x301, 0x1021);
 	write_reg(par, 0x302, 0x0003);

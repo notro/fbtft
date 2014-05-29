@@ -765,6 +765,40 @@ static struct fbtft_device_display displays[] = {
 			}
 		}
 	}, {
+		.name = "upd161704",
+		.spi = &(struct spi_board_info) {
+			.modalias = "fb_upd161704",
+			.max_speed_hz = 32000000,
+			.mode = SPI_MODE_0,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 8,
+				},
+				.gpios = (const struct fbtft_gpio []) {
+					{ "reset", 24 },
+					{ "dc", 25 },
+					{},
+				},
+			}
+		}
+	}, {
+		.name = "waveshare22",
+		.spi = &(struct spi_board_info) {
+			.modalias = "fb_bd663474",
+			.max_speed_hz = 32000000,
+			.mode = SPI_MODE_3,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 8,
+				},
+				.gpios = (const struct fbtft_gpio []) {
+					{ "reset", 24 },
+					{ "dc", 25 },
+					{},
+				},
+			}
+		}
+	}, {
 		/* This should be the last item.
 		   Used with the custom argument */
 		.name = "",

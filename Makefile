@@ -1,3 +1,6 @@
+# Optionally, include config file to allow out of tree kernel modules build
+-include .config
+
 # Core module
 obj-$(CONFIG_FB_TFT)             += fbtft.o
 fbtft-y                          += fbtft-core.o fbtft-sysfs.o fbtft-bus.o fbtft-io.o

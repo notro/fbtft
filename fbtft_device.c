@@ -595,6 +595,26 @@ static struct fbtft_device_display displays[] = {
 			}
 		}
 	}, {
+		.name = "s6d02a1",
+		.spi = &(struct spi_board_info) {
+			.modalias = "fb_s6d02a1",
+			.max_speed_hz = 32000000,
+			.mode = SPI_MODE_0,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 8,
+					.backlight = 1,
+				},
+				.bgr = true,
+				.gpios = (const struct fbtft_gpio []) {
+					{ "reset", 25 },
+					{ "dc", 24 },
+					{ "led", 23 },
+					{},
+				},
+			}
+		}
+	}, {
 		.name = "sainsmart18",
 		.spi = &(struct spi_board_info) {
 			.modalias = "fb_st7735r",

@@ -43,7 +43,7 @@ default: .config
 .config:
 	grep config Kconfig | cut -d' ' -f2 | sed 's@^@CONFIG_@; s@$$@=m@' > .config
 
-modules_install:
+install:
 	$(MAKE) -C $(KDIR) M=$$PWD modules_install
 
 

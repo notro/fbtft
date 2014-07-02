@@ -189,6 +189,7 @@ static struct fbtft_display display = {
 	},
 };
 
+#ifdef CONFIG_FB_BACKLIGHT
 static int update_onboard_backlight(struct backlight_device *bd)
 {
 	struct fbtft_par *par = bl_get_data(bd);
@@ -243,7 +244,9 @@ static void register_onboard_backlight(struct fbtft_par *par)
 failed:
 	kfree(bl_ops);
 }
-
+#else
+static void register_onboard_backlight(struct fbtft_par *par) { };
+#endif
 
 
 FBTFT_REGISTER_DRIVER(DRVNAME, &display);

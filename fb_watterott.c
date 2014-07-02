@@ -235,6 +235,7 @@ static int verify_gpios(struct fbtft_par *par)
 	return 0;
 }
 
+#ifdef CONFIG_FB_BACKLIGHT
 static int backlight_chip_update_status(struct backlight_device *bd)
 {
 	struct fbtft_par *par = bl_get_data(bd);
@@ -295,6 +296,9 @@ static void register_chip_backlight(struct fbtft_par *par)
 failed:
 	kfree(bl_ops);
 }
+#else
+#define register_chip_backlight NULL
+#endif
 
 
 static struct fbtft_display display = {

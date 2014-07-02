@@ -200,6 +200,7 @@ void fbtft_free_gpios(struct fbtft_par *par)
 	}
 }
 
+#ifdef CONFIG_FB_BACKLIGHT
 int fbtft_backlight_update_status(struct backlight_device *bd)
 {
 	struct fbtft_par *par = bl_get_data(bd);
@@ -237,7 +238,6 @@ void fbtft_unregister_backlight(struct fbtft_par *par)
 		kfree(bl_ops);
 	}
 }
-EXPORT_SYMBOL(fbtft_unregister_backlight);
 
 void fbtft_register_backlight(struct fbtft_par *par)
 {
@@ -287,7 +287,12 @@ void fbtft_register_backlight(struct fbtft_par *par)
 failed:
 	kfree(bl_ops);
 }
+#else
+void fbtft_register_backlight(struct fbtft_par *par) { };
+void fbtft_unregister_backlight(struct fbtft_par *par) { };
+#endif
 EXPORT_SYMBOL(fbtft_register_backlight);
+EXPORT_SYMBOL(fbtft_unregister_backlight);
 
 void fbtft_set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 {
@@ -957,11 +962,13 @@ int fbtft_register_framebuffer(struct fb_info *fb_info)
 		fb_info->fix.smem_len >> 10, text1,
 		HZ/fb_info->fbdefio->delay, text2);
 
+#ifdef CONFIG_FB_BACKLIGHT
 	/* Turn on backlight if available */
 	if (fb_info->bl_dev) {
 		fb_info->bl_dev->props.power = FB_BLANK_UNBLANK;
 		fb_info->bl_dev->ops->update_status(fb_info->bl_dev);
 	}
+#endif
 
 	return 0;
 

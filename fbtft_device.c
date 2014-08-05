@@ -266,6 +266,48 @@ static struct fbtft_device_display displays[] = {
 			}
 		}
 	}, {
+		.name = "er_tftm050_2",
+		.spi = &(struct spi_board_info) {
+			.modalias = "fb_ra8875",
+			.max_speed_hz = 5000000,
+			.mode = SPI_MODE_3,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 8,
+					.backlight = 1,
+					.width = 480,
+					.height = 272,
+				},
+				.bgr = true,
+				.gpios = (const struct fbtft_gpio []) {
+					{ "reset", 25 },
+					{ "dc", 24 },
+					{},
+				},
+			}
+		}
+	}, {
+		.name = "er_tftm070_5",
+		.spi = &(struct spi_board_info) {
+			.modalias = "fb_ra8875",
+			.max_speed_hz = 5000000,
+			.mode = SPI_MODE_3,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 8,
+					.backlight = 1,
+					.width = 800,
+					.height = 480,
+				},
+				.bgr = true,
+				.gpios = (const struct fbtft_gpio []) {
+					{ "reset", 25 },
+					{ "dc", 24 },
+					{},
+				},
+			}
+		}
+	}, {
 		.name = "flexfb",
 		.spi = &(struct spi_board_info) {
 			.modalias = "flexfb",
@@ -542,6 +584,26 @@ static struct fbtft_device_display displays[] = {
 					{ "reset", 25 },
 					{ "dc", 24 },
 					{ "led", 23 },
+					{},
+				},
+			}
+		}
+	}, {
+		.name = "piscreen",
+		.spi = &(struct spi_board_info) {
+			.modalias = "fb_ili9486",
+			.max_speed_hz = 32000000,
+			.mode = SPI_MODE_0,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 8,
+					.backlight = 1,
+				},
+				.bgr = true,
+				.gpios = (const struct fbtft_gpio []) {
+					{ "reset", 25 },
+					{ "dc", 24 },
+					{ "led", 22 },
 					{},
 				},
 			}

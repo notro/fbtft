@@ -122,6 +122,12 @@ config FB_TFT_TINYLCD
 	help
 	  Custom Framebuffer support for tinylcd.com display
 
+config FB_TFT_TLS8204
+	tristate "FB driver for the TLS8204 LCD Controller"
+	depends on FB_TFT
+	help
+	  Generic Framebuffer support for TLS8204
+
 config FB_TFT_UPD161704
 	tristate "FB driver for the uPD161704 LCD Controller"
 	depends on FB_TFT

@@ -153,8 +153,9 @@ int fbtft_request_gpios(struct fbtft_par *par)
 			if (flags == FBTFT_GPIO_NO_MATCH)
 				flags = fbtft_request_gpios_match(par, gpio);
 			if (flags != FBTFT_GPIO_NO_MATCH) {
-				ret = gpio_request_one(gpio->gpio, flags,
-					par->info->device->driver->name);
+				ret = devm_gpio_request_one(par->info->device,
+						gpio->gpio, flags,
+						par->info->device->driver->name);
 				if (ret < 0) {
 					dev_err(par->info->device,
 						"%s: gpio_request_one('%s'=%d) failed with %d\n",
@@ -171,33 +172,6 @@ int fbtft_request_gpios(struct fbtft_par *par)
 	}
 
 	return 0;
-}
-
-void fbtft_free_gpios(struct fbtft_par *par)
-{
-	struct fbtft_platform_data *pdata = NULL;
-	const struct fbtft_gpio *gpio;
-
-	fbtft_par_dbg(DEBUG_FREE_GPIOS, par, "%s()\n", __func__);
-
-	if (par->spi)
-		pdata = par->spi->dev.platform_data;
-	if (par->pdev)
-		pdata = par->pdev->dev.platform_data;
-
-	if (pdata && pdata->gpios) {
-		gpio = pdata->gpios;
-		while (gpio->name[0]) {
-			fbtft_par_dbg(DEBUG_FREE_GPIOS, par,
-				"%s(): gpio_free('%s'=%d)\n",
-				__func__, gpio->name, gpio->gpio);
-			/* if the gpio wasn't recognized by request_gpios,
-			   WARN() will protest */
-			gpio_direction_input(gpio->gpio);
-			gpio_free(gpio->gpio);
-			gpio++;
-		}
-	}
 }
 
 #ifdef CONFIG_FB_BACKLIGHT
@@ -601,8 +575,6 @@ void fbtft_merge_fbtftops(struct fbtft_ops *dst, struct fbtft_ops *src)
 		dst->request_gpios_match = src->request_gpios_match;
 	if (src->request_gpios)
 		dst->request_gpios = src->request_gpios;
-	if (src->free_gpios)
-		dst->free_gpios = src->free_gpios;
 	if (src->verify_gpios)
 		dst->verify_gpios = src->verify_gpios;
 	if (src->register_backlight)
@@ -831,7 +803,6 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display,
 	par->fbtftops.mkdirty = fbtft_mkdirty;
 	par->fbtftops.update_display = fbtft_update_display;
 	par->fbtftops.request_gpios = fbtft_request_gpios;
-	par->fbtftops.free_gpios = fbtft_free_gpios;
 	if (display->backlight)
 		par->fbtftops.register_backlight = fbtft_register_backlight;
 
@@ -959,7 +930,6 @@ reg_fail:
 		spi_set_drvdata(spi, NULL);
 	if (par->pdev)
 		platform_set_drvdata(par->pdev, NULL);
-	par->fbtftops.free_gpios(par);
 
 	return ret;
 }
@@ -987,7 +957,6 @@ int fbtft_unregister_framebuffer(struct fb_info *fb_info)
 	if (par->fbtftops.unregister_backlight)
 		par->fbtftops.unregister_backlight(par);
 	fbtft_sysfs_exit(par);
-	par->fbtftops.free_gpios(par);
 	ret = unregister_framebuffer(fb_info);
 	return ret;
 }

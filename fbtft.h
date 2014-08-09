@@ -96,7 +96,6 @@ struct fbtft_ops {
 	unsigned long (*request_gpios_match)(struct fbtft_par *par,
 		const struct fbtft_gpio *gpio);
 	int (*request_gpios)(struct fbtft_par *par);
-	void (*free_gpios)(struct fbtft_par *par);
 	int (*verify_gpios)(struct fbtft_par *par);
 
 	void (*register_backlight)(struct fbtft_par *par);

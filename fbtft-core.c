@@ -235,7 +235,6 @@ void fbtft_unregister_backlight(struct fbtft_par *par)
 		bl_ops = par->info->bl_dev->ops;
 		backlight_device_unregister(par->info->bl_dev);
 		par->info->bl_dev = NULL;
-		kfree(bl_ops);
 	}
 }
 
@@ -253,7 +252,8 @@ void fbtft_register_backlight(struct fbtft_par *par)
 		return;
 	}
 
-	bl_ops = kzalloc(sizeof(struct backlight_ops), GFP_KERNEL);
+	bl_ops = devm_kzalloc(par->info->device, sizeof(struct backlight_ops),
+				GFP_KERNEL);
 	if (!bl_ops) {
 		dev_err(par->info->device,
 			"%s: could not allocate memeory for backlight operations.\n",
@@ -275,17 +275,12 @@ void fbtft_register_backlight(struct fbtft_par *par)
 		dev_err(par->info->device,
 			"cannot register backlight device (%ld)\n",
 			PTR_ERR(bd));
-		goto failed;
+		return;
 	}
 	par->info->bl_dev = bd;
 
 	if (!par->fbtftops.unregister_backlight)
 		par->fbtftops.unregister_backlight = fbtft_unregister_backlight;
-
-	return;
-
-failed:
-	kfree(bl_ops);
 }
 #else
 void fbtft_register_backlight(struct fbtft_par *par) { };
@@ -715,20 +710,21 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display,
 	if (!vmem)
 		goto alloc_fail;
 
-	fbops = kzalloc(sizeof(struct fb_ops), GFP_KERNEL);
+	fbops = devm_kzalloc(dev, sizeof(struct fb_ops), GFP_KERNEL);
 	if (!fbops)
 		goto alloc_fail;
 
-	fbdefio = kzalloc(sizeof(struct fb_deferred_io), GFP_KERNEL);
+	fbdefio = devm_kzalloc(dev, sizeof(struct fb_deferred_io), GFP_KERNEL);
 	if (!fbdefio)
 		goto alloc_fail;
 
-	buf = kmalloc(128, GFP_KERNEL);
+	buf = devm_kzalloc(dev, 128, GFP_KERNEL);
 	if (!buf)
 		goto alloc_fail;
 
 	if (display->gamma_num && display->gamma_len) {
-		gamma_curves = kzalloc(display->gamma_num * display->gamma_len * sizeof(gamma_curves[0]), GFP_KERNEL);
+		gamma_curves = devm_kzalloc(dev, display->gamma_num * display->gamma_len * sizeof(gamma_curves[0]),
+						GFP_KERNEL);
 		if (!gamma_curves)
 			goto alloc_fail;
 	}
@@ -815,9 +811,9 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display,
 	if (txbuflen > 0) {
 		if (dma) {
 			dev->coherent_dma_mask = ~0;
-			txbuf = dma_alloc_coherent(dev, txbuflen, &par->txbuf.dma, GFP_DMA);
+			txbuf = dmam_alloc_coherent(dev, txbuflen, &par->txbuf.dma, GFP_DMA);
 		} else {
-			txbuf = kmalloc(txbuflen, GFP_KERNEL);
+			txbuf = devm_kzalloc(par->info->device, txbuflen, GFP_KERNEL);
 		}
 		if (!txbuf)
 			goto alloc_fail;
@@ -846,10 +842,6 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display,
 
 alloc_fail:
 	vfree(vmem);
-	kfree(buf);
-	kfree(fbops);
-	kfree(fbdefio);
-	kfree(gamma_curves);
 
 	return NULL;
 }
@@ -863,20 +855,8 @@ EXPORT_SYMBOL(fbtft_framebuffer_alloc);
  */
 void fbtft_framebuffer_release(struct fb_info *info)
 {
-	struct fbtft_par *par = info->par;
-
 	fb_deferred_io_cleanup(info);
 	vfree(info->screen_base);
-	if (par->txbuf.buf) {
-		if (par->txbuf.dma)
-			dma_free_coherent(info->device, par->txbuf.len, par->txbuf.buf, par->txbuf.dma);
-		else
-			kfree(par->txbuf.buf);
-	}
-	kfree(par->buf);
-	kfree(info->fbops);
-	kfree(info->fbdefio);
-	kfree(par->gamma.curves);
 	framebuffer_release(info);
 }
 EXPORT_SYMBOL(fbtft_framebuffer_release);
@@ -1273,7 +1253,7 @@ int fbtft_probe_common(struct fbtft_display *display,
 			if (ret)
 				goto out_release;
 			/* allocate buffer with room for dc bits */
-			par->extra = kmalloc(
+			par->extra = devm_kzalloc(par->info->device,
 				par->txbuf.len + (par->txbuf.len / 8) + 8,
 				GFP_KERNEL);
 			if (!par->extra) {
@@ -1327,12 +1307,9 @@ int fbtft_remove_common(struct device *dev, struct fb_info *info)
 	if (!info)
 		return -EINVAL;
 	par = info->par;
-	if (par) {
+	if (par)
 		fbtft_par_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, par,
 			"%s()\n", __func__);
-		if (par->extra)
-			kfree(par->extra);
-	}
 	fbtft_unregister_framebuffer(info);
 	fbtft_framebuffer_release(info);
 

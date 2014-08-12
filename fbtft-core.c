@@ -126,21 +126,7 @@ int fbtft_request_gpios(struct fbtft_par *par)
 	struct fbtft_platform_data *pdata = par->pdata;
 	const struct fbtft_gpio *gpio;
 	unsigned long flags;
-	int i;
 	int ret;
-
-	/* Initialize gpios to disabled */
-	par->gpio.reset = -1;
-	par->gpio.dc = -1;
-	par->gpio.rd = -1;
-	par->gpio.wr = -1;
-	par->gpio.cs = -1;
-	par->gpio.latch = -1;
-	for (i = 0; i < 16; i++) {
-		par->gpio.db[i] = -1;
-		par->gpio.led[i] = -1;
-		par->gpio.aux[i] = -1;
-	}
 
 	if (pdata && pdata->gpios) {
 		gpio = pdata->gpios;
@@ -621,7 +607,7 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display,
 	int txbuflen = display->txbuflen;
 	unsigned bpp = display->bpp;
 	unsigned fps = display->fps;
-	int vmem_size;
+	int vmem_size, i;
 	int *init_sequence = display->init_sequence;
 	char *gamma = display->gamma;
 	unsigned long *gamma_curves = NULL;
@@ -794,6 +780,19 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display,
 			goto alloc_fail;
 		par->txbuf.buf = txbuf;
 		par->txbuf.len = txbuflen;
+	}
+
+	/* Initialize gpios to disabled */
+	par->gpio.reset = -1;
+	par->gpio.dc = -1;
+	par->gpio.rd = -1;
+	par->gpio.wr = -1;
+	par->gpio.cs = -1;
+	par->gpio.latch = -1;
+	for (i = 0; i < 16; i++) {
+		par->gpio.db[i] = -1;
+		par->gpio.led[i] = -1;
+		par->gpio.aux[i] = -1;
 	}
 
 	/* default fbtft operations */

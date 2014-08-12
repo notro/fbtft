@@ -621,9 +621,6 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display,
 	int txbuflen = display->txbuflen;
 	unsigned bpp = display->bpp;
 	unsigned fps = display->fps;
-	unsigned rotate = 0;
-	bool bgr = false;
-	u8 startbyte = 0;
 	int vmem_size;
 	int *init_sequence = display->init_sequence;
 	char *gamma = display->gamma;
@@ -645,29 +642,35 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display,
 
 	vmem_size = display->width*display->height*bpp/8;
 
-	/* platform_data override ? */
-	if (pdata) {
-		if (pdata->fps)
-			fps = pdata->fps;
-		if (pdata->txbuflen)
-			txbuflen = pdata->txbuflen;
-		rotate = pdata->rotate;
-		bgr = pdata->bgr;
-		startbyte = pdata->startbyte;
-		if (pdata->display.init_sequence)
-			init_sequence = pdata->display.init_sequence;
-		if (pdata->gamma)
-			gamma = pdata->gamma;
-		if (pdata->display.debug)
-			display->debug = pdata->display.debug;
-		if (pdata->display.backlight)
-			display->backlight = pdata->display.backlight;
+	if (!pdata) {
+		dev_err(dev, "platform data is missing\n");
+		return NULL;
 	}
+
+	/* override driver values? */
+	if (pdata->fps)
+		fps = pdata->fps;
+	if (pdata->txbuflen)
+		txbuflen = pdata->txbuflen;
+	if (pdata->display.init_sequence)
+		init_sequence = pdata->display.init_sequence;
+	if (pdata->gamma)
+		gamma = pdata->gamma;
+	if (pdata->display.debug)
+		display->debug = pdata->display.debug;
+	if (pdata->display.backlight)
+		display->backlight = pdata->display.backlight;
+	if (pdata->display.width)
+		display->width = pdata->display.width;
+	if (pdata->display.height)
+		display->height = pdata->display.height;
+	if (pdata->display.buswidth)
+		display->buswidth = pdata->display.buswidth;
 
 	display->debug |= debug;
 	fbtft_expand_debug_value(&display->debug);
 
-	switch (rotate) {
+	switch (pdata->rotate) {
 	case 90:
 	case 270:
 		width =  display->height;
@@ -732,7 +735,7 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display,
 	info->fix.accel =          FB_ACCEL_NONE;
 	info->fix.smem_len =       vmem_size;
 
-	info->var.rotate =         rotate;
+	info->var.rotate =         pdata->rotate;
 	info->var.xres =           width;
 	info->var.yres =           height;
 	info->var.xres_virtual =   info->var.xres;
@@ -758,8 +761,8 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display,
 	par->debug = display->debug;
 	par->buf = buf;
 	spin_lock_init(&par->dirty_lock);
-	par->bgr = bgr;
-	par->startbyte = startbyte;
+	par->bgr = pdata->bgr;
+	par->startbyte = pdata->startbyte;
 	par->init_sequence = init_sequence;
 	par->gamma.curves = gamma_curves;
 	par->gamma.num_curves = display->gamma_num;
@@ -1098,12 +1101,6 @@ int fbtft_verify_gpios(struct fbtft_par *par)
 	fbtft_par_dbg(DEBUG_VERIFY_GPIOS, par, "%s()\n", __func__);
 
 	pdata = par->info->device->platform_data;
-	if (!pdata) {
-		dev_warn(par->info->device,
-			"%s(): buswidth value is not available\n", __func__);
-		return 0;
-	}
-
 	if (pdata->display.buswidth != 9 && par->startbyte == 0 && \
 							par->gpio.dc < 0) {
 		dev_err(par->info->device,
@@ -1159,24 +1156,19 @@ int fbtft_probe_common(struct fbtft_display *display,
 		dev_info(dev, "%s()\n", __func__);
 
 	pdata = dev->platform_data;
-	if (pdata) {
-		if (pdata->display.width)
-			display->width = pdata->display.width;
-		if (pdata->display.height)
-			display->height = pdata->display.height;
-		if (pdata->display.buswidth)
-			display->buswidth = pdata->display.buswidth;
-	}
 
 	info = fbtft_framebuffer_alloc(display, dev);
 	if (!info)
 		return -ENOMEM;
 
 	par = info->par;
-	if (sdev)
-		par->spi = sdev;
-	else
-		par->pdev = pdev;
+	par->spi = sdev;
+	par->pdev = pdev;
+
+	if (display->buswidth == 0) {
+		dev_err(dev, "buswidth is not set\n");
+		return -EINVAL;
+	}
 
 	/* write register functions */
 	if (display->regwidth == 8 && display->buswidth == 8) {
@@ -1244,8 +1236,7 @@ int fbtft_probe_common(struct fbtft_display *display,
 		par->fbtftops.init_display = fbtft_init_display;
 
 	/* use platform_data provided functions above all */
-	if (pdata)
-		fbtft_merge_fbtftops(&par->fbtftops, &pdata->display.fbtftops);
+	fbtft_merge_fbtftops(&par->fbtftops, &pdata->display.fbtftops);
 
 	ret = fbtft_register_framebuffer(info);
 	if (ret < 0)

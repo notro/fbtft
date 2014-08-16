@@ -183,10 +183,12 @@ static struct fbtft_display display = {
 		.set_gamma = set_gamma,
 	},
 };
-FBTFT_REGISTER_DRIVER(DRVNAME, &display);
+FBTFT_REGISTER_DRIVER(DRVNAME, "sitronix,st7735r", &display);
 
 MODULE_ALIAS("spi:" DRVNAME);
 MODULE_ALIAS("platform:" DRVNAME);
+MODULE_ALIAS("spi:st7735r");
+MODULE_ALIAS("platform:st7735r");
 
 MODULE_DESCRIPTION("FB driver for the ST7735R LCD Controller");
 MODULE_AUTHOR("Noralf Tronnes");

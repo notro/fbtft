@@ -315,7 +315,7 @@ static struct fbtft_display display = {
 		.register_backlight = register_chip_backlight,
 	},
 };
-FBTFT_REGISTER_DRIVER(DRVNAME, &display);
+FBTFT_REGISTER_DRIVER(DRVNAME, "watterott,openlcd", &display);
 
 MODULE_ALIAS("spi:" DRVNAME);
 

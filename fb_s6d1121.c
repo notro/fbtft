@@ -196,10 +196,12 @@ static struct fbtft_display display = {
 		.set_gamma = set_gamma,
 	},
 };
-FBTFT_REGISTER_DRIVER(DRVNAME, &display);
+FBTFT_REGISTER_DRIVER(DRVNAME, "samsung,s6d1121", &display);
 
 MODULE_ALIAS("spi:" DRVNAME);
 MODULE_ALIAS("platform:" DRVNAME);
+MODULE_ALIAS("spi:s6d1121");
+MODULE_ALIAS("platform:s6d1121");
 
 MODULE_DESCRIPTION("FB driver for the S6D1121 LCD Controller");
 MODULE_AUTHOR("Roman Rolinsky");

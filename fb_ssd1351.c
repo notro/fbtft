@@ -246,10 +246,12 @@ static void register_onboard_backlight(struct fbtft_par *par) { };
 #endif
 
 
-FBTFT_REGISTER_DRIVER(DRVNAME, &display);
+FBTFT_REGISTER_DRIVER(DRVNAME, "solomon,ssd1351", &display);
 
 MODULE_ALIAS("spi:" DRVNAME);
 MODULE_ALIAS("platform:" DRVNAME);
+MODULE_ALIAS("spi:ssd1351");
+MODULE_ALIAS("platform:ssd1351");
 
 MODULE_DESCRIPTION("SSD1351 OLED Driver");
 MODULE_AUTHOR("James Davies");

@@ -166,9 +166,10 @@ static struct fbtft_display display = {
 	},
 	.backlight = 1,
 };
-FBTFT_REGISTER_DRIVER(DRVNAME, &display);
+FBTFT_REGISTER_DRIVER(DRVNAME, "teralane,tls8204", &display);
 
 MODULE_ALIAS("spi:" DRVNAME);
+MODULE_ALIAS("spi:tls8204");
 
 MODULE_DESCRIPTION("FB driver for the TLS8204 LCD Controller");
 MODULE_AUTHOR("Michael Hope");

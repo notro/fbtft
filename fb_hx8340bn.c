@@ -217,10 +217,12 @@ static struct fbtft_display display = {
 		.set_gamma = set_gamma,
 	},
 };
-FBTFT_REGISTER_DRIVER(DRVNAME, &display);
+FBTFT_REGISTER_DRIVER(DRVNAME, "himax,hx8340bn", &display);
 
 MODULE_ALIAS("spi:" DRVNAME);
 MODULE_ALIAS("platform:" DRVNAME);
+MODULE_ALIAS("spi:hx8340bn");
+MODULE_ALIAS("platform:hx8340bn");
 
 MODULE_DESCRIPTION("FB driver for the HX8340BN LCD Controller");
 MODULE_AUTHOR("Noralf Tronnes");

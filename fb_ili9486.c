@@ -109,10 +109,12 @@ static struct fbtft_display display = {
 		.set_var = set_var,
 	},
 };
-FBTFT_REGISTER_DRIVER(DRVNAME, &display);
+FBTFT_REGISTER_DRIVER(DRVNAME, "ilitek,ili9486", &display);
 
 MODULE_ALIAS("spi:" DRVNAME);
 MODULE_ALIAS("platform:" DRVNAME);
+MODULE_ALIAS("spi:ili9486");
+MODULE_ALIAS("platform:ili9486");
 
 MODULE_DESCRIPTION("FB driver for the ILI9486 LCD Controller");
 MODULE_AUTHOR("Noralf Tronnes");

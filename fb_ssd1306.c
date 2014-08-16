@@ -217,10 +217,12 @@ static struct fbtft_display display = {
 };
 
 
-FBTFT_REGISTER_DRIVER(DRVNAME, &display);
+FBTFT_REGISTER_DRIVER(DRVNAME, "solomon,ssd1306", &display);
 
 MODULE_ALIAS("spi:" DRVNAME);
 MODULE_ALIAS("platform:" DRVNAME);
+MODULE_ALIAS("spi:ssd1306");
+MODULE_ALIAS("platform:ssd1306");
 
 MODULE_DESCRIPTION("SSD1306 OLED Driver");
 MODULE_AUTHOR("Noralf Tronnes");

@@ -37,6 +37,8 @@
 #include <linux/platform_device.h>
 #include <linux/spinlock.h>
 #include <linux/dma-mapping.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
 
 #include "fbtft.h"
 
@@ -159,6 +161,92 @@ int fbtft_request_gpios(struct fbtft_par *par)
 
 	return 0;
 }
+
+#ifdef CONFIG_OF
+static int fbtft_request_one_gpio(struct fbtft_par *par,
+				  const char *name, int index, int *gpiop)
+{
+	struct device *dev = par->info->device;
+	struct device_node *node = dev->of_node;
+	int gpio, flags, ret = 0;
+	enum of_gpio_flags of_flags;
+
+	if (of_find_property(node, name, NULL)) {
+		gpio = of_get_named_gpio_flags(node, name, index, &of_flags);
+		if (gpio == -ENOENT)
+			return 0;
+		if (gpio == -EPROBE_DEFER)
+			return gpio;
+		if (gpio < 0) {
+			dev_err(dev,
+				"failed to get '%s' from DT\n", name);
+			return gpio;
+		}
+
+		/* active low translates to initially low */
+		flags = (of_flags & OF_GPIO_ACTIVE_LOW) ? GPIOF_OUT_INIT_LOW :
+							GPIOF_OUT_INIT_HIGH;
+		ret = devm_gpio_request_one(dev, gpio, flags,
+						dev->driver->name);
+		if (ret) {
+			dev_err(dev,
+				"gpio_request_one('%s'=%d) failed with %d\n",
+				name, gpio, ret);
+			return ret;
+		}
+		if (gpiop)
+			*gpiop = gpio;
+		fbtft_par_dbg(DEBUG_REQUEST_GPIOS, par, "%s: '%s' = GPIO%d\n",
+							__func__, name, gpio);
+	}
+
+	return ret;
+}
+
+static int fbtft_request_gpios_dt(struct fbtft_par *par)
+{
+	int i;
+	int ret;
+
+	if (!par->info->device->of_node)
+		return -EINVAL;
+
+	ret = fbtft_request_one_gpio(par, "reset-gpios", 0, &par->gpio.reset);
+	if (ret)
+		return ret;
+	ret = fbtft_request_one_gpio(par, "dc-gpios", 0, &par->gpio.dc);
+	if (ret)
+		return ret;
+	ret = fbtft_request_one_gpio(par, "rd-gpios", 0, &par->gpio.rd);
+	if (ret)
+		return ret;
+	ret = fbtft_request_one_gpio(par, "wr-gpios", 0, &par->gpio.wr);
+	if (ret)
+		return ret;
+	ret = fbtft_request_one_gpio(par, "cs-gpios", 0, &par->gpio.cs);
+	if (ret)
+		return ret;
+	ret = fbtft_request_one_gpio(par, "latch-gpios", 0, &par->gpio.latch);
+	if (ret)
+		return ret;
+	for (i = 0; i < 16; i++) {
+		ret = fbtft_request_one_gpio(par, "db-gpios", i,
+						&par->gpio.db[i]);
+		if (ret)
+			return ret;
+		ret = fbtft_request_one_gpio(par, "led-gpios", i,
+						&par->gpio.led[i]);
+		if (ret)
+			return ret;
+		ret = fbtft_request_one_gpio(par, "aux-gpios", i,
+						&par->gpio.aux[i]);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+#endif
 
 #ifdef CONFIG_FB_BACKLIGHT
 int fbtft_backlight_update_status(struct backlight_device *bd)
@@ -756,9 +844,11 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display,
 	mutex_init(&par->gamma.lock);
 	info->pseudo_palette = par->pseudo_palette;
 
-	if (par->gamma.curves && gamma)
-		fbtft_gamma_parse_str(par,
-			par->gamma.curves, gamma, strlen(gamma));
+	if (par->gamma.curves && gamma) {
+		if (fbtft_gamma_parse_str(par,
+			par->gamma.curves, gamma, strlen(gamma)))
+			goto alloc_fail;
+	}
 
 	/* Transmit buffer */
 	if (txbuflen == -1)
@@ -964,6 +1054,88 @@ int fbtft_unregister_framebuffer(struct fb_info *fb_info)
 }
 EXPORT_SYMBOL(fbtft_unregister_framebuffer);
 
+#ifdef CONFIG_OF
+/**
+ * fbtft_init_display_dt() - Device Tree init_display() function
+ * @par: Driver data
+ *
+ * Return: 0 if successful, negative if error
+ */
+static int fbtft_init_display_dt(struct fbtft_par *par)
+{
+	struct device_node *node = par->info->device->of_node;
+	struct property *prop;
+	const __be32 *p;
+	u32 val;
+	int buf[64], i, j;
+	char msg[128];
+	char str[16];
+
+	fbtft_par_dbg(DEBUG_INIT_DISPLAY, par, "%s()\n", __func__);
+
+	if (!node)
+		return -EINVAL;
+
+	prop = of_find_property(node, "init", NULL);
+	p = of_prop_next_u32(prop, NULL, &val);
+	if (!p)
+		return -EINVAL;
+	while (p) {
+		if (val & FBTFT_OF_INIT_CMD) {
+			val &= 0xFFFF;
+			i = 0;
+			while (p && !(val & 0xFFFF0000)) {
+				if (i > 63) {
+					dev_err(par->info->device,
+					"%s: Maximum register values exceeded\n",
+					__func__);
+					return -EINVAL;
+				}
+				buf[i++] = val;
+				p = of_prop_next_u32(prop, p, &val);
+			}
+			/* make debug message */
+			msg[0] = '\0';
+			for (j = 0; j < i; j++) {
+				snprintf(str, 128, " %02X", buf[j]);
+				strcat(msg, str);
+			}
+			fbtft_par_dbg(DEBUG_INIT_DISPLAY, par,
+				"init: write_register:%s\n", msg);
+
+			par->fbtftops.write_register(par, i,
+				buf[0], buf[1], buf[2], buf[3],
+				buf[4], buf[5], buf[6], buf[7],
+				buf[8], buf[9], buf[10], buf[11],
+				buf[12], buf[13], buf[14], buf[15],
+				buf[16], buf[17], buf[18], buf[19],
+				buf[20], buf[21], buf[22], buf[23],
+				buf[24], buf[25], buf[26], buf[27],
+				buf[28], buf[29], buf[30], buf[31],
+				buf[32], buf[33], buf[34], buf[35],
+				buf[36], buf[37], buf[38], buf[39],
+				buf[40], buf[41], buf[42], buf[43],
+				buf[44], buf[45], buf[46], buf[47],
+				buf[48], buf[49], buf[50], buf[51],
+				buf[52], buf[53], buf[54], buf[55],
+				buf[56], buf[57], buf[58], buf[59],
+				buf[60], buf[61], buf[62], buf[63]);
+		} else if (val & FBTFT_OF_INIT_DELAY) {
+			fbtft_par_dbg(DEBUG_INIT_DISPLAY, par,
+				"init: msleep(%u)\n", val & 0xFFFF);
+			msleep(val & 0xFFFF);
+			p = of_prop_next_u32(prop, p, &val);
+		} else {
+			dev_err(par->info->device, "illegal init value 0x%X\n",
+									val);
+			return -EINVAL;
+		}
+	}
+
+	return 0;
+}
+#endif
+
 /**
  * fbtft_init_display() - Generic init_display() function
  * @par: Driver data
@@ -1125,6 +1297,64 @@ int fbtft_verify_gpios(struct fbtft_par *par)
 	return 0;
 }
 
+#ifdef CONFIG_OF
+/* returns 0 if the property is not present */
+static u32 fbtft_of_value(struct device_node *node, const char *propname)
+{
+	int ret;
+	u32 val = 0;
+
+	ret = of_property_read_u32(node, propname, &val);
+	if (ret == 0)
+		pr_info("%s: %s = %u\n", __func__, propname, val);
+
+	return val;
+}
+
+static struct fbtft_platform_data *fbtft_probe_dt(struct device *dev)
+{
+	struct device_node *node = dev->of_node;
+	struct fbtft_platform_data *pdata;
+
+	if (!node) {
+		dev_err(dev, "Missing platform data or DT\n");
+		return ERR_PTR(-EINVAL);
+	}
+
+	pdata = devm_kzalloc(dev, sizeof(*pdata), GFP_KERNEL);
+	if (!pdata)
+		return ERR_PTR(-ENOMEM);
+
+	pdata->display.width = fbtft_of_value(node, "width");
+	pdata->display.height = fbtft_of_value(node, "height");
+	pdata->display.regwidth = fbtft_of_value(node, "regwidth");
+	pdata->display.buswidth = fbtft_of_value(node, "buswidth");
+	pdata->display.backlight = fbtft_of_value(node, "backlight");
+	pdata->display.bpp = fbtft_of_value(node, "bpp");
+	pdata->display.debug = fbtft_of_value(node, "debug");
+	pdata->rotate = fbtft_of_value(node, "rotate");
+	pdata->bgr = of_property_read_bool(node, "bgr");
+	pdata->fps = fbtft_of_value(node, "fps");
+	pdata->txbuflen = fbtft_of_value(node, "txbuflen");
+	pdata->startbyte = fbtft_of_value(node, "startbyte");
+	of_property_read_string(node, "gamma", (const char **)&pdata->gamma);
+
+	if (of_find_property(node, "led-gpios", NULL))
+		pdata->display.backlight = 1;
+	if (of_find_property(node, "init", NULL))
+		pdata->display.fbtftops.init_display = fbtft_init_display_dt;
+	pdata->display.fbtftops.request_gpios = fbtft_request_gpios_dt;
+
+	return pdata;
+}
+#else
+static struct fbtft_platform_data *fbtft_probe_dt(struct device *dev)
+{
+	dev_err(dev, "Missing platform data\n");
+	return ERR_PTR(-EINVAL);
+}
+#endif
+
 /**
  * fbtft_probe_common() - Generic device probe() helper function
  * @display: Display properties
@@ -1155,6 +1385,12 @@ int fbtft_probe_common(struct fbtft_display *display,
 		dev_info(dev, "%s()\n", __func__);
 
 	pdata = dev->platform_data;
+	if (!pdata) {
+		pdata = fbtft_probe_dt(dev);
+		if (IS_ERR(pdata))
+			return PTR_ERR(pdata);
+		dev->platform_data = pdata;
+	}
 
 	info = fbtft_framebuffer_alloc(display, dev);
 	if (!info)

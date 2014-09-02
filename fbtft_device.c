@@ -430,6 +430,26 @@ static struct fbtft_device_display displays[] = {
 			}
 		}
 	}, {
+		.name = "ili9481",
+		.spi = &(struct spi_board_info) {
+			.modalias = "fb_ili9481",
+			.max_speed_hz = 32000000,
+			.mode = SPI_MODE_0,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 8,
+					.backlight = 1,
+				},
+				.bgr = true,
+				.gpios = (const struct fbtft_gpio []) {
+					{ "reset", 25 },
+					{ "dc", 24 },
+					{ "led", 22 },
+					{},
+				},
+			}
+		}
+	}, {
 		.name = "itdb24",
 		.pdev = &(struct platform_device) {
 			.name = "fb_s6d1121",

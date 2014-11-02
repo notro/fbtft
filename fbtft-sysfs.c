@@ -147,7 +147,7 @@ static ssize_t show_gamma_curve(struct device *device,
 }
 
 static struct device_attribute gamma_device_attrs[] = {
-	__ATTR(gamma, S_IRUGO | S_IWUGO, show_gamma_curve, store_gamma_curve),
+	__ATTR(gamma, 0660, show_gamma_curve, store_gamma_curve),
 };
 
 
@@ -204,7 +204,7 @@ static ssize_t show_debug(struct device *device,
 }
 
 static struct device_attribute debug_device_attr = \
-	__ATTR(debug, S_IRUGO | S_IWUGO, show_debug, store_debug);
+	__ATTR(debug, 0660, show_debug, store_debug);
 
 
 void fbtft_sysfs_init(struct fbtft_par *par)

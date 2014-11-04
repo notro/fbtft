@@ -714,8 +714,6 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display,
 	if (!bpp)
 		bpp = 16;
 
-	vmem_size = display->width*display->height*bpp/8;
-
 	if (!pdata) {
 		dev_err(dev, "platform data is missing\n");
 		return NULL;
@@ -755,6 +753,7 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display,
 		height = display->height;
 	}
 
+	vmem_size = display->width * display->height * bpp / 8;
 	vmem = vzalloc(vmem_size);
 	if (!vmem)
 		goto alloc_fail;

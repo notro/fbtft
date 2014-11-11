@@ -32,7 +32,7 @@
 #define TOTALWIDTH	(WIDTH * 2)	 // becouse 2 ks0108 in one display
 #define FPS			5
 
-#define E			gpio.wr
+#define EPIN			gpio.wr
 #define RS			gpio.dc
 #define RW			gpio.aux[2]
 #define CS0			gpio.aux[0]
@@ -48,9 +48,9 @@ static int init_display(struct fbtft_par *par)
 	for (i = 0; i < 2; ++i)
 	{
 		write_reg(par, i, 0b00111111); // display on
-		write_reg(par, i, 0b01000000); // set x to 0
-		write_reg(par, i, 0b10111000); // set page to 0
-		write_reg(par, i, 0b11000000); // set start line to 0
+		//write_reg(par, i, 0b01000000); // set x to 0
+		//write_reg(par, i, 0b10111000); // set page to 0
+		//write_reg(par, i, 0b11000000); // set start line to 0
 	}
 
 	return 0;
@@ -60,9 +60,9 @@ void reset(struct fbtft_par *par)
 {
     if (par->gpio.reset == -1)
         return;
-        
+
     fbtft_dev_dbg(DEBUG_RESET, par, par->info->device, "%s()\n", __func__);
-    
+
     gpio_set_value(par->gpio.reset, 0);
     udelay(20);
     gpio_set_value(par->gpio.reset, 1);
@@ -76,13 +76,13 @@ static int verify_gpios(struct fbtft_par *par)
 	fbtft_dev_dbg(DEBUG_VERIFY_GPIOS, par, par->info->device,
 		"%s()\n", __func__);
 
-    if (par->E < 0) {
+    if (par->EPIN < 0) {
         dev_err(par->info->device, "Missing info about 'wr' (aka E) gpio. Aborting.\n");
         return -EINVAL;
     }
     for (i = 0; i < 8; ++i)
 	    if (par->gpio.db[i] < 0) {
-    	    dev_err(par->info->device, 
+    	    dev_err(par->info->device,
 				"Missing info about 'db[%i]' gpio. Aborting.\n", i);
     	    return -EINVAL;
     	}
@@ -102,12 +102,17 @@ static int verify_gpios(struct fbtft_par *par)
     return 0;
 }
 
-static unsigned long 
+static unsigned long
 request_gpios_match(struct fbtft_par *par, const struct fbtft_gpio *gpio)
 {
     fbtft_dev_dbg(DEBUG_REQUEST_GPIOS_MATCH, par, par->info->device, 
     	"%s('%s')\n", __func__, gpio->name);
-    	
+
+    if (strcasecmp(gpio->name, "wr") == 0) { // left ks0108 E pin
+        par->EPIN = gpio->gpio;
+        return GPIOF_OUT_INIT_LOW;
+    }
+
     if (strcasecmp(gpio->name, "cs0") == 0) { // left ks0108 controller pin
         par->CS0 = gpio->gpio;
         return GPIOF_OUT_INIT_HIGH;
@@ -118,12 +123,12 @@ request_gpios_match(struct fbtft_par *par, const struct fbtft_gpio *gpio)
     }
     /* if write (rw = 0) e(1->0) perform write */
     /* if read (rw = 1) e(0->1) set data on D0-7*/
-    else if (strcasecmp(gpio->name, "rw") == 0) { 
+    else if (strcasecmp(gpio->name, "rw") == 0) {
         par->RW = gpio->gpio;
         return GPIOF_OUT_INIT_LOW;
     }
-	
-	return FBTFT_GPIO_NO_MATCH;
+
+    return FBTFT_GPIO_NO_MATCH;
 }
 
 /* эта штука используется для ввода команд
@@ -160,17 +165,17 @@ static void write_reg8_bus8(struct fbtft_par *par, int len, ...)
 			__func__, *buf);
 		return;
 	}
-	
+
 	// select chip
 	if (*buf)
 	{ // cs1
 		gpio_set_value(par->CS0, 1);
-		gpio_set_value(par->CS1, 0); 
+		gpio_set_value(par->CS1, 0);
 	}
 	else
 	{ // cs0
 		gpio_set_value(par->CS0, 0);
-		gpio_set_value(par->CS1, 1); 
+		gpio_set_value(par->CS1, 1);
 	}
 
 	gpio_set_value(par->RS, 0); // RS->0 (command mode)
@@ -193,7 +198,7 @@ static void write_reg8_bus8(struct fbtft_par *par, int len, ...)
 	va_end(args);
 }
 
-static struct 
+static struct
 {
 	int xs, ys_page, xe, ye_page;
 } addr_win;
@@ -206,7 +211,7 @@ static struct
 static void set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 {
 	addr_win.xs = xs;
-	addr_win.ys_page = ys / 8; 
+	addr_win.ys_page = ys / 8;
 	addr_win.xe = xe;
 	addr_win.ye_page = ye / 8;
 
@@ -222,11 +227,11 @@ construct_line_bitmap(struct fbtft_par *par, u8* dest, u16* src, int xs,
 	int x, i;
 	for (x = xs; x < xe; ++x)
 	{
-		*dest = 0x00;
+		u8 res = 0;
 		for (i = 0; i < 8; i++)
 			if (src[(y * 8 + i) * par->info->var.xres + x])
-				*dest |= 1 << i;
-		dest++;
+				res |= 1 << i;
+		*dest++ = res;
 	}
 }
 
@@ -246,7 +251,7 @@ static int write_vmem(struct fbtft_par *par, size_t offset, size_t len)
 	 */
 
 	 // 1 одна строка - 2 страницы
-	 for (y = addr_win.ys_page; y < addr_win.ye_page; ++y)
+	 for (y = addr_win.ys_page; y <= addr_win.ye_page; ++y)
 	 {
 	 	// left half of display
 	 	if (addr_win.xs < par->info->var.xres / 2)
@@ -259,8 +264,8 @@ static int write_vmem(struct fbtft_par *par, size_t offset, size_t len)
 			// выбрать левую половину (sc0)
 			// установить адрес
 			write_reg(par, 0x00, (0b01 << 6) | (u8)addr_win.xs); // x
-			write_reg(par, 0x00, (0b10 << 6) | (u8)y); // page
- 			 	
+			write_reg(par, 0x00, (0b10111 << 3) | (u8)y); // page
+
 	 		// записать битмап
 			gpio_set_value(par->RS, 1); // RS->1 (data mode)
 			ret = par->fbtftops.write(par, buf, len);
@@ -271,16 +276,16 @@ static int write_vmem(struct fbtft_par *par, size_t offset, size_t len)
 		// right half of display
 		if (addr_win.xe >= par->info->var.xres / 2)
 		{
-			construct_line_bitmap(par, buf, vmem16,	par->info->var.xres / 2,
-				addr_win.xe ,y);
+			construct_line_bitmap(par, buf, vmem16,
+				par->info->var.xres / 2, addr_win.xe + 1,y);
 
-			len = addr_win.xe - par->info->var.xres / 2;
+			len = addr_win.xe + 1 - par->info->var.xres / 2;
 
 			// выбрать правую половину (sc0)
 			// установить адрес
 			write_reg(par, 0x01, (0b01 << 6) | (u8)0); // x
-			write_reg(par, 0x01, (0b10 << 6) | (u8)y); // page
-			 	
+			write_reg(par, 0x01, (0b10111 << 3) | (u8)y); // page
+
 			// записать битмап
 			gpio_set_value(par->RS, 1); // RS->1 (data mode)
 		 	par->fbtftops.write(par, buf, len);
@@ -289,10 +294,14 @@ static int write_vmem(struct fbtft_par *par, size_t offset, size_t len)
 					"%s: write failed and returned: %d\n", __func__, ret);
 		}
 	}
-	return ret;	
+
+	gpio_set_value(par->CS0, 1);
+	gpio_set_value(par->CS1, 1);
+
+	return ret;
 }
 
-/* 
+/*
  * тупая запись, что пришло в массиве, то и записать
  * используется только шина par->gpio.db и par->gpio.E = latch
  * rs должна быть установлена до записи
@@ -300,28 +309,26 @@ static int write_vmem(struct fbtft_par *par, size_t offset, size_t len)
  */
 static int write(struct fbtft_par *par, void *buf, size_t len)
 {
-	u8 data;
-
 	fbtft_par_dbg_hex(DEBUG_WRITE, par, par->info->device, u8, buf, len,
 		"%s(len=%d): ", __func__, len);
 
 	gpio_set_value(par->RW, 0); // set write mode
 
+
 	while (len--) {
-		u8 i;
-	
-		data = *(u8 *) buf;
-		buf++;
-		// set E
-		gpio_set_value(par->E, 1);
-		
+		u8 i, data;
+
+		data = *(u8 *) buf++;
+
 		// set data bus
 		for (i = 0; i < 8; ++i)
-			gpio_set_value(par->gpio.db[0], 1 << i);
-		udelay(2);
-		
+			gpio_set_value(par->gpio.db[i], data & (1 << i));
+		// set E
+		gpio_set_value(par->EPIN, 1);
+		udelay(5);
 		// unset e - write
-		gpio_set_value(par->E, 0);
+		gpio_set_value(par->EPIN, 0);
+		udelay(1);
 	}
 
 	return 0;

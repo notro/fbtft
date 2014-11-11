@@ -343,7 +343,7 @@ static struct fbtft_display display = {
 		.write_vmem = write_vmem,
 	},
 };
-FBTFT_REGISTER_DRIVER(DRVNAME, "displaytronic,agm1264k-fl", &display);
+FBTFT_REGISTER_DRIVER(DRVNAME, "displaytronic,fb_agm1264k-fl", &display);
 
 MODULE_ALIAS("platform:" DRVNAME);
 

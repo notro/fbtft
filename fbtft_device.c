@@ -288,7 +288,7 @@ static struct fbtft_device_display displays[] = {
 	}, {
 		.name = "agm1264k-fl",
 		.pdev = &(struct platform_device) {
-			.name = "agm1264k-fl",
+			.name = "fb_agm1264k-fl",
 			.id = 0,
 			.dev = {
 			.release = fbtft_device_pdev_release,
@@ -301,7 +301,7 @@ static struct fbtft_device_display displays[] = {
 					/* for my Beaglebone Black
 					{ "reset", 48 },
 					{ "wr", 60 },  // aka E
-					{ "dc", 122 }, // aka D/I
+					{ "dc", 112 }, // aka D/I
 					{ "rw", 113 },
 					{ "cs0", 49 },
 					{ "cs1", 117 },

@@ -288,9 +288,10 @@ static struct fbtft_device_display displays[] = {
 	}, {
 		.name = "elv_odm100",
 		.pdev = &(struct platform_device) {
-			.modalias = "fb_ssd1351",
-			.max_speed_hz = 20000000,
-			.mode = SPI_MODE_0,
+			.name = "fb_ssd1351",
+			.id = 0,
+			.dev = {
+			.release = fbtft_device_pdev_release,
 			.platform_data = &(struct fbtft_platform_data) {
 				.display = {
 					.buswidth = 8,
@@ -312,6 +313,7 @@ static struct fbtft_device_display displays[] = {
 					{ "db07", 7 },
 					{},
 				},
+			},
 			}
 		}
 	}, {

@@ -249,6 +249,26 @@ static struct fbtft_device_display displays[] = {
 			}
 		}
 	}, {
+		.name = "adafruit28",
+		.spi = &(struct spi_board_info) {
+			.modalias = "fb_ili9341",
+			.max_speed_hz = 32000000,
+			.mode = SPI_MODE_0,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 8,
+					.backlight = 1,
+				},
+				.bgr = true,
+				.gpios = (const struct fbtft_gpio []) {
+					{ "reset", 25 },
+					{ "dc", 24 },
+					{ "led", 18 },
+					{},
+				},
+			}
+		}
+	}, {
 		.name = "adafruit13m",
 		.spi = &(struct spi_board_info) {
 			.modalias = "fb_ssd1306",
@@ -258,6 +278,48 @@ static struct fbtft_device_display displays[] = {
 				.display = {
 					.buswidth = 8,
 				},
+				.gpios = (const struct fbtft_gpio []) {
+					{ "reset", 25 },
+					{ "dc", 24 },
+					{},
+				},
+			}
+		}
+	}, {
+		.name = "er_tftm050_2",
+		.spi = &(struct spi_board_info) {
+			.modalias = "fb_ra8875",
+			.max_speed_hz = 5000000,
+			.mode = SPI_MODE_3,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 8,
+					.backlight = 1,
+					.width = 480,
+					.height = 272,
+				},
+				.bgr = true,
+				.gpios = (const struct fbtft_gpio []) {
+					{ "reset", 25 },
+					{ "dc", 24 },
+					{},
+				},
+			}
+		}
+	}, {
+		.name = "er_tftm070_5",
+		.spi = &(struct spi_board_info) {
+			.modalias = "fb_ra8875",
+			.max_speed_hz = 5000000,
+			.mode = SPI_MODE_3,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 8,
+					.backlight = 1,
+					.width = 800,
+					.height = 480,
+				},
+				.bgr = true,
 				.gpios = (const struct fbtft_gpio []) {
 					{ "reset", 25 },
 					{ "dc", 24 },
@@ -326,6 +388,25 @@ static struct fbtft_device_display displays[] = {
 			}
 		}
 	}, {
+		.name = "hx8353d",
+		.spi = &(struct spi_board_info) {
+			.modalias = "fb_hx8353d",
+			.max_speed_hz = 16000000,
+			.mode = SPI_MODE_0,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 8,
+					.backlight = 1,
+				},
+				.gpios = (const struct fbtft_gpio []) {
+					{ "reset", 25 },
+					{ "dc", 24 },
+					{ "led", 23 },
+					{},
+				},
+			}
+		}
+	}, {
 		.name = "hy28a",
 		.spi = &(struct spi_board_info) {
 			.modalias = "fb_ili9320",
@@ -366,6 +447,26 @@ static struct fbtft_device_display displays[] = {
 					{},
 				},
 				.gamma = HY28B_GAMMA,
+			}
+		}
+	}, {
+		.name = "ili9481",
+		.spi = &(struct spi_board_info) {
+			.modalias = "fb_ili9481",
+			.max_speed_hz = 32000000,
+			.mode = SPI_MODE_0,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 8,
+					.backlight = 1,
+				},
+				.bgr = true,
+				.gpios = (const struct fbtft_gpio []) {
+					{ "reset", 25 },
+					{ "dc", 24 },
+					{ "led", 22 },
+					{},
+				},
 			}
 		}
 	}, {
@@ -510,6 +611,44 @@ static struct fbtft_device_display displays[] = {
 			}
 		}
 	}, {
+		.name = "nokia3310a",
+		.spi = &(struct spi_board_info) {
+			.modalias = "fb_tls8204",
+			.max_speed_hz = 1000000,
+			.mode = SPI_MODE_0,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 8,
+				},
+				.gpios = (const struct fbtft_gpio []) {
+					{ "reset", 25 },
+					{ "dc", 24 },
+					{ "led", 23 },
+					{},
+				},
+			}
+		}
+	}, {
+		.name = "piscreen",
+		.spi = &(struct spi_board_info) {
+			.modalias = "fb_ili9486",
+			.max_speed_hz = 32000000,
+			.mode = SPI_MODE_0,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 8,
+					.backlight = 1,
+				},
+				.bgr = true,
+				.gpios = (const struct fbtft_gpio []) {
+					{ "reset", 25 },
+					{ "dc", 24 },
+					{ "led", 22 },
+					{},
+				},
+			}
+		}
+	}, {
 		.name = "pitft",
 		.spi = &(struct spi_board_info) {
 			.modalias = "fb_ili9340",
@@ -571,6 +710,26 @@ static struct fbtft_device_display displays[] = {
 					{ "reset", 23 },
 					{ "dc", 24 },
 					{ "led", 18 },
+					{},
+				},
+			}
+		}
+	}, {
+		.name = "s6d02a1",
+		.spi = &(struct spi_board_info) {
+			.modalias = "fb_s6d02a1",
+			.max_speed_hz = 32000000,
+			.mode = SPI_MODE_0,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 8,
+					.backlight = 1,
+				},
+				.bgr = true,
+				.gpios = (const struct fbtft_gpio []) {
+					{ "reset", 25 },
+					{ "dc", 24 },
+					{ "led", 23 },
 					{},
 				},
 			}
@@ -741,6 +900,40 @@ static struct fbtft_device_display displays[] = {
 					{ "reset", 25 },
 					{ "dc", 24 },
 					{ "led", 18 },
+					{},
+				},
+			}
+		}
+	}, {
+		.name = "upd161704",
+		.spi = &(struct spi_board_info) {
+			.modalias = "fb_upd161704",
+			.max_speed_hz = 32000000,
+			.mode = SPI_MODE_0,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 8,
+				},
+				.gpios = (const struct fbtft_gpio []) {
+					{ "reset", 24 },
+					{ "dc", 25 },
+					{},
+				},
+			}
+		}
+	}, {
+		.name = "waveshare22",
+		.spi = &(struct spi_board_info) {
+			.modalias = "fb_bd663474",
+			.max_speed_hz = 32000000,
+			.mode = SPI_MODE_3,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 8,
+				},
+				.gpios = (const struct fbtft_gpio []) {
+					{ "reset", 24 },
+					{ "dc", 25 },
 					{},
 				},
 			}

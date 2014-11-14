@@ -8,6 +8,12 @@ menuconfig FB_TFT
 	select FB_DEFERRED_IO
 	select FB_BACKLIGHT
 
+config FB_TFT_BD663474
+	tristate "FB driver for the BD663474 LCD Controller"
+	depends on FB_TFT
+	help
+	  Generic Framebuffer support for BD663474
+
 config FB_TFT_HX8340BN
 	tristate "FB driver for the HX8340BN LCD Controller"
 	depends on FB_TFT
@@ -19,6 +25,12 @@ config FB_TFT_HX8347D
 	depends on FB_TFT
 	help
 	  Generic Framebuffer support for HX8347D
+
+config FB_TFT_HX8353D
+	tristate "FB driver for the HX8353D LCD Controller"
+	depends on FB_TFT
+	help
+	  Generic Framebuffer support for HX8353D
 
 config FB_TFT_ILI9320
 	tristate "FB driver for the ILI9320 LCD Controller"
@@ -44,11 +56,35 @@ config FB_TFT_ILI9341
 	help
 	  Generic Framebuffer support for ILI9341
 
+config FB_TFT_ILI9481
+	tristate "FB driver for the ILI9481 LCD Controller"
+	depends on FB_TFT
+	help
+	  Generic Framebuffer support for ILI9481
+
+config FB_TFT_ILI9486
+	tristate "FB driver for the ILI9486 LCD Controller"
+	depends on FB_TFT
+	help
+	  Generic Framebuffer support for ILI9486
+
 config FB_TFT_PCD8544
 	tristate "FB driver for the PCD8544 LCD Controller"
 	depends on FB_TFT
 	help
 	  Generic Framebuffer support for PCD8544
+
+config FB_TFT_RA8875
+        tristate "FB driver for the RA8875 LCD Controller"
+        depends on FB_TFT
+	help
+	  Generic Framebuffer support for RA8875
+
+config FB_TFT_S6D02A1
+	tristate "FB driver for the S6D02A1 LCD Controller"
+	depends on FB_TFT
+	help
+	  Generic Framebuffer support for S6D02A1
 
 config FB_TFT_S6D1121
 	tristate "FB driver for the S6D1211 LCD Controller"
@@ -91,6 +127,18 @@ config FB_TFT_TINYLCD
 	depends on FB_TFT
 	help
 	  Custom Framebuffer support for tinylcd.com display
+
+config FB_TFT_TLS8204
+	tristate "FB driver for the TLS8204 LCD Controller"
+	depends on FB_TFT
+	help
+	  Generic Framebuffer support for TLS8204
+
+config FB_TFT_UPD161704
+	tristate "FB driver for the uPD161704 LCD Controller"
+	depends on FB_TFT
+	help
+	  Generic Framebuffer support for uPD161704
 
 config FB_TFT_WATTEROTT
 	tristate "FB driver for the WATTEROTT LCD Controller"

@@ -194,10 +194,12 @@ static struct fbtft_display display = {
 		.set_gamma = set_gamma,
 	},
 };
-FBTFT_REGISTER_DRIVER(DRVNAME, &display);
+FBTFT_REGISTER_DRIVER(DRVNAME, "solomon,ssd1289", &display);
 
 MODULE_ALIAS("spi:" DRVNAME);
 MODULE_ALIAS("platform:" DRVNAME);
+MODULE_ALIAS("spi:ssd1289");
+MODULE_ALIAS("platform:ssd1289");
 
 MODULE_DESCRIPTION("FB driver for the SSD1289 LCD Controller");
 MODULE_AUTHOR("Noralf Tronnes");

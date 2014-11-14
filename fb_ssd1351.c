@@ -40,7 +40,6 @@ static int init_display(struct fbtft_par *par)
 	write_reg(par, 0xae); /* Display Off */
 	write_reg(par, 0xb3, 0xf1); /* Front Clock Div */
 	write_reg(par, 0xca, 0x7f); /* Set Mux Ratio */
-	write_reg(par, 0xa0, 0x70 | (par->bgr << 2)); /* Set Colour Depth */
 	write_reg(par, 0x15, 0x00, 0x7f); /* Set Column Address */
 	write_reg(par, 0x75, 0x00, 0x7f); /* Set Row Address */
 	write_reg(par, 0xa1, 0x00); /* Set Display Start Line */
@@ -68,6 +67,39 @@ static void set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 	write_reg(par, 0x15, xs, xe);
 	write_reg(par, 0x75, ys, ye);
 	write_reg(par, 0x5c);
+}
+
+static int set_var(struct fbtft_par *par)
+{
+	unsigned remap;
+	fbtft_par_dbg(DEBUG_INIT_DISPLAY, par, "%s()\n", __func__);
+
+	if (par->fbtftops.init_display != init_display) {
+		/* don't risk messing up register A0h */
+		fbtft_par_dbg(DEBUG_INIT_DISPLAY, par,
+			"%s: skipping since custom init_display() is used\n",
+			__func__);
+		return 0;
+	}
+
+	remap = 0x60 | (par->bgr << 2); /* Set Colour Depth */
+
+	switch (par->info->var.rotate) {
+	case 0:
+		write_reg(par, 0xA0, remap | 0b00 | 1<<4);
+		break;
+	case 270:
+		write_reg(par, 0xA0, remap | 0b11 | 1<<4);
+		break;
+	case 180:
+		write_reg(par, 0xA0, remap | 0b10);
+		break;
+	case 90:
+		write_reg(par, 0xA0, remap | 0b01);
+		break;
+	}
+
+	return 0;
 }
 
 /*
@@ -151,11 +183,13 @@ static struct fbtft_display display = {
 	.fbtftops = {
 		.init_display = init_display,
 		.set_addr_win = set_addr_win,
+		.set_var = set_var,
 		.set_gamma = set_gamma,
 		.blank = blank,
 	},
 };
 
+#ifdef CONFIG_FB_BACKLIGHT
 static int update_onboard_backlight(struct backlight_device *bd)
 {
 	struct fbtft_par *par = bl_get_data(bd);
@@ -181,7 +215,8 @@ static void register_onboard_backlight(struct fbtft_par *par)
 
 	fbtft_par_dbg(DEBUG_BACKLIGHT, par, "%s()\n", __func__);
 
-	bl_ops = kzalloc(sizeof(struct backlight_ops), GFP_KERNEL);
+	bl_ops = devm_kzalloc(par->info->device, sizeof(struct backlight_ops),
+				GFP_KERNEL);
 	if (!bl_ops) {
 		dev_err(par->info->device,
 			"%s: could not allocate memory for backlight operations.\n",
@@ -199,24 +234,24 @@ static void register_onboard_backlight(struct fbtft_par *par)
 		dev_err(par->info->device,
 			"cannot register backlight device (%ld)\n",
 			PTR_ERR(bd));
-		goto failed;
+		return;
 	}
 	par->info->bl_dev = bd;
 
 	if (!par->fbtftops.unregister_backlight)
 		par->fbtftops.unregister_backlight = fbtft_unregister_backlight;
-
-	return;
-failed:
-	kfree(bl_ops);
 }
+#else
+static void register_onboard_backlight(struct fbtft_par *par) { };
+#endif
 
 
-
-FBTFT_REGISTER_DRIVER(DRVNAME, &display);
+FBTFT_REGISTER_DRIVER(DRVNAME, "solomon,ssd1351", &display);
 
 MODULE_ALIAS("spi:" DRVNAME);
 MODULE_ALIAS("platform:" DRVNAME);
+MODULE_ALIAS("spi:ssd1351");
+MODULE_ALIAS("platform:ssd1351");
 
 MODULE_DESCRIPTION("SSD1351 OLED Driver");
 MODULE_AUTHOR("James Davies");

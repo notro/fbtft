@@ -193,10 +193,12 @@ static struct fbtft_display display = {
 	},
 };
 
-FBTFT_REGISTER_DRIVER(DRVNAME, &display);
+FBTFT_REGISTER_DRIVER(DRVNAME, "solomon,ssd1331", &display);
 
 MODULE_ALIAS("spi:" DRVNAME);
 MODULE_ALIAS("platform:" DRVNAME);
+MODULE_ALIAS("spi:ssd1331");
+MODULE_ALIAS("platform:ssd1331");
 
 MODULE_DESCRIPTION("SSD1331 OLED Driver");
 MODULE_AUTHOR("Alec Smecher (adapted from SSD1351 by James Davies)");

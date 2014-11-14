@@ -1,7 +1,7 @@
 /*
- * Custom FB driver for tinylcd.com display
+ * FB driver for the ILI9486 LCD Controller
  *
- * Copyright (C) 2013 Noralf Tronnes
+ * Copyright (C) 2014 Noralf Tronnes
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,46 +21,43 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
-#include <linux/delay.h>
 
 #include "fbtft.h"
 
-#define DRVNAME		"fb_tinylcd"
+#define DRVNAME		"fb_ili9486"
 #define WIDTH		320
 #define HEIGHT		480
 
 
-static int init_display(struct fbtft_par *par)
-{
-	fbtft_par_dbg(DEBUG_INIT_DISPLAY, par, "%s()\n", __func__);
-
-	par->fbtftops.reset(par);
-
-	write_reg(par, 0xB0, 0x80);
-	write_reg(par, 0xC0, 0x0A, 0x0A);
-	write_reg(par, 0xC1, 0x45, 0x07);
-	write_reg(par, 0xC2, 0x33);
-	write_reg(par, 0xC5, 0x00, 0x42, 0x80);
-	write_reg(par, 0xB1, 0xD0, 0x11);
-	write_reg(par, 0xB4, 0x02);
-	write_reg(par, 0xB6, 0x00, 0x22, 0x3B);
-	write_reg(par, 0xB7, 0x07);
-	write_reg(par, 0x36, 0x58);
-	write_reg(par, 0xF0, 0x36, 0xA5, 0xD3);
-	write_reg(par, 0xE5, 0x80);
-	write_reg(par, 0xE5, 0x01);
-	write_reg(par, 0xB3, 0x00);
-	write_reg(par, 0xE5, 0x00);
-	write_reg(par, 0xF0, 0x36, 0xA5, 0x53);
-	write_reg(par, 0xE0, 0x00, 0x35, 0x33, 0x00, 0x00, 0x00,
-	                     0x00, 0x35, 0x33, 0x00, 0x00, 0x00);
-	write_reg(par, 0x3A, 0x55);
-	write_reg(par, 0x11);
-	udelay(250);
-	write_reg(par, 0x29);
-
-	return 0;
-}
+/* this init sequence matches PiScreen */
+static int default_init_sequence[] = {
+	/* Interface Mode Control */
+	-1, 0xb0, 0x0,
+	/* Sleep OUT */
+	-1, 0x11,
+	-2, 250,
+	/* Interface Pixel Format */
+	-1, 0x3A, 0x55,
+	/* Power Control 3 */
+	-1, 0xC2, 0x44,
+	/* VCOM Control 1 */
+	-1, 0xC5, 0x00, 0x00, 0x00, 0x00,
+	/* PGAMCTRL(Positive Gamma Control) */
+	-1, 0xE0, 0x0F, 0x1F, 0x1C, 0x0C, 0x0F, 0x08, 0x48, 0x98,
+	          0x37, 0x0A, 0x13, 0x04, 0x11, 0x0D, 0x00,
+	/* NGAMCTRL(Negative Gamma Control) */
+	-1, 0xE1, 0x0F, 0x32, 0x2E, 0x0B, 0x0D, 0x05, 0x47, 0x75,
+	          0x37, 0x06, 0x10, 0x03, 0x24, 0x20, 0x00,
+	/* Digital Gamma Control 1 */
+	-1, 0xE2, 0x0F, 0x32, 0x2E, 0x0B, 0x0D, 0x05, 0x47, 0x75,
+	          0x37, 0x06, 0x10, 0x03, 0x24, 0x20, 0x00,
+	/* Sleep OUT */
+	-1, 0x11,
+	/* Display ON */
+	-1, 0x29,
+	/* end marker */
+	-3
+};
 
 static void set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 {
@@ -82,21 +79,19 @@ static int set_var(struct fbtft_par *par)
 	fbtft_par_dbg(DEBUG_INIT_DISPLAY, par, "%s()\n", __func__);
 
 	switch (par->info->var.rotate) {
-	case 270:
-		write_reg(par, 0xB6, 0x00, 0x02, 0x3B);
-		write_reg(par, 0x36, 0x28);
-		break;
-	case 180:
-		write_reg(par, 0xB6, 0x00, 0x22, 0x3B);
-		write_reg(par, 0x36, 0x58);
+	case 0:
+		write_reg(par, 0x36, 0x80 | (par->bgr << 3));
 		break;
 	case 90:
-		write_reg(par, 0xB6, 0x00, 0x22, 0x3B);
-		write_reg(par, 0x36, 0x38);
+		write_reg(par, 0x36, 0x20 | (par->bgr << 3));
+		break;
+	case 180:
+		write_reg(par, 0x36, 0x40 | (par->bgr << 3));
+		break;
+	case 270:
+		write_reg(par, 0x36, 0xE0 | (par->bgr << 3));
 		break;
 	default:
-		write_reg(par, 0xB6, 0x00, 0x22, 0x3B);
-		write_reg(par, 0x36, 0x08);
 		break;
 	}
 
@@ -105,20 +100,22 @@ static int set_var(struct fbtft_par *par)
 
 
 static struct fbtft_display display = {
-	.regwidth = 8,
+	.regwidth = 16,
 	.width = WIDTH,
 	.height = HEIGHT,
+	.init_sequence = default_init_sequence,
 	.fbtftops = {
-		.init_display = init_display,
 		.set_addr_win = set_addr_win,
 		.set_var = set_var,
 	},
 };
-FBTFT_REGISTER_DRIVER(DRVNAME, "neosec,tinylcd", &display);
+FBTFT_REGISTER_DRIVER(DRVNAME, "ilitek,ili9486", &display);
 
 MODULE_ALIAS("spi:" DRVNAME);
-MODULE_ALIAS("spi:tinylcd");
+MODULE_ALIAS("platform:" DRVNAME);
+MODULE_ALIAS("spi:ili9486");
+MODULE_ALIAS("platform:ili9486");
 
-MODULE_DESCRIPTION("Custom FB driver for tinylcd.com display");
+MODULE_DESCRIPTION("FB driver for the ILI9486 LCD Controller");
 MODULE_AUTHOR("Noralf Tronnes");
 MODULE_LICENSE("GPL");

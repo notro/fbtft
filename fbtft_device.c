@@ -298,11 +298,11 @@ static struct fbtft_device_display displays[] = {
 					.backlight = FBTFT_ONBOARD_BACKLIGHT,
 				},
 				.gpios = (const struct fbtft_gpio []) {
-					/* for beaglebone black
+					/* for my Beaglebone Black
 					{ "reset", 48 },
-					{ "E", 60 },
-					{ "rs", 122 },
-					{ "wr", 113 },
+					{ "wr", 60 },  // aka E
+					{ "dc", 122 }, // aka D/I
+					{ "rw", 113 },
 					{ "cs0", 49 },
 					{ "cs1", 117 },
 					{ "db00", 66 },

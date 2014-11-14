@@ -286,6 +286,35 @@ static struct fbtft_device_display displays[] = {
 			}
 		}
 	}, {
+		.name = "elv_odm100",
+		.pdev = &(struct platform_device) {
+			.modalias = "fb_ssd1351",
+			.max_speed_hz = 20000000,
+			.mode = SPI_MODE_0,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 8,
+					.backlight = FBTFT_ONBOARD_BACKLIGHT,
+				},
+				.bgr = true,
+				.gpios = (const struct fbtft_gpio []) {
+					{ "reset", 17 },
+					{ "dc", 1 },
+					{ "wr", 0 },
+					{ "cs", 21 },
+					{ "db00", 9 },
+					{ "db01", 11 },
+					{ "db02", 18 },
+					{ "db03", 23 },
+					{ "db04", 24 },
+					{ "db05", 25 },
+					{ "db06", 8 },
+					{ "db07", 7 },
+					{},
+				},
+			}
+		}
+	}, {
 		.name = "er_tftm050_2",
 		.spi = &(struct spi_board_info) {
 			.modalias = "fb_ra8875",

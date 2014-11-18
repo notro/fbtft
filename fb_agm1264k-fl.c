@@ -30,13 +30,18 @@
 #define WIDTH		64
 #define HEIGHT		64
 #define TOTALWIDTH	(WIDTH * 2)	 // becouse 2 ks0108 in one display
-#define FPS			5
+#define FPS			20
 
 #define EPIN			gpio.wr
 #define RS			gpio.dc
 #define RW			gpio.aux[2]
 #define CS0			gpio.aux[0]
 #define CS1			gpio.aux[1]
+
+static ushort threshold = 0xff;
+module_param(threshold, ushort, 0);
+MODULE_PARM_DESC(threshold, 
+"Color to BlackWhite pixel brightness threshold (default = 0xff)");
 
 static int init_display(struct fbtft_par *par)
 {
@@ -48,9 +53,9 @@ static int init_display(struct fbtft_par *par)
 	for (i = 0; i < 2; ++i)
 	{
 		write_reg(par, i, 0b00111111); // display on
-		//write_reg(par, i, 0b01000000); // set x to 0
-		//write_reg(par, i, 0b10111000); // set page to 0
-		//write_reg(par, i, 0b11000000); // set start line to 0
+		write_reg(par, i, 0b01000000); // set x to 0
+		write_reg(par, i, 0b10111000); // set page to 0
+		write_reg(par, i, 0b11000000); // set start line to 0
 	}
 
 	return 0;
@@ -229,8 +234,16 @@ construct_line_bitmap(struct fbtft_par *par, u8* dest, u16* src, int xs,
 	{
 		u8 res = 0;
 		for (i = 0; i < 8; i++)
-			if (src[(y * 8 + i) * par->info->var.xres + x])
+		{
+			u16 pixel = src[(y * 8 + i) * par->info->var.xres + x];
+			u16 brigtnes =
+				// RGB565
+				(pixel & 0b11111) +
+				((pixel & (0b111111 << 5)) >> 5) +
+				((pixel & (0b11111 << (5 + 6))) >> (5 + 6));
+			if (brigtnes > threshold)
 				res |= 1 << i;
+		}
 		*dest++ = res;
 	}
 }

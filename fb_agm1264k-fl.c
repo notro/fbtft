@@ -23,8 +23,14 @@
 #include <linux/init.h>
 #include <linux/gpio.h>
 #include <linux/delay.h>
+#include <linux/slab.h>
 
 #include "fbtft.h"
+
+//#define NEGATIVE
+
+#define WHITE		0xff
+#define BLACK		0
 
 #define DRVNAME		"fb_agm1264k-fl"
 #define WIDTH		64
@@ -49,6 +55,9 @@ diffusing_matrix[DIFFUSING_MATRIX_WIDTH][DIFFUSING_MATRIX_HEIGHT] = {
 	{3, 2},
 };
 
+static const unsigned char gamma_correction_table[] = {
+0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 8, 8, 8, 9, 9, 9, 10, 10, 11, 11, 11, 12, 12, 13, 13, 13, 14, 14, 15, 15, 16, 16, 17, 17, 18, 18, 19, 19, 20, 20, 21, 22, 22, 23, 23, 24, 25, 25, 26, 26, 27, 28, 28, 29, 30, 30, 31, 32, 33, 33, 34, 35, 35, 36, 37, 38, 39, 39, 40, 41, 42, 43, 43, 44, 45, 46, 47, 48, 49, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 73, 74, 75, 76, 77, 78, 79, 81, 82, 83, 84, 85, 87, 88, 89, 90, 91, 93, 94, 95, 97, 98, 99, 100, 102, 103, 105, 106, 107, 109, 110, 111, 113, 114, 116, 117, 119, 120, 121, 123, 124, 126, 127, 129, 130, 132, 133, 135, 137, 138, 140, 141, 143, 145, 146, 148, 149, 151, 153, 154, 156, 158, 159, 161, 163, 165, 166, 168, 170, 172, 173, 175, 177, 179, 181, 182, 184, 186, 188, 190, 192, 194, 196, 197, 199, 201, 203, 205, 207, 209, 211, 213, 215, 217, 219, 221, 223, 225, 227, 229, 231, 234, 236, 238, 240, 242, 244, 246, 248, 251, 253, 255
+};
 
 static int init_display(struct fbtft_par *par)
 {
@@ -229,7 +238,6 @@ static void
 construct_line_bitmap(struct fbtft_par *par, u8* dest, signed short *src, int xs,
 						int xe, int y)
 {
-/*
 	int x, i;
 	for (x = xs; x < xe; ++x)
 	{
@@ -237,9 +245,12 @@ construct_line_bitmap(struct fbtft_par *par, u8* dest, signed short *src, int xs
 		for (i = 0; i < 8; i++)
 			if(src[(y * 8 + i) * par->info->var.xres + x])
 				res |= 1 << i;
+#ifdef NEGATIVE
 		*dest++ = res;
+#else
+		*dest++ = ~res;
+#endif
 	}
-*/
 }
 
 static int write_vmem(struct fbtft_par *par, size_t offset, size_t len)
@@ -250,7 +261,9 @@ static int write_vmem(struct fbtft_par *par, size_t offset, size_t len)
 	int ret = 0;
 
 	// buffer to convert RGB565 -> grayscale16 -> Ditherd image 1bpp
-	signed short convert_buf[par->info->var.xres * par->info->var.yres];
+	signed short *convert_buf = (signed short *)kmalloc(
+		par->info->var.xres * par->info->var.yres * sizeof(signed short), 
+		GFP_NOIO);
 
 	fbtft_par_dbg(DEBUG_WRITE_VMEM, par, "%s()\n", __func__);
 
@@ -262,32 +275,35 @@ static int write_vmem(struct fbtft_par *par, size_t offset, size_t len)
 			u16 b = pixel & 0b11111;
 			u16 g = (pixel & (0b111111 << 5)) >> 5;
 			u16 r = (pixel & (0b11111 << (5 + 6))) >> (5 + 6);
+			pixel = (299 * r + 587 * g + 114 * b) / 1000 * 5;
+			if (pixel > 255)
+				pixel = 255;
+
+			// gamma-correction
 			convert_buf[y *  par->info->var.xres + x] =
-				(r + g + b) / 3;
+				(signed short)gamma_correction_table[pixel];
 		}
 
 	// Image Dithering
 	for (x = 0; x < par->info->var.xres; ++x)
 		for (y = 0; y < par->info->var.yres; ++y)
 		{
-			signed short black = 0;
-			signed short white = 0xff;
 			signed short pixel = convert_buf[y *  par->info->var.xres + x];
-			signed short error_b = pixel - black;
-			signed short error_w = pixel - white;
+			signed short error_b = pixel - BLACK;
+			signed short error_w = pixel - WHITE;
 			signed short error;
 			u16 i, j;
 			// what color close
-			if (abs(black) > abs(white))
+			if (abs(error_b) >= abs(error_w))
 			{
 				// white
 				error = error_w;
-				pixel = white;
+				pixel = 0xff;
 			}
 			else
 			{	// black
 				error = error_b;
-				pixel = black;
+				pixel = 0;
 			}
 
 			error /= 8;
@@ -309,11 +325,18 @@ static int write_vmem(struct fbtft_par *par, size_t offset, size_t len)
 					if (coeff == -1)
 						*write_pos = pixel; // pixel itself
 					else
-						*write_pos += error * coeff;
+					{
+						signed short p = *write_pos + error * coeff;
+						if (p > WHITE)
+							p = WHITE;
+						if (p < BLACK)
+							p = BLACK;
+						*write_pos = p;
+					}
 				}
 		}
 
-	 // 1 одна строка - 2 страницы
+	 // 1 string = 2 pages
 	 for (y = addr_win.ys_page; y <= addr_win.ye_page; ++y)
 	 {
 	 	// left half of display
@@ -324,12 +347,12 @@ static int write_vmem(struct fbtft_par *par, size_t offset, size_t len)
 
 			len = par->info->var.xres / 2 - addr_win.xs;
 
-			// выбрать левую половину (sc0)
-			// установить адрес
+			// select left side (sc0)
+			// set addr
 			write_reg(par, 0x00, (0b01 << 6) | (u8)addr_win.xs); // x
 			write_reg(par, 0x00, (0b10111 << 3) | (u8)y); // page
 
-	 		// записать битмап
+	 		// write bitmap
 			gpio_set_value(par->RS, 1); // RS->1 (data mode)
 			ret = par->fbtftops.write(par, buf, len);
 			if (ret < 0)
@@ -344,12 +367,12 @@ static int write_vmem(struct fbtft_par *par, size_t offset, size_t len)
 
 			len = addr_win.xe + 1 - par->info->var.xres / 2;
 
-			// выбрать правую половину (sc0)
-			// установить адрес
+			// select right side (sc0)
+			// set addr
 			write_reg(par, 0x01, (0b01 << 6) | (u8)0); // x
 			write_reg(par, 0x01, (0b10111 << 3) | (u8)y); // page
 
-			// записать битмап
+			// write bitmap
 			gpio_set_value(par->RS, 1); // RS->1 (data mode)
 		 	par->fbtftops.write(par, buf, len);
 			if (ret < 0)
@@ -357,6 +380,7 @@ static int write_vmem(struct fbtft_par *par, size_t offset, size_t len)
 					"%s: write failed and returned: %d\n", __func__, ret);
 		}
 	}
+	kfree(convert_buf);
 
 	gpio_set_value(par->CS0, 1);
 	gpio_set_value(par->CS1, 1);
@@ -364,12 +388,6 @@ static int write_vmem(struct fbtft_par *par, size_t offset, size_t len)
 	return ret;
 }
 
-/*
- * тупая запись, что пришло в массиве, то и записать
- * используется только шина par->gpio.db и par->gpio.E = latch
- * rs должна быть установлена до записи
- * CSx должна быть установлена до записи
- */
 static int write(struct fbtft_par *par, void *buf, size_t len)
 {
 	fbtft_par_dbg_hex(DEBUG_WRITE, par, par->info->device, u8, buf, len,

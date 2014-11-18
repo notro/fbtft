@@ -29,24 +29,31 @@
 #define DRVNAME		"fb_agm1264k-fl"
 #define WIDTH		64
 #define HEIGHT		64
-#define TOTALWIDTH	(WIDTH * 2)	 // becouse 2 ks0108 in one display
+#define TOTALWIDTH	(WIDTH * 2)	 // because 2 x ks0108 in one display
 #define FPS			20
 
-#define EPIN			gpio.wr
+#define EPIN		gpio.wr
 #define RS			gpio.dc
 #define RW			gpio.aux[2]
 #define CS0			gpio.aux[0]
 #define CS1			gpio.aux[1]
 
-static ushort threshold = 0xff;
-module_param(threshold, ushort, 0);
-MODULE_PARM_DESC(threshold, 
-"Color to BlackWhite pixel brightness threshold (default = 0xff)");
+
+// diffusing error (“Floyd-Steinberg”)
+#define DIFFUSING_MATRIX_WIDTH	2
+#define DIFFUSING_MATRIX_HEIGHT	2
+
+static const signed char
+diffusing_matrix[DIFFUSING_MATRIX_WIDTH][DIFFUSING_MATRIX_HEIGHT] = {
+	{-1, 3},
+	{3, 2},
+};
+
 
 static int init_display(struct fbtft_par *par)
 {
 	u8 i;
-    fbtft_par_dbg(DEBUG_INIT_DISPLAY, par, "%s()\n", __func__);
+	fbtft_par_dbg(DEBUG_INIT_DISPLAY, par, "%s()\n", __func__);
 
 	par->fbtftops.reset(par);
 
@@ -136,12 +143,9 @@ request_gpios_match(struct fbtft_par *par, const struct fbtft_gpio *gpio)
     return FBTFT_GPIO_NO_MATCH;
 }
 
-/* эта штука используется для ввода команд
- * для упрощения используется макрос write_reg(par, ...)
- * первый байт будет значить для какого монитора команда (0 / 1)
- * второй и далее байты - команда/список команд
- * устанавливает rs = 0
- * управляет csx
+/* This function oses to enter commands 
+ * first byte - destination controller 0 or 1
+ * folowing - commands
  */
 static void write_reg8_bus8(struct fbtft_par *par, int len, ...)
 {
@@ -208,11 +212,7 @@ static struct
 	int xs, ys_page, xe, ye_page;
 } addr_win;
 
-// Что-то типо установки указателя записи в мониторе
-// xs - (всегда вызывается с 0)
-// xe - всегда вызывается с xres - 1
-// ys - строка, с которой начнется прерисовка
-// ye - последняя строка, подлежащая прерисовке
+/* save display writing zone */
 static void set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 {
 	addr_win.xs = xs;
@@ -226,42 +226,92 @@ static void set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 }
 
 static void
-construct_line_bitmap(struct fbtft_par *par, u8* dest, u16* src, int xs,
+construct_line_bitmap(struct fbtft_par *par, u8* dest, signed short *src, int xs,
 						int xe, int y)
 {
+/*
 	int x, i;
 	for (x = xs; x < xe; ++x)
 	{
 		u8 res = 0;
 		for (i = 0; i < 8; i++)
-		{
-			u16 pixel = src[(y * 8 + i) * par->info->var.xres + x];
-			u16 brigtnes =
-				// RGB565
-				(pixel & 0b11111) +
-				((pixel & (0b111111 << 5)) >> 5) +
-				((pixel & (0b11111 << (5 + 6))) >> (5 + 6));
-			if (brigtnes > threshold)
+			if(src[(y * 8 + i) * par->info->var.xres + x])
 				res |= 1 << i;
-		}
 		*dest++ = res;
 	}
+*/
 }
 
 static int write_vmem(struct fbtft_par *par, size_t offset, size_t len)
 {
 	u16 *vmem16 = (u16 *)par->info->screen_base;
 	u8 *buf = par->txbuf.buf;
-	int y;
+	int x, y;
 	int ret = 0;
+
+	// buffer to convert RGB565 -> grayscale16 -> Ditherd image 1bpp
+	signed short convert_buf[par->info->var.xres * par->info->var.yres];
 
 	fbtft_par_dbg(DEBUG_WRITE_VMEM, par, "%s()\n", __func__);
 
-	/*
-	 * Сам фреймбуфер создан с глубиной цвета 16bpp, нужно сконвертировать
-	 * в битовую последовательность Ч/Б изображения
-	 * Получив "Строку" Запишем её в нужный контроллер дисплея (лев или правый)
-	 */
+	// converting to grayscale16
+	for (x = 0; x < par->info->var.xres; ++x)
+		for (y = 0; y < par->info->var.yres; ++y)
+		{
+			u16 pixel = vmem16[y *  par->info->var.xres + x];
+			u16 b = pixel & 0b11111;
+			u16 g = (pixel & (0b111111 << 5)) >> 5;
+			u16 r = (pixel & (0b11111 << (5 + 6))) >> (5 + 6);
+			convert_buf[y *  par->info->var.xres + x] =
+				(r + g + b) / 3;
+		}
+
+	// Image Dithering
+	for (x = 0; x < par->info->var.xres; ++x)
+		for (y = 0; y < par->info->var.yres; ++y)
+		{
+			signed short black = 0;
+			signed short white = 0xff;
+			signed short pixel = convert_buf[y *  par->info->var.xres + x];
+			signed short error_b = pixel - black;
+			signed short error_w = pixel - white;
+			signed short error;
+			u16 i, j;
+			// what color close
+			if (abs(black) > abs(white))
+			{
+				// white
+				error = error_w;
+				pixel = white;
+			}
+			else
+			{	// black
+				error = error_b;
+				pixel = black;
+			}
+
+			error /= 8;
+			// diffusion matrix row
+			for (i = 0; i < DIFFUSING_MATRIX_WIDTH; ++i)
+				// diffusion matrix column
+				for (j = 0; j < DIFFUSING_MATRIX_HEIGHT; ++j)
+				{
+					signed short *write_pos;
+					signed char coeff;
+					// skip pixels out of zone
+					if ((x + i < 0) || (x + i >= par->info->var.xres)
+						|| (y + j >= par->info->var.yres))
+						continue;
+					write_pos = &convert_buf[
+							(y + j) *  par->info->var.xres +
+							x + i];
+					coeff = diffusing_matrix[i][j];
+					if (coeff == -1)
+						*write_pos = pixel; // pixel itself
+					else
+						*write_pos += error * coeff;
+				}
+		}
 
 	 // 1 одна строка - 2 страницы
 	 for (y = addr_win.ys_page; y <= addr_win.ye_page; ++y)
@@ -269,7 +319,7 @@ static int write_vmem(struct fbtft_par *par, size_t offset, size_t len)
 	 	// left half of display
 	 	if (addr_win.xs < par->info->var.xres / 2)
 		{
-			construct_line_bitmap(par, buf, vmem16, addr_win.xs, 
+			construct_line_bitmap(par, buf, convert_buf, addr_win.xs, 
 		 		par->info->var.xres / 2, y);
 
 			len = par->info->var.xres / 2 - addr_win.xs;
@@ -289,7 +339,7 @@ static int write_vmem(struct fbtft_par *par, size_t offset, size_t len)
 		// right half of display
 		if (addr_win.xe >= par->info->var.xres / 2)
 		{
-			construct_line_bitmap(par, buf, vmem16,
+			construct_line_bitmap(par, buf, convert_buf,
 				par->info->var.xres / 2, addr_win.xe + 1,y);
 
 			len = addr_win.xe + 1 - par->info->var.xres / 2;

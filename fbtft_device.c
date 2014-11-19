@@ -286,6 +286,39 @@ static struct fbtft_device_display displays[] = {
 			}
 		}
 	}, {
+		.name = "agm1264k-fl",
+		.pdev = &(struct platform_device) {
+			.name = "fb_agm1264k-fl",
+			.id = 0,
+			.dev = {
+			.release = fbtft_device_pdev_release,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 8,
+					.backlight = FBTFT_ONBOARD_BACKLIGHT,
+				},
+				.gpios = (const struct fbtft_gpio []) {
+					/* for my Beaglebone Black
+					{ "reset", 48 },
+					{ "wr", 60 },  // aka E
+					{ "dc", 112 }, // aka D/I
+					{ "rw", 113 },
+					{ "cs0", 49 },
+					{ "cs1", 117 },
+					{ "db00", 66 },
+					{ "db01", 69 },
+					{ "db02", 45 },
+					{ "db03", 67 },
+					{ "db04", 68 },
+					{ "db05", 44 },
+					{ "db06", 26 },
+					{ "db07", 65 },*/
+					{},
+				},
+			},
+			}
+		}
+	}, {
 		.name = "er_tftm050_2",
 		.spi = &(struct spi_board_info) {
 			.modalias = "fb_ra8875",

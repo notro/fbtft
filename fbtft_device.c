@@ -286,6 +286,24 @@ static struct fbtft_device_display displays[] = {
 			}
 		}
 	}, {
+		.name = "dogs102",
+		.spi = &(struct spi_board_info) {
+			.modalias = "fb_uc1701",
+			.max_speed_hz = 8000000,
+			.mode = SPI_MODE_0,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 8,
+				},
+				.bgr = true,
+				.gpios = (const struct fbtft_gpio []) {
+					{ "reset", 13 },
+					{ "dc", 6 },
+					{},
+				},
+			}
+		}
+	}, {
 		.name = "er_tftm050_2",
 		.spi = &(struct spi_board_info) {
 			.modalias = "fb_ra8875",

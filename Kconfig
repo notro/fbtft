@@ -134,6 +134,12 @@ config FB_TFT_TLS8204
 	help
 	  Generic Framebuffer support for TLS8204
 
+config FB_TFT_UC1701
+	tristate "FB driver for the UC1701 LCD Controller"
+	depends on FB_TFT
+	help
+	  Generic Framebuffer support for UC1701
+
 config FB_TFT_UPD161704
 	tristate "FB driver for the uPD161704 LCD Controller"
 	depends on FB_TFT

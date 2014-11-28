@@ -286,6 +286,24 @@ static struct fbtft_device_display displays[] = {
 			}
 		}
 	}, {
+		.name = "agm1264k-fl",
+		.pdev = &(struct platform_device) {
+			.name = "fb_agm1264k-fl",
+			.id = 0,
+			.dev = {
+			.release = fbtft_device_pdev_release,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 8,
+					.backlight = FBTFT_ONBOARD_BACKLIGHT,
+				},
+				.gpios = (const struct fbtft_gpio []) {
+					{},
+				},
+			},
+			}
+		}
+	}, {
 		.name = "dogs102",
 		.spi = &(struct spi_board_info) {
 			.modalias = "fb_uc1701",

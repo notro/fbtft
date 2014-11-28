@@ -8,6 +8,12 @@ menuconfig FB_TFT
 	select FB_DEFERRED_IO
 	select FB_BACKLIGHT
 
+config FB_TFT_AGM1264K_FL
+	tristate "FB driver for the AGM1264K-FL LCD display"
+	depends on FB_TFT
+	help
+	  Framebuffer support for the AGM1264K-FL LCD display (two Samsung KS0108 compatable chips)
+
 config FB_TFT_BD663474
 	tristate "FB driver for the BD663474 LCD Controller"
 	depends on FB_TFT

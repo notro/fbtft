@@ -493,6 +493,7 @@ static struct fbtft_device_display displays[] = {
 			.mode = SPI_MODE_0,
 			.platform_data = &(struct fbtft_platform_data) {
 				.display = {
+					.regwidth = 16,
 					.buswidth = 8,
 					.backlight = 1,
 				},
@@ -672,6 +673,7 @@ static struct fbtft_device_display displays[] = {
 			.mode = SPI_MODE_0,
 			.platform_data = &(struct fbtft_platform_data) {
 				.display = {
+					.regwidth = 16,
 					.buswidth = 8,
 					.backlight = 1,
 				},

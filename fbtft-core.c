@@ -738,6 +738,8 @@ struct fb_info *fbtft_framebuffer_alloc(struct fbtft_display *display,
 		display->height = pdata->display.height;
 	if (pdata->display.buswidth)
 		display->buswidth = pdata->display.buswidth;
+	if (pdata->display.regwidth)
+		display->regwidth = pdata->display.regwidth;
 
 	display->debug |= debug;
 	fbtft_expand_debug_value(&display->debug);

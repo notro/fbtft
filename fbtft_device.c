@@ -249,26 +249,6 @@ static struct fbtft_device_display displays[] = {
 			}
 		}
 	}, {
-		.name = "adafruit28",
-		.spi = &(struct spi_board_info) {
-			.modalias = "fb_ili9341",
-			.max_speed_hz = 32000000,
-			.mode = SPI_MODE_0,
-			.platform_data = &(struct fbtft_platform_data) {
-				.display = {
-					.buswidth = 8,
-					.backlight = 1,
-				},
-				.bgr = true,
-				.gpios = (const struct fbtft_gpio []) {
-					{ "reset", 25 },
-					{ "dc", 24 },
-					{ "led", 18 },
-					{},
-				},
-			}
-		}
-	}, {
 		.name = "adafruit13m",
 		.spi = &(struct spi_board_info) {
 			.modalias = "fb_ssd1306",
@@ -297,20 +277,20 @@ static struct fbtft_device_display displays[] = {
 					.buswidth = 8,
 					.backlight = FBTFT_ONBOARD_BACKLIGHT,
 				},
-				.bgr = true,
+				.bgr = false,
 				.gpios = (const struct fbtft_gpio []) {
-					{ "reset", 17 },
-					{ "dc", 1 },
-					{ "wr", 0 },
-					{ "cs", 21 },
-					{ "db00", 9 },
-					{ "db01", 11 },
-					{ "db02", 18 },
-					{ "db03", 23 },
-					{ "db04", 24 },
-					{ "db05", 25 },
-					{ "db06", 8 },
-					{ "db07", 7 },
+					{ "reset", 30 },
+					{ "dc", 29 },
+					{ "wr", 27 },
+					{ "cs", 17 },
+					{ "db00", 42 },
+					{ "db01", 41 },
+					{ "db02", 39 },
+					{ "db03", 38 },
+					{ "db04", 37 },
+					{ "db05",  6 },
+					{ "db06", 36 },
+					{ "db07", 35 },
 					{},
 				},
 			},
@@ -478,26 +458,6 @@ static struct fbtft_device_display displays[] = {
 					{},
 				},
 				.gamma = HY28B_GAMMA,
-			}
-		}
-	}, {
-		.name = "ili9481",
-		.spi = &(struct spi_board_info) {
-			.modalias = "fb_ili9481",
-			.max_speed_hz = 32000000,
-			.mode = SPI_MODE_0,
-			.platform_data = &(struct fbtft_platform_data) {
-				.display = {
-					.buswidth = 8,
-					.backlight = 1,
-				},
-				.bgr = true,
-				.gpios = (const struct fbtft_gpio []) {
-					{ "reset", 25 },
-					{ "dc", 24 },
-					{ "led", 22 },
-					{},
-				},
 			}
 		}
 	}, {

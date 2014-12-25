@@ -27,7 +27,7 @@
 	fragment@1 {
 		target = <&gpio>;
 		__overlay__ {
-			rpi-display-pins {
+			rpi_display_pins: rpi_display_pins {
 				brcm,pins = <18 23 24 25>;
 				brcm,function = <1 1 1 0>; /* out out out in */
 			};
@@ -44,7 +44,8 @@
 			rpidisplay: rpi-display@0{
 				compatible = "ilitek,ili9341";
 				reg = <0>;
-				status = "okay";
+				pinctrl-names = "default";
+				pinctrl-0 = <&rpi_display_pins>;
 
 				spi-max-frequency = <32000000>;
 				rotate = <270>;
@@ -60,7 +61,6 @@
 			rpi-display-ts@1 {
 				compatible = "ti,ads7846";
 				reg = <1>;
-				status = "okay";
 
 				spi-max-frequency = <2000000>;
 				interrupts = <3 25>;
@@ -71,9 +71,9 @@
 		};
 	};
 	__overrides__ {
-		fbtft_speed =   <&rpidisplay>,"spi-max-frequency:0";
-		fbtft_rotate =  <&rpidisplay>,"rotate:0";
-		fbtft_fps =     <&rpidisplay>,"fps:0";
-		fbtft_debug =   <&rpidisplay>,"debug:0";
+		speed =   <&rpidisplay>,"spi-max-frequency:0";
+		rotate =  <&rpidisplay>,"rotate:0";
+		fps =     <&rpidisplay>,"fps:0";
+		debug =   <&rpidisplay>,"debug:0";
 	};
 };

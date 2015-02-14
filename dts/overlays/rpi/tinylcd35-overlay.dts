@@ -1,0 +1,102 @@
+/*
+ * tinylcd 3.5" display
+ *
+ */
+
+/dts-v1/;
+/plugin/;
+
+/ {
+	compatible = "brcm,bcm2835", "brcm,bcm2708", "brcm,bcm2709";
+
+	fragment@0 {
+		target = <&spi0>;
+		__overlay__ {
+			status = "okay";
+
+			spidev@0{
+				status = "disabled";
+			};
+
+			spidev@1{
+				status = "disabled";
+			};
+		};
+	};
+
+	fragment@1 {
+		target = <&gpio>;
+		__overlay__ {
+			tinylcd35_pins: tinylcd35_pins {
+				brcm,pins = <3 25 24 18>;
+				brcm,function = <0 1 1 1>; /* in out out out */
+			};
+		};
+	};
+
+	fragment@2 {
+		target = <&spi0>;
+		__overlay__ {
+			/* needed to avoid dtc warning */
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			tinylcd35: tinylcd35@0{
+				compatible = "neosec,tinylcd";
+				reg = <0>;
+				pinctrl-names = "default";
+				pinctrl-0 = <&tinylcd35_pins>;
+
+				spi-max-frequency = <48000000>;
+				rotate = <270>;
+				fps = <50>;
+				bgr;
+				buswidth = <8>;
+				reset-gpios = <&gpio 25 0>;
+				dc-gpios = <&gpio 24 0>;
+				led-gpios = <&gpio 18 1>;
+				debug = <0>;
+
+				init = <0x10000B0 0x80
+					0x10000C0 0x0A 0x0A
+					0x10000C1 0x01 0x01
+					0x10000C2 0x33
+					0x10000C5 0x00 0x42 0x80
+					0x10000B1 0xD0 0x11
+					0x10000B4 0x02
+					0x10000B6 0x00 0x22 0x3B
+					0x10000B7 0x07
+					0x1000036 0x58
+					0x10000F0 0x36 0xA5 0xD3
+					0x10000E5 0x80
+					0x10000E5 0x01
+					0x10000B3 0x00
+					0x10000E5 0x00
+					0x10000F0 0x36 0xA5 0x53
+					0x10000E0 0x00 0x35 0x33 0x00 0x00 0x00 0x00 0x35 0x33 0x00 0x00 0x00
+					0x100003A 0x55
+					0x1000011
+					0x2000001
+					0x1000029>;
+			};
+
+			tinylcd35-ts@1 {
+				compatible = "ti,ads7846";
+				reg = <1>;
+
+				spi-max-frequency = <2000000>;
+				interrupts = <3 2>; /* high-to-low edge triggered */
+				interrupt-parent = <&gpio>;
+				pendown-gpio = <&gpio 3 0>;
+				ti,x-plate-ohms = /bits/ 16 <100>;
+				ti,pressure-max = /bits/ 16 <255>;
+			};
+		};
+	};
+	__overrides__ {
+		speed =		<&tinylcd35>,"spi-max-frequency:0";
+		rotate =	<&tinylcd35>,"rotate:0";
+		fps =		<&tinylcd35>,"fps:0";
+		debug =		<&tinylcd35>,"debug:0";
+	};
+};

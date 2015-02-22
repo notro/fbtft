@@ -60,7 +60,7 @@
 				debug = <0>;
 			};
 
-			hy28a-ts@1 {
+			hy28a_ts: hy28a-ts@1 {
 				compatible = "ti,ads7846";
 				reg = <1>;
 
@@ -78,6 +78,7 @@
 		rotate =	<&hy28a>,"rotate:0";
 		fps =		<&hy28a>,"fps:0";
 		debug =		<&hy28a>,"debug:0";
+		xohms =		<&hy28a_ts>,"ti,x-plate-ohms;0";
 		resetgpio =	<&hy28a>,"reset-gpios:4",
 				<&hy28a_pins>, "brcm,pins:1";
 		ledgpio =	<&hy28a>,"led-gpios:4",

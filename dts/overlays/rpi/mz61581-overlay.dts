@@ -81,7 +81,8 @@
 					0x1000029
 					0x100002c>;
 
-				debug = <0>;
+				/* This is a workaround to make sure the init sequence slows down and doesn't fail */
+				debug = <3>;
 			};
 
 			mz61581_ts: mz61581_ts@1 {
@@ -95,12 +96,6 @@
 
 				ti,x-plate-ohms = /bits/ 16 <60>;
 				ti,pressure-max = /bits/ 16 <255>;
-//				ti,swap-xy;
-//
-//				ti,x-min = /bits/ 16 <230>;
-//				ti,y-min = /bits/ 16 <190>;
-//				ti,x-max = /bits/ 16 <3850>;
-//				ti,y-max = /bits/ 16 <3850>;
 			};
 		};
 	};
@@ -109,5 +104,6 @@
 		rotate =  <&mz61581>, "rotate:0";
 		fps =     <&mz61581>, "fps:0";
 		debug =   <&mz61581>, "debug:0";
+		xohms =   <&mz61581_ts>,"ti,x-plate-ohms;0";
 	};
 };

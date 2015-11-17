@@ -1072,6 +1072,38 @@ static struct fbtft_device_display displays[] = {
 			},
 		},
 		},
+	}, {
+		.name = "mcufriend",
+		.pdev = &(struct platform_device) {
+			.name = "fb_ili9327",
+			.id = 0,
+			.dev = {
+			.release = fbtft_device_pdev_release,
+			.platform_data = &(struct fbtft_platform_data) {
+				.display = {
+					.buswidth = 8,
+					.backlight = 1,
+				},
+				.fps= 60,
+				.bgr = true,
+				.gpios = (const struct fbtft_gpio []) {
+					{ "reset", 7 },
+					{ "dc", 18 },
+					{ "wr", 17 },
+					{ "cs", 4 },
+					{ "db00", 22 },
+					{ "db01", 23 },
+					{ "db02", 24 },
+					{ "db03", 10 },
+					{ "db04", 25 },
+					{ "db05", 9 },
+					{ "db06", 11 },
+					{ "db07", 8 },
+					{}
+				},
+			},
+			}
+		}
 	}
 };
 

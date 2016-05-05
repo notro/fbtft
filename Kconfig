@@ -8,6 +8,12 @@ menuconfig FB_TFT
 	select FB_DEFERRED_IO
 	select FB_BACKLIGHT
 
+config FB_TFT_AGM1264K_FL
+	tristate "FB driver for the AGM1264K-FL LCD display"
+	depends on FB_TFT
+	help
+	  Framebuffer support for the AGM1264K-FL LCD display (two Samsung KS0108 compatable chips)
+
 config FB_TFT_BD663474
 	tristate "FB driver for the BD663474 LCD Controller"
 	depends on FB_TFT
@@ -55,6 +61,12 @@ config FB_TFT_ILI9341
 	depends on FB_TFT
 	help
 	  Generic Framebuffer support for ILI9341
+
+config FB_TFT_ILI9481
+	tristate "FB driver for the ILI9481 LCD Controller"
+	depends on FB_TFT
+	help
+	  Generic Framebuffer support for ILI9481
 
 config FB_TFT_ILI9486
 	tristate "FB driver for the ILI9486 LCD Controller"
@@ -121,6 +133,18 @@ config FB_TFT_TINYLCD
 	depends on FB_TFT
 	help
 	  Custom Framebuffer support for tinylcd.com display
+
+config FB_TFT_TLS8204
+	tristate "FB driver for the TLS8204 LCD Controller"
+	depends on FB_TFT
+	help
+	  Generic Framebuffer support for TLS8204
+
+config FB_TFT_UC1701
+	tristate "FB driver for the UC1701 LCD Controller"
+	depends on FB_TFT
+	help
+	  Generic Framebuffer support for UC1701
 
 config FB_TFT_UPD161704
 	tristate "FB driver for the uPD161704 LCD Controller"

@@ -319,10 +319,12 @@ static struct fbtft_display display = {
 		.write = write_spi,
 	},
 };
-FBTFT_REGISTER_DRIVER(DRVNAME, &display);
+FBTFT_REGISTER_DRIVER(DRVNAME, "raio,ra8875", &display);
 
 MODULE_ALIAS("spi:" DRVNAME);
 MODULE_ALIAS("platform:" DRVNAME);
+MODULE_ALIAS("spi:ra8875");
+MODULE_ALIAS("platform:ra8875");
 
 MODULE_DESCRIPTION("FB driver for the RA8875 LCD Controller");
 MODULE_AUTHOR("Pf@nne");

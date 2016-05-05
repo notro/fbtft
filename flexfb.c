@@ -433,8 +433,9 @@ static int flexfb_probe_common(struct spi_device *sdev, struct platform_device *
 				if (ret)
 					goto out_release;
 				/* allocate buffer with room for dc bits */
-				par->extra = vzalloc(par->txbuf.len +
-						(par->txbuf.len / 8) + 8);
+				par->extra = devm_kzalloc(par->info->device,
+						par->txbuf.len + (par->txbuf.len / 8) + 8,
+						GFP_KERNEL);
 				if (!par->extra) {
 					ret = -ENOMEM;
 					goto out_release;
@@ -508,12 +509,9 @@ static int flexfb_remove_common(struct device *dev, struct fb_info *info)
 	if (!info)
 		return -EINVAL;
 	par = info->par;
-	if (par) {
+	if (par)
 		fbtft_par_dbg(DEBUG_DRIVER_INIT_FUNCTIONS, par,
 			"%s()\n", __func__);
-		if (par->extra)
-			vfree(par->extra);
-	}
 	fbtft_unregister_framebuffer(info);
 	fbtft_framebuffer_release(info);
 

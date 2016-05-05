@@ -40,6 +40,9 @@
 #define FBTFT_MAX_INIT_SEQUENCE      512
 #define FBTFT_GAMMA_MAX_VALUES_TOTAL 128
 
+#define FBTFT_OF_INIT_CMD	BIT(24)
+#define FBTFT_OF_INIT_DELAY	BIT(25)
+
 /**
  * struct fbtft_gpio - Structure that holds one pinname to gpio mapping
  * @name: pinname (reset, dc, etc.)
@@ -96,7 +99,6 @@ struct fbtft_ops {
 	unsigned long (*request_gpios_match)(struct fbtft_par *par,
 		const struct fbtft_gpio *gpio);
 	int (*request_gpios)(struct fbtft_par *par);
-	void (*free_gpios)(struct fbtft_par *par);
 	int (*verify_gpios)(struct fbtft_par *par);
 
 	void (*register_backlight)(struct fbtft_par *par);
@@ -297,7 +299,7 @@ extern void fbtft_write_reg16_bus8(struct fbtft_par *par, int len, ...);
 extern void fbtft_write_reg16_bus16(struct fbtft_par *par, int len, ...);
 
 
-#define FBTFT_REGISTER_DRIVER(_name, _display)                             \
+#define FBTFT_REGISTER_DRIVER(_name, _compatible, _display)                \
 									   \
 static int fbtft_driver_probe_spi(struct spi_device *spi)                  \
 {                                                                          \
@@ -323,10 +325,19 @@ static int fbtft_driver_remove_pdev(struct platform_device *pdev)          \
 	return fbtft_remove_common(&pdev->dev, info);                      \
 }                                                                          \
 									   \
+static const struct of_device_id dt_ids[] = {                              \
+        { .compatible = _compatible },                                     \
+        {},                                                                \
+};                                                                         \
+									   \
+MODULE_DEVICE_TABLE(of, dt_ids);                                           \
+									   \
+									   \
 static struct spi_driver fbtft_driver_spi_driver = {                       \
 	.driver = {                                                        \
 		.name   = _name,                                           \
 		.owner  = THIS_MODULE,                                     \
+                .of_match_table = of_match_ptr(dt_ids),                    \
 	},                                                                 \
 	.probe  = fbtft_driver_probe_spi,                                  \
 	.remove = fbtft_driver_remove_spi,                                 \
@@ -336,6 +347,7 @@ static struct platform_driver fbtft_driver_platform_driver = {             \
 	.driver = {                                                        \
 		.name   = _name,                                           \
 		.owner  = THIS_MODULE,                                     \
+                .of_match_table = of_match_ptr(dt_ids),                    \
 	},                                                                 \
 	.probe  = fbtft_driver_probe_pdev,                                 \
 	.remove = fbtft_driver_remove_pdev,                                \
@@ -366,7 +378,7 @@ module_exit(fbtft_driver_module_exit);
 /* shorthand debug levels */
 #define DEBUG_LEVEL_1	DEBUG_REQUEST_GPIOS
 #define DEBUG_LEVEL_2	(DEBUG_LEVEL_1 | DEBUG_DRIVER_INIT_FUNCTIONS | DEBUG_TIME_FIRST_UPDATE)
-#define DEBUG_LEVEL_3	(DEBUG_LEVEL_2 | DEBUG_RESET | DEBUG_INIT_DISPLAY | DEBUG_BLANK | DEBUG_FREE_GPIOS | DEBUG_VERIFY_GPIOS | DEBUG_BACKLIGHT | DEBUG_SYSFS)
+#define DEBUG_LEVEL_3	(DEBUG_LEVEL_2 | DEBUG_RESET | DEBUG_INIT_DISPLAY | DEBUG_BLANK | DEBUG_REQUEST_GPIOS | DEBUG_FREE_GPIOS | DEBUG_VERIFY_GPIOS | DEBUG_BACKLIGHT | DEBUG_SYSFS)
 #define DEBUG_LEVEL_4	(DEBUG_LEVEL_2 | DEBUG_FB_READ | DEBUG_FB_WRITE | DEBUG_FB_FILLRECT | DEBUG_FB_COPYAREA | DEBUG_FB_IMAGEBLIT | DEBUG_FB_BLANK)
 #define DEBUG_LEVEL_5	(DEBUG_LEVEL_3 | DEBUG_UPDATE_DISPLAY)
 #define DEBUG_LEVEL_6	(DEBUG_LEVEL_4 | DEBUG_LEVEL_5)

@@ -279,10 +279,12 @@ static struct fbtft_display display = {
 		.set_gamma = set_gamma,
 	},
 };
-FBTFT_REGISTER_DRIVER(DRVNAME, &display);
+FBTFT_REGISTER_DRIVER(DRVNAME, "ilitek,ili9325", &display);
 
 MODULE_ALIAS("spi:" DRVNAME);
 MODULE_ALIAS("platform:" DRVNAME);
+MODULE_ALIAS("spi:ili9325");
+MODULE_ALIAS("platform:ili9325");
 
 MODULE_DESCRIPTION("FB driver for the ILI9325 LCD Controller");
 MODULE_AUTHOR("Noralf Tronnes");

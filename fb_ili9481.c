@@ -1,7 +1,8 @@
 /*
- * FB driver for the ILI9486 LCD Controller
+ * FB driver for the ILI9481 LCD Controller
  *
- * Copyright (C) 2014 Noralf Tronnes
+ * Copyright (c) 2014 Petr Olivka
+ * Copyright (c) 2013 Noralf Tronnes
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,41 +22,36 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
+#include <linux/delay.h>
 
 #include "fbtft.h"
 
-#define DRVNAME		"fb_ili9486"
+#define DRVNAME	"fb_ili9481"
 #define WIDTH		320
 #define HEIGHT		480
 
-
-/* this init sequence matches PiScreen */
 static int default_init_sequence[] = {
-	/* Interface Mode Control */
-	-1, 0xb0, 0x0,
-	/* Sleep OUT */
+
+	/* SLP_OUT - Sleep out */
 	-1, 0x11,
-	-2, 250,
-	/* Interface Pixel Format */
+	-2, 50,
+	/* Power setting */
+	-1, 0xD0, 0x07, 0x42, 0x18,
+	/* VCOM */
+	-1, 0xD1, 0x00, 0x07, 0x10,
+	/* Power setting for norm. mode */
+	-1, 0xD2, 0x01, 0x02,
+	/* Panel driving setting */
+	-1, 0xC0, 0x10, 0x3B, 0x00, 0x02, 0x11,
+	/* Frame rate & inv. */
+	-1, 0xC5, 0x03,
+	/* Pixel format */
 	-1, 0x3A, 0x55,
-	/* Power Control 3 */
-	-1, 0xC2, 0x44,
-	/* VCOM Control 1 */
-	-1, 0xC5, 0x00, 0x00, 0x00, 0x00,
-	/* PGAMCTRL(Positive Gamma Control) */
-	-1, 0xE0, 0x0F, 0x1F, 0x1C, 0x0C, 0x0F, 0x08, 0x48, 0x98,
-	          0x37, 0x0A, 0x13, 0x04, 0x11, 0x0D, 0x00,
-	/* NGAMCTRL(Negative Gamma Control) */
-	-1, 0xE1, 0x0F, 0x32, 0x2E, 0x0B, 0x0D, 0x05, 0x47, 0x75,
-	          0x37, 0x06, 0x10, 0x03, 0x24, 0x20, 0x00,
-	/* Digital Gamma Control 1 */
-	-1, 0xE2, 0x0F, 0x32, 0x2E, 0x0B, 0x0D, 0x05, 0x47, 0x75,
-	          0x37, 0x06, 0x10, 0x03, 0x24, 0x20, 0x00,
-	/* Sleep OUT */
-	-1, 0x11,
-	/* Display ON */
+	/* Gamma */
+	-1, 0xC8, 0x00, 0x32, 0x36, 0x45, 0x06, 0x16,
+		  0x37, 0x75, 0x77, 0x54, 0x0C, 0x00,
+	/* DISP_ON */
 	-1, 0x29,
-	/* end marker */
 	-3
 };
 
@@ -64,40 +60,40 @@ static void set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 	fbtft_par_dbg(DEBUG_SET_ADDR_WIN, par,
 		"%s(xs=%d, ys=%d, xe=%d, ye=%d)\n", __func__, xs, ys, xe, ye);
 
-	/* Column address */
-	write_reg(par, 0x2A, xs >> 8, xs & 0xFF, xe >> 8, xe & 0xFF);
+	/* column address */
+	write_reg(par, 0x2a, xs >> 8, xs & 0xff, xe >> 8, xe & 0xff);
 
-	/* Row adress */
-	write_reg(par, 0x2B, ys >> 8, ys & 0xFF, ye >> 8, ye & 0xFF);
+	/* row adress */
+	write_reg(par, 0x2b, ys >> 8, ys & 0xff, ye >> 8, ye & 0xff);
 
-	/* Memory write */
-	write_reg(par, 0x2C);
+	/* memory write */
+	write_reg(par, 0x2c);
 }
 
+#define HFLIP 0x01
+#define VFLIP 0x02
+#define ROWxCOL 0x20
 static int set_var(struct fbtft_par *par)
 {
 	fbtft_par_dbg(DEBUG_INIT_DISPLAY, par, "%s()\n", __func__);
 
 	switch (par->info->var.rotate) {
-	case 0:
-		write_reg(par, 0x36, 0x80 | (par->bgr << 3));
-		break;
-	case 90:
-		write_reg(par, 0x36, 0x20 | (par->bgr << 3));
+	case 270:
+		write_reg(par, 0x36, ROWxCOL | HFLIP | VFLIP | (par->bgr << 3));
 		break;
 	case 180:
-		write_reg(par, 0x36, 0x40 | (par->bgr << 3));
+		write_reg(par, 0x36, VFLIP | (par->bgr << 3));
 		break;
-	case 270:
-		write_reg(par, 0x36, 0xE0 | (par->bgr << 3));
+	case 90:
+		write_reg(par, 0x36, ROWxCOL | (par->bgr << 3));
 		break;
 	default:
+		write_reg(par, 0x36, HFLIP | (par->bgr << 3));
 		break;
 	}
 
 	return 0;
 }
-
 
 static struct fbtft_display display = {
 	.regwidth = 8,
@@ -109,13 +105,13 @@ static struct fbtft_display display = {
 		.set_var = set_var,
 	},
 };
-FBTFT_REGISTER_DRIVER(DRVNAME, "ilitek,ili9486", &display);
+FBTFT_REGISTER_DRIVER(DRVNAME, "ilitek,ili9481", &display);
 
 MODULE_ALIAS("spi:" DRVNAME);
 MODULE_ALIAS("platform:" DRVNAME);
-MODULE_ALIAS("spi:ili9486");
-MODULE_ALIAS("platform:ili9486");
+MODULE_ALIAS("spi:ili9481");
+MODULE_ALIAS("platform:ili9481");
 
-MODULE_DESCRIPTION("FB driver for the ILI9486 LCD Controller");
-MODULE_AUTHOR("Noralf Tronnes");
+MODULE_DESCRIPTION("FB driver for the ILI9481 LCD Controller");
+MODULE_AUTHOR("Petr Olivka");
 MODULE_LICENSE("GPL");

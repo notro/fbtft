@@ -194,10 +194,12 @@ static struct fbtft_display display = {
 		.set_var = set_var,
 	},
 };
-FBTFT_REGISTER_DRIVER(DRVNAME, &display);
+FBTFT_REGISTER_DRIVER(DRVNAME, "nec,upd161704", &display);
 
 MODULE_ALIAS("spi:" DRVNAME);
 MODULE_ALIAS("platform:" DRVNAME);
+MODULE_ALIAS("spi:upd161704");
+MODULE_ALIAS("platform:upd161704");
 
 MODULE_DESCRIPTION("FB driver for the uPD161704 LCD Controller");
 MODULE_AUTHOR("Seong-Woo Kim");

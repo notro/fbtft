@@ -265,7 +265,8 @@ static void register_chip_backlight(struct fbtft_par *par)
 
 	fbtft_par_dbg(DEBUG_BACKLIGHT, par, "%s()\n", __func__);
 
-	bl_ops = kzalloc(sizeof(struct backlight_ops), GFP_KERNEL);
+	bl_ops = devm_kzalloc(par->info->device, sizeof(struct backlight_ops),
+				GFP_KERNEL);
 	if (!bl_ops) {
 		dev_err(par->info->device,
 			"%s: could not allocate memory for backlight operations.\n",
@@ -285,16 +286,12 @@ static void register_chip_backlight(struct fbtft_par *par)
 		dev_err(par->info->device,
 			"cannot register backlight device (%ld)\n",
 			PTR_ERR(bd));
-		goto failed;
+		return;
 	}
 	par->info->bl_dev = bd;
 
 	if (!par->fbtftops.unregister_backlight)
 		par->fbtftops.unregister_backlight = fbtft_unregister_backlight;
-
-	return;
-failed:
-	kfree(bl_ops);
 }
 #else
 #define register_chip_backlight NULL
@@ -318,7 +315,7 @@ static struct fbtft_display display = {
 		.register_backlight = register_chip_backlight,
 	},
 };
-FBTFT_REGISTER_DRIVER(DRVNAME, &display);
+FBTFT_REGISTER_DRIVER(DRVNAME, "watterott,openlcd", &display);
 
 MODULE_ALIAS("spi:" DRVNAME);
 

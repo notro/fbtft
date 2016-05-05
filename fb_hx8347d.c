@@ -169,10 +169,12 @@ static struct fbtft_display display = {
 		.set_gamma = set_gamma,
 	},
 };
-FBTFT_REGISTER_DRIVER(DRVNAME, &display);
+FBTFT_REGISTER_DRIVER(DRVNAME, "himax,hx8347d", &display);
 
 MODULE_ALIAS("spi:" DRVNAME);
 MODULE_ALIAS("platform:" DRVNAME);
+MODULE_ALIAS("spi:hx8347d");
+MODULE_ALIAS("platform:hx8347d");
 
 MODULE_DESCRIPTION("FB driver for the HX8347D LCD Controller");
 MODULE_AUTHOR("Christian Vogelgsang");

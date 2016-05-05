@@ -156,10 +156,12 @@ static struct fbtft_display display = {
 		.set_var = set_var,
 	},
 };
-FBTFT_REGISTER_DRIVER(DRVNAME, &display);
+FBTFT_REGISTER_DRIVER(DRVNAME, "samsung,s6d02a1", &display);
 
 MODULE_ALIAS("spi:" DRVNAME);
 MODULE_ALIAS("platform:" DRVNAME);
+MODULE_ALIAS("spi:s6d02a1");
+MODULE_ALIAS("platform:s6d02a1");
 
 MODULE_DESCRIPTION("FB driver for the S6D02A1 LCD Controller");
 MODULE_AUTHOR("WOLFGANG BUENING");

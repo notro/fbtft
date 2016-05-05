@@ -114,9 +114,10 @@ static struct fbtft_display display = {
 		.set_var = set_var,
 	},
 };
-FBTFT_REGISTER_DRIVER(DRVNAME, &display);
+FBTFT_REGISTER_DRIVER(DRVNAME, "neosec,tinylcd", &display);
 
 MODULE_ALIAS("spi:" DRVNAME);
+MODULE_ALIAS("spi:tinylcd");
 
 MODULE_DESCRIPTION("Custom FB driver for tinylcd.com display");
 MODULE_AUTHOR("Noralf Tronnes");

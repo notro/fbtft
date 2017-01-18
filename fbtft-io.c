@@ -138,22 +138,103 @@ EXPORT_SYMBOL(fbtft_read_spi);
  *     optimized use of gpiolib
  */
 
-#define GPIOSET(no, ishigh)           \
-do {                                  \
-	if (ishigh)                   \
-		set |= (1 << (no));   \
-	else                          \
-		reset |= (1 << (no)); \
+#define GPIOSET(no, ishigh)                \
+	if (no<32)                         \
+		GPIOSET0(no, ishigh);      \
+	else                               \
+		GPIOSET1((no-32), ishigh); \
+		
+#define GPIOSET0(no, ishigh)           \
+do {                                   \
+	if (ishigh)                    \
+		set0 |= (1 << (no));   \
+	else                           \
+		reset0 |= (1 << (no)); \
 } while (0)
+#define GPIOSET1(no, ishigh)           \
+do {                                   \
+	if (ishigh)                    \
+		set1 |= (1 << (no));   \
+	else                           \
+		reset1 |= (1 << (no)); \
+} while (0)
+
+#define CS_SET()                                               \
+	if (par->gpio.cs != -1)                                \
+		/* CS -> Low */                                \
+		if (par->gpio.cs<32)                           \
+			writel(                                \
+				(1<<(par->gpio.cs)),           \
+			       __io_address(GPIO_BASE+0x28)    \
+			);                                     \
+		else                                           \
+			writel(                                \
+				(1<<(par->gpio.cs-32)),        \
+			       __io_address(GPIO_BASE+0x2C)    \
+			);                                     \
+
+#define CS_UNSET()                                             \
+	if (par->gpio.cs != -1)                                \
+		/* CS -> High */                               \
+		if (par->gpio.cs<32)                           \
+			writel(                                \
+				(1<<(par->gpio.cs)),           \
+			       __io_address(GPIO_BASE+0x1C)    \
+			);                                     \
+		else                                           \
+			writel(                                \
+				(1<<(par->gpio.cs-32)),        \
+			       __io_address(GPIO_BASE+0x20)    \
+			);
+
+#define WR_LOW()                                       \
+	/* WR -> Low */                                \
+	if (par->gpio.wr<32)                           \
+		writel(                                \
+			(1<<(par->gpio.wr)),           \
+		       __io_address(GPIO_BASE+0x28)    \
+		);                                     \
+	else                                           \
+		writel(                                \
+			(1<<(par->gpio.wr-32)),        \
+		       __io_address(GPIO_BASE+0x2C)    \
+		);                                     \
+
+#define WR_HIGH()                                      \
+	/* WR -> High */                               \
+	if (par->gpio.wr<32)                           \
+		writel(                                \
+			(1<<(par->gpio.wr)),           \
+		       __io_address(GPIO_BASE+0x1C)    \
+		);                                     \
+	else                                           \
+		writel(                                \
+			(1<<(par->gpio.wr-32)),        \
+		       __io_address(GPIO_BASE+0x20)    \
+		);
+
+#define GPIO_DELAY()                                   \
+	 /* used as a delay */                         \
+	writel(0,  __io_address(GPIO_BASE+0x28));
+	
+#define GPIO_WRITE()                                            \
+		writel(set0, __io_address(GPIO_BASE+0x1C));     \
+		writel(reset0, __io_address(GPIO_BASE+0x28));   \
+		writel(set1, __io_address(GPIO_BASE+0x20));     \
+		writel(reset1, __io_address(GPIO_BASE+0x2C));   \
 
 int fbtft_write_gpio8_wr(struct fbtft_par *par, void *buf, size_t len)
 {
-	unsigned int set = 0;
-	unsigned int reset = 0;
+	unsigned int set0 = 0;
+	unsigned int reset0 = 0;
+	unsigned int set1 = 0;
+	unsigned int reset1 = 0;
 	u8 data;
 
 	fbtft_par_dbg_hex(DEBUG_WRITE, par, par->info->device, u8, buf, len,
 		"%s(len=%d): ", __func__, len);
+
+	CS_SET();
 
 	while (len--) {
 		data = *(u8 *) buf;
@@ -168,17 +249,20 @@ int fbtft_write_gpio8_wr(struct fbtft_par *par, void *buf, size_t len)
 		GPIOSET(par->gpio.db[5], (data&0x20));
 		GPIOSET(par->gpio.db[6], (data&0x40));
 		GPIOSET(par->gpio.db[7], (data&0x80));
-		writel(set, __io_address(GPIO_BASE+0x1C));
-		writel(reset, __io_address(GPIO_BASE+0x28));
-
+		GPIO_WRITE();
+		
 		/* Pulse /WR low */
-		writel((1<<par->gpio.wr),  __io_address(GPIO_BASE+0x28));
-		writel(0,  __io_address(GPIO_BASE+0x28)); /* used as a delay */
-		writel((1<<par->gpio.wr),  __io_address(GPIO_BASE+0x1C));
+		WR_LOW();
+		GPIO_DELAY();
+		WR_HIGH();
 
-		set = 0;
-		reset = 0;
+		set0 = 0;
+		reset0 = 0;
+		set1 = 0;
+		reset1 = 0;
 	}
+
+	CS_UNSET();
 
 	return 0;
 }
@@ -186,8 +270,10 @@ EXPORT_SYMBOL(fbtft_write_gpio8_wr);
 
 int fbtft_write_gpio16_wr(struct fbtft_par *par, void *buf, size_t len)
 {
-	unsigned int set = 0;
-	unsigned int reset = 0;
+	unsigned int set0 = 0;
+	unsigned int reset0 = 0;
+	unsigned int set1 = 0;
+	unsigned int reset1 = 0;
 	u16 data;
 
 	fbtft_par_dbg_hex(DEBUG_WRITE, par, par->info->device, u8, buf, len,
@@ -220,14 +306,15 @@ int fbtft_write_gpio16_wr(struct fbtft_par *par, void *buf, size_t len)
 		GPIOSET(par->gpio.db[14], (data&0x4000));
 		GPIOSET(par->gpio.db[15], (data&0x8000));
 
-		writel(set, __io_address(GPIO_BASE+0x1C));
-		writel(reset, __io_address(GPIO_BASE+0x28));
+		GPIO_WRITE();
 
 		/* Pullup /WR */
 		gpio_set_value(par->gpio.wr, 1);
 
-		set = 0;
-		reset = 0;
+		set0 = 0;
+		reset0 = 0;
+		set1 = 0;
+		reset1 = 0;
 	}
 
 	return 0;
@@ -236,8 +323,10 @@ EXPORT_SYMBOL(fbtft_write_gpio16_wr);
 
 int fbtft_write_gpio16_wr_latched(struct fbtft_par *par, void *buf, size_t len)
 {
-	unsigned int set = 0;
-	unsigned int reset = 0;
+	unsigned int set0 = 0;
+	unsigned int reset0 = 0;
+	unsigned int set1 = 0;
+	unsigned int reset1 = 0;
 	u16 data;
 
 	fbtft_par_dbg_hex(DEBUG_WRITE, par, par->info->device, u8, buf, len,
@@ -260,8 +349,7 @@ int fbtft_write_gpio16_wr_latched(struct fbtft_par *par, void *buf, size_t len)
 		GPIOSET(par->gpio.db[5],  (data&0x0020));
 		GPIOSET(par->gpio.db[6],  (data&0x0040));
 		GPIOSET(par->gpio.db[7],  (data&0x0080));
-		writel(set, __io_address(GPIO_BASE+0x1C));
-		writel(reset, __io_address(GPIO_BASE+0x28));
+		GPIO_WRITE();
 
 		/* Pulse 'latch' high */
 		gpio_set_value(par->gpio.latch, 1);
@@ -276,14 +364,15 @@ int fbtft_write_gpio16_wr_latched(struct fbtft_par *par, void *buf, size_t len)
 		GPIOSET(par->gpio.db[5], (data&0x2000));
 		GPIOSET(par->gpio.db[6], (data&0x4000));
 		GPIOSET(par->gpio.db[7], (data&0x8000));
-		writel(set, __io_address(GPIO_BASE+0x1C));
-		writel(reset, __io_address(GPIO_BASE+0x28));
+		GPIO_WRITE();
 
 		/* Pullup /WR */
 		gpio_set_value(par->gpio.wr, 1);
 
-		set = 0;
-		reset = 0;
+		set0 = 0;
+		reset0 = 0;
+		set1 = 0;
+		reset1 = 0;
 	}
 
 	return 0;
@@ -308,7 +397,12 @@ int fbtft_write_gpio8_wr(struct fbtft_par *par, void *buf, size_t len)
 
 	fbtft_par_dbg_hex(DEBUG_WRITE, par, par->info->device, u8, buf, len,
 		"%s(len=%d): ", __func__, len);
-
+	
+	if (par->gpio.cs != -1) {
+		/* CS -> Low */
+		gpio_set_value(par->gpio.cs, 0);
+	}
+	
 	while (len--) {
 		data = *(u8 *) buf;
 
@@ -344,6 +438,10 @@ int fbtft_write_gpio8_wr(struct fbtft_par *par, void *buf, size_t len)
 		buf++;
 	}
 
+	if (par->gpio.cs != -1) {
+		/* CS -> High */
+		gpio_set_value(par->gpio.cs, 1);
+	}
 	return 0;
 }
 EXPORT_SYMBOL(fbtft_write_gpio8_wr);

@@ -44,6 +44,19 @@ static unsigned bs = 4;
 module_param(bs, uint, 0);
 MODULE_PARM_DESC(bs, "BS[2:0] Bias voltage level: 0-7 (default: 4)");
 
+static unsigned variant = 8204;
+module_param(variant, uint, 0);
+MODULE_PARM_DESC(variant, "Display variant: older Philips 8544 or the newer Teralane 8204 (default: 8204)");
+
+static bool is_pcd8544(void)
+{
+	return variant == 8544;
+}
+
+static bool is_tls8204(void)
+{
+	return variant == 8204;
+}
 
 static int init_display(struct fbtft_par *par)
 {
@@ -51,7 +64,7 @@ static int init_display(struct fbtft_par *par)
 
 	par->fbtftops.reset(par);
 
-	/* Function set */
+	/* Enter extended command mode */
 	write_reg(par, 0x21); /* 5:1  1
 	                         2:0  PD - Powerdown control: chip is active
 							 1:0  V  - Entry mode: horizontal addressing
@@ -59,9 +72,10 @@ static int init_display(struct fbtft_par *par)
 						  */
 
 	/* H=1 Temperature control */
-	write_reg(par, 0x04 | (tc & 0x3)); /* 
-	                         2:1  1
-	                         1:x  TC1 - Temperature Coefficient: 0x10
+	if (is_pcd8544())
+		write_reg(par, 0x04 | (tc & 0x3)); /* 
+				 2:1  1
+				 1:x  TC1 - Temperature Coefficient: 0x10
 							 0:x  TC0
 						  */
 
@@ -74,12 +88,14 @@ static int init_display(struct fbtft_par *par)
 							 0:x  BS0
 	                      */
 
-	/* Function set */
-	write_reg(par, 0x22); /* 5:1  1
-	                         2:0  PD - Powerdown control: chip is active
-							 1:1  V  - Entry mode: vertical addressing
-							 0:0  H  - Extended instruction set control: basic
-						  */
+        if (is_tls8204()) {
+                /* Se the address of the first display line. */
+                write_reg(par, 0x04 | (64 >> 6));
+                write_reg(par, 0x40 | (64 & 0x3F));
+        }
+
+        /* Enter H=0 standard command mode */
+        write_reg(par, 0x20);
 
 	/* H=0 Display control */
 	write_reg(par, 0x08 | 4); /* 
@@ -111,27 +127,35 @@ static void set_addr_win(struct fbtft_par *par, int xs, int ys, int xe, int ye)
 static int write_vmem(struct fbtft_par *par, size_t offset, size_t len)
 {
 	u16 *vmem16 = (u16 *)par->info->screen_base;
-	u8 *buf = par->txbuf.buf;
 	int x, y, i;
 	int ret = 0;
 
 	fbtft_par_dbg(DEBUG_WRITE_VMEM, par, "%s()\n", __func__);
 
-	for (x=0;x<84;x++) {
-		for (y=0;y<6;y++) {
-			*buf = 0x00;
-			for (i=0;i<8;i++) {
-				*buf |= (vmem16[(y*8+i)*84+x] ? 1 : 0) << i;
+	for (y=0;y<HEIGHT/8;y++) {
+		u8 *buf = par->txbuf.buf;
+		/* Move the write pointer to the left of the next row */
+		gpio_set_value(par->gpio.dc, 0);
+		write_reg(par, 0x80 | 0);
+		write_reg(par, 0x40 | y);
+
+		for (x=0;x<WIDTH;x++) {
+			u8 ch = 0;
+			for (i=0;i<8*WIDTH;i+=WIDTH) {
+				ch >>= 1;
+				if (vmem16[(y*8*WIDTH)+i+x])
+					ch |= 0x80;
 			}
-			buf++;
+			*buf++ = ch;
+		}
+		/* Write the row */
+		gpio_set_value(par->gpio.dc, 1);
+		ret = par->fbtftops.write(par, par->txbuf.buf, WIDTH);
+		if (ret < 0) {
+			dev_err(par->info->device, "%s: write failed and returned: %d\n", __func__, ret);
+			break;
 		}
 	}
-
-	/* Write data */
-	gpio_set_value(par->gpio.dc, 1);
-	ret = par->fbtftops.write(par, par->txbuf.buf, 6*84);
-	if (ret < 0)
-		dev_err(par->info->device, "%s: write failed and returned: %d\n", __func__, ret);
 
 	return ret;
 }
@@ -143,9 +167,9 @@ static int set_gamma(struct fbtft_par *par, unsigned long *curves)
 	/* apply mask */
 	curves[0] &= 0x7F;
 
-	write_reg(par, 0x23); /* turn on extended instruction set */
+	write_reg(par, 0x21); /* turn on extended instruction set */
 	write_reg(par, 0x80 | curves[0]);
-	write_reg(par, 0x22); /* turn off extended instruction set */
+	write_reg(par, 0x20); /* turn off extended instruction set */
 
 	return 0;
 }

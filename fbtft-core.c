@@ -252,8 +252,8 @@ static int fbtft_request_gpios_dt(struct fbtft_par *par)
 int fbtft_backlight_update_status(struct backlight_device *bd)
 {
 	struct fbtft_par *par = bl_get_data(bd);
-	bool polarity = !!(bd->props.state & BL_CORE_DRIVER1);
-
+	bool polarity = par->polarity;
+	
 	fbtft_par_dbg(DEBUG_BACKLIGHT, par,
 		"%s: polarity=%d, power=%d, fb_blank=%d\n",
 		__func__, polarity, bd->props.power, bd->props.fb_blank);
@@ -315,8 +315,8 @@ void fbtft_register_backlight(struct fbtft_par *par)
 	/* Assume backlight is off, get polarity from current state of pin */
 	bl_props.power = FB_BLANK_POWERDOWN;
 	if (!gpio_get_value(par->gpio.led[0]))
-		bl_props.state |= BL_CORE_DRIVER1;
-
+		par->polarity = true;
+	
 	bd = backlight_device_register(dev_driver_string(par->info->device),
 				par->info->device, par, bl_ops, &bl_props);
 	if (IS_ERR(bd)) {

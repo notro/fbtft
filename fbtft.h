@@ -254,6 +254,7 @@ struct fbtft_par {
 	struct timespec update_time;
 	bool bgr;
 	void *extra;
+	bool polarity;
 };
 
 #define NUMARGS(...)  (sizeof((int[]){__VA_ARGS__})/sizeof(int))

@@ -370,7 +370,7 @@ void fbtft_reset(struct fbtft_par *par)
 void fbtft_update_display(struct fbtft_par *par, unsigned start_line, unsigned end_line)
 {
 	size_t offset, len;
-	struct timespec ts_start, ts_end, ts_fps, ts_duration;
+	struct timespec64 ts_start, ts_end, ts_fps, ts_duration;
 	long fps_ms, fps_us, duration_ms, duration_us;
 	long fps, throughput;
 	bool timeit = false;
@@ -379,7 +379,7 @@ void fbtft_update_display(struct fbtft_par *par, unsigned start_line, unsigned e
 	if (unlikely(par->debug & (DEBUG_TIME_FIRST_UPDATE | DEBUG_TIME_EACH_UPDATE))) {
 		if ((par->debug & DEBUG_TIME_EACH_UPDATE) || \
 				((par->debug & DEBUG_TIME_FIRST_UPDATE) && !par->first_update_done)) {
-			getnstimeofday(&ts_start);
+			ktime_get_real_ts64(&ts_start);
 			timeit = true;
 		}
 	}
@@ -416,12 +416,12 @@ void fbtft_update_display(struct fbtft_par *par, unsigned start_line, unsigned e
 			__func__);
 
 	if (unlikely(timeit)) {
-		getnstimeofday(&ts_end);
+		ktime_get_real_ts64(&ts_end);
 		if (par->update_time.tv_nsec == 0 && par->update_time.tv_sec == 0) {
 			par->update_time.tv_sec = ts_start.tv_sec;
 			par->update_time.tv_nsec = ts_start.tv_nsec;
 		}
-		ts_fps = timespec_sub(ts_start, par->update_time);
+		ts_fps = timespec_sub64(ts_start, par->update_time);
 		par->update_time.tv_sec = ts_start.tv_sec;
 		par->update_time.tv_nsec = ts_start.tv_nsec;
 		fps_ms = (ts_fps.tv_sec * 1000) + ((ts_fps.tv_nsec / 1000000) % 1000);
@@ -429,7 +429,7 @@ void fbtft_update_display(struct fbtft_par *par, unsigned start_line, unsigned e
 		fps = fps_ms * 1000 + fps_us;
 		fps = fps ? 1000000 / fps : 0;
 
-		ts_duration = timespec_sub(ts_end, ts_start);
+		ts_duration = timespec_sub64(ts_end, ts_start);
 		duration_ms = (ts_duration.tv_sec * 1000) + ((ts_duration.tv_nsec / 1000000) % 1000);
 		duration_us = (ts_duration.tv_nsec / 1000) % 1000;
 		throughput = duration_ms * 1000 + duration_us;
@@ -1050,7 +1050,7 @@ int fbtft_unregister_framebuffer(struct fb_info *fb_info)
 	if (par->fbtftops.unregister_backlight)
 		par->fbtftops.unregister_backlight(par);
 	fbtft_sysfs_exit(par);
-	ret = unregister_framebuffer(fb_info);
+	unregister_framebuffer(fb_info);
 	return ret;
 }
 EXPORT_SYMBOL(fbtft_unregister_framebuffer);

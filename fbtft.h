@@ -251,7 +251,7 @@ struct fbtft_par {
 	} gamma;
 	unsigned long debug;
 	bool first_update_done;
-	struct timespec update_time;
+	struct timespec64 update_time;
 	bool bgr;
 	void *extra;
 };
